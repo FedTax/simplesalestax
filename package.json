@@ -41,7 +41,7 @@
     "@wordpress/scripts": "^27.1.0",
     "@wp-blocks/make-pot": "^1.4.0",
     "cross-var": "^1.1.0",
-    "cypress": "^13.6.4",
+    "cypress": "^13.16.1",
     "grunt": "^1.6.1",
     "grunt-contrib-cssmin": "^5.0.0",
     "grunt-contrib-uglify": "^5.2.2",
