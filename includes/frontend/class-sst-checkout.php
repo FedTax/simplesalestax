@@ -80,7 +80,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 			is_cart() ||
 			is_checkout() ||
 			doing_action( 'wc_ajax_square_digital_wallet_recalculate_totals' ) ||
-			$this->is_store_api_request()
+			$this->is_store_api_request() ||
+			$this->is_edit_subscription_request()
 		);
 
 		if ( apply_filters( 'sst_calculate_tax_totals', $should_calculate ) ) {
@@ -112,7 +113,18 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$rest_route = $wp->query_vars['rest_route'] ?? '';
 		return 0 === strpos( $rest_route, '/wc/store/' );
 	}
-
+    /**
+     * Check come from edit-subscription
+     * @return bool
+     */
+    protected function is_edit_subscription_request() {
+        global $wp;
+        $subscriptionId = $wp->query_vars['edit-subscription'] ?? '';
+        if(!$subscriptionId){
+            $subscriptionId = $wp->query_vars['view-subscription'] ?? '';
+        }
+        return $subscriptionId > 0;
+    }
 	/**
 	 * Calculates the tax due for the cart.
 	 */
