@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Composite Products integration for Simple Sales Tax.
  *
- * @author Brett Porcelli <bporcelli@taxcloud.com>
+ * @author Taxcloud <bporcelli@taxcloud.com>
  */
 class SST_Composite_Products {
 

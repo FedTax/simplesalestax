@@ -5,7 +5,7 @@
  *
  * Provides a simple, backward-compatible interface to the WC Cart object.
  *
- * @author  Brett Porcelli
+ * @author  Taxcloud
  * @package SST
  * @since   5.6
  */

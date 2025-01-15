@@ -4,7 +4,7 @@
  * Override by copying to `THEME_PATH/sst/html-checkout.php`.
  *
  * @since   8.0.0
- * @author  Brett Porcelli
+ * @author  Taxcloud
  * @package Simple Sales Tax
  * @version 8.0.0
  */

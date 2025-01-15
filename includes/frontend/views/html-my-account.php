@@ -4,7 +4,7 @@
  * You may override this template by copying it to THEME_PATH/sst/html-my-account.php.
  *
  * @since   8.0.0
- * @author  Brett Porcelli
+ * @author  Taxcloud
  * @package Simple Sales Tax
  * @version 8.0.0
  */
