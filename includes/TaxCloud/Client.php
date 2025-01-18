@@ -736,13 +736,6 @@ class Client
                     "states" => $states
                 ];
                 break;
-            case "get-exempt-certificates":
-                $connectionId = $payload->getApiKey();
-                $xApiKey = $payload->getApiLoginID();;
-                $url = "{$this->base_url_without_connections_v3}/exemption-certificates?customerId=".$payload->getCustomerID();
-                break;
-
-
         }
 
         curl_setopt_array($curl, array(
