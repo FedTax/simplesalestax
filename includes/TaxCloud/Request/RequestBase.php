@@ -44,4 +44,8 @@ class RequestBase extends Serializable
     {
         return $this->apiLoginID;
     }
+    public function getXApiKey(): string
+    {
+        return $this->apiLoginID;
+    }
 }

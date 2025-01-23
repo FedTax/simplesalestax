@@ -498,7 +498,7 @@ class Client
     protected function deleteV3(string $endpoint, JsonSerializable $payload)
     {
         $curl = curl_init();
-        $xApiKey = $payload->getApiLoginID();
+        $xApiKey = $payload->getXApiKey();
         $params = [];
         $curl = curl_init();
         $connectionId = $payload->getApiKey();
@@ -545,7 +545,7 @@ class Client
                 break;
         }
         $curl = curl_init();
-        $xApiKey = $payload->getApiLoginID();;
+        $xApiKey = $payload->getXApiKey();;
         $params = [];
         $curl = curl_init();
         curl_setopt_array($curl, array(
@@ -589,7 +589,7 @@ class Client
         $params = [];
         switch ($endpoint){
             case "carts":
-                $xApiKey = $payload->getApiLoginID();;
+                $xApiKey = $payload->getXApiKey();;
                 $connectionId = $payload->getApiKey();
                 $url = "{$this->base_url_v3}{$connectionId}/{$endpoint}";
                 $lineItems = [];
@@ -645,7 +645,7 @@ class Client
                 ];
                 break;
             case "carts/orders":
-                $xApiKey = $payload->getApiLoginID();
+                $xApiKey = $payload->getXApiKey();
                 $connectionId = $payload->getApiKey();
                 $url = "{$this->base_url_v3}{$connectionId}/{$endpoint}";
                 $params = [
@@ -655,7 +655,7 @@ class Client
                 ];
                 break;
             case "verify-address":
-                $xApiKey = $payload->getApiLoginID();;
+                $xApiKey = $payload->getXApiKey();;
                 $url = "{$this->base_url_without_connections_v3}/{$endpoint}";
                 $destinationLine1 = $payload->getAddress1();
 
@@ -674,7 +674,7 @@ class Client
                 break;
             case "refunds":
                 $connectionId = $payload->getApiKey();
-                $xApiKey = $payload->getApiLoginID();;
+                $xApiKey = $payload->getXApiKey();;
                 $url = "{$this->base_url_v3}{$connectionId}/orders/{$endpoint}/".$payload->getOrderId();
                 $cartItems = $payload->getCartItems();
                 $items = [];
@@ -690,7 +690,7 @@ class Client
                 break;
             case "add-exemption":
                 $connectionId = $payload->getApiKey();
-                $xApiKey = $payload->getApiLoginID();;
+                $xApiKey = $payload->getXApiKey();;
                 $states = [];
                 $exet = $payload->getExemptCert();
                 $detail = $exet->getDetail();
