@@ -537,7 +537,7 @@ class Client
         switch ($endpoint){
             case "get-exempt-certificates":
                 $customerId = $payload->getCustomerID();
-                $url = 'https://api.v3.taxcloud.com/tax/exemption-certificates?customerId='.$customerId;
+                $url = 'https://api.v3.taxcloud.com/tax/exemption-certificates?customerId='.$customerId."&&limit=100";
                 break;
             case "ping":
                 $connectionId = $payload->getApiKey();
