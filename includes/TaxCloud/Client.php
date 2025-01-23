@@ -658,8 +658,10 @@ class Client
                 $xApiKey = $payload->getApiLoginID();;
                 $url = "{$this->base_url_without_connections_v3}/{$endpoint}";
                 $destinationLine1 = $payload->getAddress1();
-                if(!$destinationLine1){
-                    $destinationLine1 = "650 street";
+
+                $zip = $payload->getZip5();
+                if($payload->getZip4()){
+                    $zip .= "-".$payload->getZip4();
                 }
                 $params = [
                   "city" => $payload->getCity(),
@@ -667,7 +669,7 @@ class Client
                   "line1" => $destinationLine1,
                   "line2" => $payload->getAddress2(),
                   "state"=> $payload->getState(),
-                  "zip" =>  $payload->getZip5()
+                  "zip" =>  $zip
                 ];
                 break;
             case "refunds":
