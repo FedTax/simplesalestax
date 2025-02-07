@@ -400,58 +400,6 @@ class Client
   }
 
   /**
-   * Get a list of the locations currently associated with the TaxCloud account associated with the API ID being used.
-   *
-   * @param  GetLocations $parameters
-   * @return Location[]
-   */
-  public function GetLocations(GetLocations $parameters)
-  {
-    try {
-      $response = new GetLocationsResponse($this->post('GetLocations', $parameters));
-
-      if ($response->getResponseType() == 'OK') {
-        return $response->getLocations();
-      } else {
-        foreach ($response->getMessages() as $message) {
-          throw new GetLocationsException($message->getMessage());
-        }
-      }
-    } catch (RequestException $ex) {
-      throw new GetLocationsException($ex->getMessage());
-    }
-  }
-
-  /**
-   * Add a batch of transactions (up to 25 at a time) from offline sources.
-   *
-   * All transactions will be imported into TaxCloud, and re-calculated to ensure proper tax amounts are included in
-   * subsequent sales tax reports and filings.
-   *
-   * @param AddTransactions $parameters
-   *
-   * @return bool Boolean true on success.
-   *
-   * @throws AddTransactionsException If the AddTransactions request fails.
-   */
-  public function AddTransactions(AddTransactions $parameters)
-  {
-    try {
-      $response = new AddTransactionsResponse($this->post('AddTransactions', $parameters));
-
-      if ('OK' !== $response->getResponseType()) {
-        foreach ($response->getMessages() as $message) {
-          throw new AddTransactionsException($message->getMessage());
-        }
-      }
-    } catch (RequestException $ex) {
-      throw new AddTransactionsException($ex->getMessage());
-    }
-
-    return true;
-  }
-
-  /**
    * Send a POST request to a TaxCloud API endpoint.
    *
    * @param string           $endpoint Endpoint name
