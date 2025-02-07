@@ -303,13 +303,10 @@ class Client
   {
     try {
       $response = $this->postV3('refunds', $parameters);
-      if ($response->getResponseType() == 'OK') {
-        return TRUE;
-      } else {
-        foreach ($response->getMessages() as $message) {
-          throw new ReturnedException($message->getMessage());
+        if(isset($response['status']) && isset($response['errors']) ){
+            throw new ReturnedException( json_encode($response['errors'])  );
         }
-      }
+        return TRUE;
     } catch (RequestException $ex) {
       throw new ReturnedException($ex->getMessage());
     }
