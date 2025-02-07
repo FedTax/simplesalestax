@@ -530,8 +530,9 @@ class Client
     {
         switch ($endpoint){
             case "get-exempt-certificates":
+                $connectionId = $payload->getApiKey();
                 $customerId = $payload->getCustomerID();
-                $url = $this->base_url_without_connections_v3.'exemption-certificates?customerId='.$customerId."&&limit=100";
+                $url = $this->base_url_without_connections_v3.'exemption-certificates?customerId='.$customerId."&&limit=100&&connectionId=".$connectionId;
                 break;
             case "ping":
                 $connectionId = $payload->getApiKey();
