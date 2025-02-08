@@ -539,7 +539,7 @@ class Client
                         "itemId" => (string)$eachItem->getItemID(),
                         "price" => (double)$eachItem->getPrice(),
                         "quantity" => $eachItem->getQty(),
-                        "tic" => (int) $eachItem->getTIC()
+                        "tic" => 0
                     ];
                 }
                 //customerId can not be empty, if it is guest check, need use customer-0
