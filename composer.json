@@ -1,6 +1,5 @@
 {
   "config": {
-    "vendor-dir": "includes/vendor",
     "allow-plugins": {
       "composer/installers": true,
       "automattic/jetpack-autoloader": true
@@ -9,9 +8,6 @@
   "name": "simplesalestax/simplesalestax",
   "description": "Sales tax compliance solution for WooCommerce.",
   "type": "project",
-  "require": {
-    "bporcelli/php-taxcloud": "1.1.0"
-  },
   "license": "GPL-3.0+",
   "authors": [
     {

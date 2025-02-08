@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * NOTE: Applying a discount on the full cart total including tax
  * is NOT supported (`deposit_on_total_incl_tax`).
  *
- * @author Brett Porcelli <bporcelli@taxcloud.com>
+ * @author Taxcloud <bporcelli@taxcloud.com>
  */
 class SST_Deposits_For_WC {
 

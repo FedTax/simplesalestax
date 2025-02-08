@@ -2,7 +2,7 @@
 /**
  * Certificate list table template.
  *
- * @author  Brett Porcelli
+ * @author  Taxcloud
  * @package Simple Sales Tax
  * @version 7.0.0
  */

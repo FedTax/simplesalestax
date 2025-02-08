@@ -63,10 +63,10 @@ module.exports = {
 									'@use "sass:string";' +
 									'@use "sass:color";' +
 									'@use "sass:map";' +
-									'@import "_colors"; ' +
-									'@import "_variables"; ' +
-									'@import "_breakpoints"; ' +
-									'@import "_mixins"; ' +
+									// '@import "_colors"; ' +
+									// '@import "_variables"; ' +
+									// '@import "_breakpoints"; ' +
+									// '@import "_mixins"; ' +
 									content
 								);
 							},

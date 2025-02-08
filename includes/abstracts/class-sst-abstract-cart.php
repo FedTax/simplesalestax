@@ -141,7 +141,7 @@ abstract class SST_Abstract_Cart {
 
 			$hash          = $this->get_package_hash( $package );
 			$saved_package = $this->get_saved_package( $hash );
-
+            $saved_package = false;
 			if ( false === $saved_package ) {
 				$saved_package = $this->compress_package_data(
 					$this->do_package_lookup( $package )

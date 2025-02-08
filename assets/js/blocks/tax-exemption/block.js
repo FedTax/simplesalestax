@@ -4,8 +4,8 @@
 import { useDispatch } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 import { getSetting } from '@woocommerce/settings';
-import { Select } from '@woocommerce/base-components/select/index';
-import { Title } from '@woocommerce/blocks-components';
+import { Select } from '@woocommerce/components';
+import { Title } from '@woocommerce/components';
 import { extensionCartUpdate } from '@woocommerce/blocks-checkout';
 import { CHECKOUT_STORE_KEY } from '@woocommerce/block-data';
 

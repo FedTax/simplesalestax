@@ -4,66 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "104da3bd11fa801d0e5d33dbbca2b623",
-    "packages": [
-        {
-            "name": "bporcelli/php-taxcloud",
-            "version": "1.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/bporcelli/php-taxcloud.git",
-                "reference": "c4a6ec2511b9a444e306923f8dc23389b48a1a1a"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/bporcelli/php-taxcloud/zipball/c4a6ec2511b9a444e306923f8dc23389b48a1a1a",
-                "reference": "c4a6ec2511b9a444e306923f8dc23389b48a1a1a",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=7.4"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-0": {
-                    "TaxCloud": [
-                        "lib/"
-                    ]
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "proprietary"
-            ],
-            "authors": [
-                {
-                    "name": "Brett Porcelli",
-                    "email": "brettporcelli@gmail.com"
-                },
-                {
-                    "name": "Brian Altenhofel",
-                    "email": "brian.altenhofel@vmdoh.com"
-                }
-            ],
-            "description": "TaxCloud PHP library",
-            "keywords": [
-                "ecommerce",
-                "sales",
-                "shop",
-                "store",
-                "tax",
-                "taxation",
-                "taxes",
-                "webshop",
-                "webstore"
-            ],
-            "support": {
-                "issues": "https://github.com/bporcelli/php-taxcloud/issues",
-                "source": "https://github.com/bporcelli/php-taxcloud/tree/1.1.0"
-            },
-            "time": "2024-06-21T14:54:42+00:00"
-        }
-    ],
+    "content-hash": "4b48ad78a46952de43d7a16d76e3947e",
+    "packages": [],
     "packages-dev": [
         {
             "name": "woocommerce/woocommerce",
