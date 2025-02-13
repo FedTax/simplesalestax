@@ -131,7 +131,7 @@ Currently we only support the use case where the marketplace acts as the seller 
 
 == Changelog ==
 
-See [Releases](https://github.com/bporcelli/simplesalestax/releases).
+See [Releases](https://github.com/FedTax/simplesalestax/releases).
 
 == Upgrade Notice ==
 
@@ -139,6 +139,6 @@ None yet.
 
 == Translation ==
 
-If you would like to translate Simple Sales Tax into your language, please [submit a pull request](https://github.com/bporcelli/simplesalestax/pulls) with your .po file added to the "languages" directory or email your completed translation to bporcelli@taxcloud.com.
+If you would like to translate Simple Sales Tax into your language, please [submit a pull request](https://github.com/FedTax/simplesalestax/pulls) with your .po file added to the "languages" directory or email your completed translation to bporcelli@taxcloud.com.
 
 Thanks in advance for your contribution!
