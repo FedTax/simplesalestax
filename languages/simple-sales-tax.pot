@@ -2,7 +2,7 @@
 # This file is distributed under the GPL-3.0+ license.
 msgid ""
 msgstr ""
-"Project-Id-Version: simple-sales-tax 8.3.0\n"
+"Project-Id-Version: simple-sales-tax 9.0.0\n"
 "Report-Msgid-Bugs-To: TaxCloud <EMAIL>\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"

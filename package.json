@@ -1,6 +1,6 @@
 {
   "name": "simplesalestax",
-  "version": "8.3.0",
+  "version": "9.0.0",
   "description": "A TaxCloud integration for WooCommerce.",
   "scripts": {
     "build": "npm run build:blocks && npm run build:makepot && grunt",

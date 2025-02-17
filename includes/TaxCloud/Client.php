@@ -548,6 +548,9 @@ class Client
                     $customerId = "customer-".$customerId;
                 }
                 $destinationLine1 = $payload->getDestination()->getAddress1();
+                if(!$destinationLine1){
+                  $destinationLine1 = "unknown";
+                }
 
                 $destinationZip = $payload->getDestination()->getZip5();
                 if($payload->getDestination()->getZip4()){
