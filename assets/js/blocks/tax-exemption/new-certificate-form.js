@@ -9,9 +9,9 @@ import {
 	RadioControl,
 	ValidatedTextInput,
 } from '@woocommerce/blocks-components';
-import { Select } from '@woocommerce/base-components/select/index';
-import { StateInput } from '@woocommerce/base-components/state-input/index';
-import { ALLOWED_STATES } from '@woocommerce/block-settings';
+import { Select } from '@woocommerce/components';
+import { StateInput } from '@woocommerce/components';
+import { ALLOWED_STATES } from '@woocommerce/settings';
 
 /**
  * Internal dependencies

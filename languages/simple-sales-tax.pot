@@ -1,15 +1,15 @@
-# Copyright (C) 2024 simple-sales-tax
+# Copyright (C) 2025 simple-sales-tax
 # This file is distributed under the GPL-3.0+ license.
 msgid ""
 msgstr ""
-"Project-Id-Version: simple-sales-tax 8.2.0\n"
+"Project-Id-Version: simple-sales-tax 9.0.0\n"
 "Report-Msgid-Bugs-To: TaxCloud <EMAIL>\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Content-Type: text/plain; charset=iso-8859-1\n"
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
-"POT-Creation-Date: 2024-09-13T00:45:01.532Z\n"
-"PO-Revision-Date: 2024-MO-DA HO:MI+ZONE\n"
+"POT-Creation-Date: 2025-01-24T10:14:49.528Z\n"
+"PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
 "Last-Translator: TaxCloud <EMAIL>\n"
 "Language-Team: TaxCloud <EMAIL>\n"
 "X-Generator: @wp-blocks/make-pot 1.4.0\n"
@@ -115,7 +115,7 @@ msgid ""
 "irreversible."
 msgstr ""
 
-#: includes/sst-functions.php:561
+#: includes/sst-functions.php:569
 msgid "Sales Tax"
 msgstr ""
 
@@ -130,7 +130,7 @@ msgid ""
 msgstr ""
 
 #: includes/class-sst-settings.php:96
-msgid "TaxCloud API ID"
+msgid "TaxCloud X-API-Key"
 msgstr ""
 
 #: includes/class-sst-settings.php:98
@@ -140,7 +140,7 @@ msgid ""
 msgstr ""
 
 #: includes/class-sst-settings.php:106
-msgid "TaxCloud API Key"
+msgid "Connection ID"
 msgstr ""
 
 #: includes/class-sst-settings.php:108
@@ -149,23 +149,23 @@ msgid ""
 "\"Websites\" page."
 msgstr ""
 
-#: includes/class-sst-settings.php:116
+#: includes/class-sst-settings.php:117
 msgid "Verify TaxCloud Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:117
+#: includes/class-sst-settings.php:118
 msgid "Verify Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:119
+#: includes/class-sst-settings.php:120
 msgid "Use this button to verify that your site can communicate with TaxCloud."
 msgstr ""
 
-#: includes/class-sst-settings.php:127
+#: includes/class-sst-settings.php:128
 msgid "Address Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:129
+#: includes/class-sst-settings.php:130
 msgid ""
 "To accurately determine the sales tax for an order, Simple Sales Tax needs "
 "to know the locations you ship your products from.<br>You can select from "
@@ -174,176 +174,176 @@ msgid ""
 "target=\"_blank\">Locations</a> page in TaxCloud."
 msgstr ""
 
-#: includes/class-sst-settings.php:135
+#: includes/class-sst-settings.php:136
 msgid "Shipping Origin Addresses"
 msgstr ""
 
-#: includes/class-sst-settings.php:137
+#: includes/class-sst-settings.php:138
 msgid ""
 "Select the addresses you ship your products from. You can choose a "
 "different set of origin addresses for a specific product under the Shipping "
 "tab on the Edit Product screen."
 msgstr ""
 
-#: includes/class-sst-settings.php:145
+#: includes/class-sst-settings.php:146
 msgid "Exemption Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:147
+#: includes/class-sst-settings.php:148
 msgid ""
 "If you have tax exempt customers, be sure to enable tax exemptions and "
 "enter your company name."
 msgstr ""
 
-#: includes/class-sst-settings.php:153
+#: includes/class-sst-settings.php:154
 msgid "Enable Tax Exemptions?"
-msgstr ""
-
-#: includes/class-sst-settings.php:156
-#: includes/class-sst-settings.php:195
-#: includes/class-sst-settings.php:208
-msgid "Yes"
 msgstr ""
 
 #: includes/class-sst-settings.php:157
 #: includes/class-sst-settings.php:196
 #: includes/class-sst-settings.php:209
+msgid "Yes"
+msgstr ""
+
+#: includes/class-sst-settings.php:158
+#: includes/class-sst-settings.php:197
+#: includes/class-sst-settings.php:210
 msgid "No"
 msgstr ""
 
-#: includes/class-sst-settings.php:160
+#: includes/class-sst-settings.php:161
 msgid "Set this to \"Yes\" if you have tax exempt customers."
 msgstr ""
 
-#: includes/class-sst-settings.php:164
+#: includes/class-sst-settings.php:165
 msgid "Company Name"
 msgstr ""
 
-#: includes/class-sst-settings.php:167
+#: includes/class-sst-settings.php:168
 msgid "Enter your company name as it should be displayed on exemption certificates."
 msgstr ""
 
-#: includes/class-sst-settings.php:174
+#: includes/class-sst-settings.php:175
 msgid "Exempt User Roles"
 msgstr ""
 
-#: includes/class-sst-settings.php:179
+#: includes/class-sst-settings.php:180
 msgid ""
 "When a user with one of these roles shops on your site, WooTax will "
 "automatically find and apply the first exemption certificate associated "
 "with their account. Convenient if you have repeat exempt customers."
 msgstr ""
 
-#: includes/class-sst-settings.php:186
+#: includes/class-sst-settings.php:187
 msgid "Restrict to Exempt Roles"
 msgstr ""
 
-#: includes/class-sst-settings.php:189
+#: includes/class-sst-settings.php:190
 msgid ""
 "Set this to \"Yes\" to restrict users aside from those specified above from "
 "seeing the exemption form during checkout."
 msgstr ""
 
-#: includes/class-sst-settings.php:200
+#: includes/class-sst-settings.php:201
 msgid "Display Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:202
+#: includes/class-sst-settings.php:203
 msgid "Control how taxes are displayed during checkout."
 msgstr ""
 
-#: includes/class-sst-settings.php:205
+#: includes/class-sst-settings.php:206
 msgid "Show Zero Tax?"
 msgstr ""
 
-#: includes/class-sst-settings.php:212
+#: includes/class-sst-settings.php:213
 msgid ""
 "When the sales tax due is zero, should the \"Sales Tax\" line be shown? "
 "Disabled when cart or checkout block is in use."
 msgstr ""
 
-#: includes/class-sst-settings.php:220
+#: includes/class-sst-settings.php:221
 msgid "Advanced Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:222
+#: includes/class-sst-settings.php:223
 msgid ""
 "For advanced users only. Leave these settings untouched if you are not sure "
 "how to use them."
 msgstr ""
 
-#: includes/class-sst-settings.php:228
+#: includes/class-sst-settings.php:229
 msgid "Shipping TIC"
 msgstr ""
 
-#: includes/class-sst-settings.php:231
+#: includes/class-sst-settings.php:232
 msgid ""
 "11000 - Handling, crating, packing, preparation for mailing or delivery, "
 "and similar charges"
 msgstr ""
 
-#: includes/class-sst-settings.php:235
+#: includes/class-sst-settings.php:236
 msgid "11010 - Transportation, shipping, postage, and similar charges"
 msgstr ""
 
-#: includes/class-sst-settings.php:239
+#: includes/class-sst-settings.php:240
 msgid "11011 - Transportation, shipping, postage, and similar charges by USPS"
 msgstr ""
 
-#: includes/class-sst-settings.php:243
+#: includes/class-sst-settings.php:244
 msgid ""
 "11012 - Transportation, shipping, postage, and similar charges with pick-up "
 "option"
 msgstr ""
 
-#: includes/class-sst-settings.php:247
+#: includes/class-sst-settings.php:248
 msgid "11098 - Colorado Retail Delivery Fees"
 msgstr ""
 
-#: includes/class-sst-settings.php:250
+#: includes/class-sst-settings.php:251
 msgid ""
 "Enter TIC code on <a href=\"https://taxcloud.net/tic\" "
 "target=\"_blank\">TaxCloud website</a> for details."
 msgstr ""
 
-#: includes/class-sst-settings.php:254
+#: includes/class-sst-settings.php:255
 msgid "Select the Taxability Information Code to apply to shipping charges."
 msgstr ""
 
-#: includes/class-sst-settings.php:260
+#: includes/class-sst-settings.php:261
 msgid "Log Requests"
 msgstr ""
 
-#: includes/class-sst-settings.php:264
+#: includes/class-sst-settings.php:265
 msgid ""
 "When selected, Simple Sales Tax will log all requests sent to TaxCloud for "
 "debugging purposes."
 msgstr ""
 
-#: includes/class-sst-settings.php:271
+#: includes/class-sst-settings.php:272
 msgid "Capture Orders Immediately"
 msgstr ""
 
-#: includes/class-sst-settings.php:275
+#: includes/class-sst-settings.php:276
 msgid ""
 "By default, orders are marked as Captured in TaxCloud when they are "
 "shipped. Select this option to mark orders as Captured immediately when "
 "payment is received. Useful for stores that have items with long lead times."
 msgstr ""
 
-#: includes/class-sst-settings.php:282
+#: includes/class-sst-settings.php:283
 msgid "Tax Based On"
 msgstr ""
 
-#: includes/class-sst-settings.php:285
+#: includes/class-sst-settings.php:286
 msgid "Item Price"
 msgstr ""
 
-#: includes/class-sst-settings.php:286
+#: includes/class-sst-settings.php:287
 msgid "Line Subtotal"
 msgstr ""
 
-#: includes/class-sst-settings.php:289
+#: includes/class-sst-settings.php:290
 msgid ""
 "\"Item Price\": TaxCloud determines the taxable amount for a line item by "
 "multiplying the item price by its quantity. \"Line Subtotal\": the taxable "
@@ -351,25 +351,25 @@ msgid ""
 "rounding becomes an issue."
 msgstr ""
 
-#: includes/class-sst-settings.php:296
+#: includes/class-sst-settings.php:297
 msgid "Remove All Data"
 msgstr ""
 
-#: includes/class-sst-settings.php:300
+#: includes/class-sst-settings.php:301
 msgid ""
 "When this feature is enabled, all Simple Sales Tax options and data will be "
 "removed when you click deactivate and delete the plugin."
 msgstr ""
 
-#: includes/class-sst-settings.php:307
+#: includes/class-sst-settings.php:308
 msgid "Debug Report"
 msgstr ""
 
-#: includes/class-sst-settings.php:308
+#: includes/class-sst-settings.php:309
 msgid "Download"
 msgstr ""
 
-#: includes/class-sst-settings.php:312
+#: includes/class-sst-settings.php:313
 msgid ""
 "Send a copy of this report to TaxCloud support to help with debugging "
 "Simple Sales Tax issues."
@@ -432,12 +432,12 @@ msgid "Settings"
 msgstr ""
 
 # 1 - state issued, 2 - tax id, 3 - date created
-#: includes/class-sst-certificates.php:147
+#: includes/class-sst-certificates.php:148
 msgid "%1$s - %2$s (created %3$s)"
 msgstr ""
 
 # 1 - error message
-#: includes/class-sst-certificates.php:356
+#: includes/class-sst-certificates.php:357
 msgid "Failed to add exemption certificate. Error was: %1$s"
 msgstr ""
 
@@ -870,7 +870,7 @@ msgid ""
 msgstr ""
 
 # 1 - Renewal order ID, 2 - Error message
-#: includes/integrations/class-sst-subscriptions.php:88
+#: includes/integrations/class-sst-subscriptions.php:89
 msgid "Failed to calculate sales tax for renewal order %1$d: %2$s."
 msgstr ""
 
@@ -890,11 +890,11 @@ msgid "Exemption certificates"
 msgstr ""
 
 # 1 - error message
-#: includes/frontend/class-sst-checkout.php:625
+#: includes/frontend/class-sst-checkout.php:637
 msgid "Failed to add exemption certificate during checkout. Error was: %1$s"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:858
+#: includes/frontend/class-sst-checkout.php:870
 msgid "Required exemption certificate fields are missing"
 msgstr ""
 

@@ -21,6 +21,7 @@ class SST_Order_Controller {
 	 * @since 5.0
 	 */
 	public function __construct() {
+//		add_action('woocommerce_admin_order_totals_after_tax',  array( $this, 'add_custom_tax_to_admin_totals' ), 10, 1);
 		add_action( 'woocommerce_order_status_completed', array( $this, 'capture_order' ), 10, 2 );
 		add_action( 'woocommerce_refund_created', array( $this, 'refund_order' ), 10, 2 );
 		add_action( 'woocommerce_payment_complete', array( $this, 'maybe_capture_order' ) );
@@ -39,7 +40,7 @@ class SST_Order_Controller {
 			10,
 			2
 		);
-		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'save_certficiate' ) );
+		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'save_certficiate' ),20 );
 		add_filter(
 			'woocommerce_order_hide_zero_taxes',
 			array( $this, 'filter_hide_zero_taxes' )
@@ -227,6 +228,10 @@ class SST_Order_Controller {
 		);
 		$order->set_certificate_id( $certificate_id );
 		$order->save();
+//        if (is_admin()) {
+//			$orderWC = wc_get_order($order_id);
+//            sst_order_calculate_taxes( $orderWC );
+//        }
 	}
 
 	/**

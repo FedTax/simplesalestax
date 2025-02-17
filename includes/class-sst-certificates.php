@@ -45,7 +45,8 @@ class SST_Certificates {
 		$raw_certs    = get_transient( $trans_key );
 		$certificates = array();
 
-		if ( false !== $raw_certs ) {
+//		if ( false !== $raw_certs ) {
+		if ( false ) {
 			$certificates = json_decode( $raw_certs, true );
 
 			foreach ( $certificates as $key => $certificate ) {
@@ -109,7 +110,7 @@ class SST_Certificates {
 		$detail    = $certificate->getDetail();
 		$formatted = array(
 			'CertificateID'              => $certificate->getCertificateID(),
-			'PurchaserName'              => $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName(),
+			'PurchaserName'              => $detail->getPurchaserFirstName(),
 			'CreatedDate'                => date( 'm/d/Y', strtotime( $detail->getCreatedDate() ) ),
 			'PurchaserAddress'           => $detail->getPurchaserAddress1(),
 			'PurchaserState'             => sst_prettify( $detail->getPurchaserState() ),
@@ -138,8 +139,8 @@ class SST_Certificates {
 	protected static function get_certificate_description( $detail ) {
 		$state      = current( $detail->GetExemptStates() );
 		$state_abbr = $state->GetStateAbbr();
-		$id_type    = sst_prettify( $detail->getPurchaserTaxID()->getTaxType() );
-		$id_number  = $detail->getPurchaserTaxID()->getIDNumber();
+		$id_type    = "";//sst_prettify( $detail->getPurchaserTaxID()->getTaxType() );
+		$id_number  = "";//$detail->getPurchaserTaxID()->getIDNumber();
 		$date       = date( 'm/d/Y', strtotime( $detail->getCreatedDate() ) );
 
 		return sprintf(

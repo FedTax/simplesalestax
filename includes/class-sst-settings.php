@@ -93,7 +93,7 @@ class SST_Settings {
 				),
 			),
 			'tc_id'                       => array(
-				'title'       => __( 'TaxCloud API ID', 'simple-sales-tax' ),
+				'title'       => __( 'TaxCloud X-API-Key', 'simple-sales-tax' ),
 				'type'        => 'text',
 				'description' => __(
 					'Your TaxCloud API ID. This can be found in your TaxCloud account on the "Websites" page.',
@@ -103,7 +103,7 @@ class SST_Settings {
 				'default'     => '',
 			),
 			'tc_key'                      => array(
-				'title'       => __( 'TaxCloud API Key', 'simple-sales-tax' ),
+				'title'       => __( 'Connection ID', 'simple-sales-tax' ),
 				'type'        => 'text',
 				'description' => __(
 					'Your TaxCloud API Key. This can be found in your TaxCloud account on the "Websites" page.',
@@ -112,6 +112,7 @@ class SST_Settings {
 				'desc_tip'    => true,
 				'default'     => '',
 			),
+
 			'verify_settings'             => array(
 				'title'       => __( 'Verify TaxCloud Settings', 'simple-sales-tax' ),
 				'label'       => __( 'Verify Settings', 'simple-sales-tax' ),

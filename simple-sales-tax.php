@@ -6,7 +6,7 @@
  * Author:               TaxCloud
  * Author URI:           https://taxcloud.com
  * GitHub Plugin URI:    https://github.com/bporcelli/simplesalestax
- * Version:              8.2.1
+ * Version:              9.0.0
  * Text Domain:          simple-sales-tax
  * Domain Path:          /languages/
  *
@@ -17,7 +17,7 @@
  *
  * @category             Plugin
  * @copyright            Copyright © 2024 The Federal Tax Authority, LLC
- * @author               Brett Porcelli
+ * @author               Taxcloud
  * @license              GPL2
  *
  * Simple Sales Tax is free software: you can redistribute it and/or modify
@@ -37,13 +37,36 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+spl_autoload_register(function ($class) {
+    // Base directory for the namespace prefix
+    $baseDir = __DIR__ . '/includes/TaxCloud/';
 
-require __DIR__ . '/includes/vendor/autoload.php';
+    // Project-specific namespace prefix
+    $prefix = 'TaxCloud\\';
+
+    // Does the class use the namespace prefix?
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) {
+        // If not, move to the next registered autoloader
+        return;
+    }
+
+    // Get the relative class name
+    $relativeClass = substr($class, $len);
+
+    // Replace namespace separators with directory separators in the relative class name
+    $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
+
+    // If the file exists, require it
+    if (file_exists($file)) {
+        require $file;
+    }
+});
 require __DIR__ . '/includes/class-simplesalestax.php';
 
 /**
  * Get the singleton SST instance.
- *
+ *vendor
  * @return SimpleSalesTax
  * @since 4.2
  */

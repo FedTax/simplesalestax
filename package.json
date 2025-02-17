@@ -1,6 +1,6 @@
 {
   "name": "simplesalestax",
-  "version": "8.2.1",
+  "version": "9.0.0",
   "description": "A TaxCloud integration for WooCommerce.",
   "scripts": {
     "build": "npm run build:blocks && npm run build:makepot && grunt",
@@ -14,10 +14,6 @@
     "lint:js": "wp-scripts lint-js ./assets/js/blocks",
     "packages-update": "wp-scripts packages-update",
     "start": "wp-scripts start --webpack-src-dir=./assets/js/blocks"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bporcelli/simplesalestax.git"
   },
   "keywords": [
     "wordpress",
