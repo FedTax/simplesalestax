@@ -19,9 +19,9 @@ For more information, please check our [plugin page](https://wordpress.org/plugi
 
 ## Support
 
-If you find a bug in our plugin, [open a new issue](https://github.com/bporcelli/simplesalestax/issues/new) right here in GitHub. For other issues please [contact us](https://taxcloud.com/contact-us/).
+If you find a bug in our plugin, [open a new issue](https://github.com/FedTax/simplesalestax/issues/new) right here in GitHub. For other issues please [contact us](https://taxcloud.com/contact-us/).
 
 ## Contributing
 
-* [Submit an issue](https://github.com/bporcelli/simplesalestax/issues/new) or work on a feature branch and [submit a pull request](https://github.com/bporcelli/simplesalestax/compare).
-* Follow [WordPress Coding Standards](http://codex.wordpress.org/WordPress_Coding_Standards)
+* [Submit an issue](https://github.com/FedTax/simplesalestax/issues/new) or work on a feature branch and [submit a pull request](https://github.com/FedTax/simplesalestax/compare).
+* Follow [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/wordpress-coding-standards/)
