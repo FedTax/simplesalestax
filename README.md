@@ -24,4 +24,4 @@ If you find a bug in our plugin, [open a new issue](https://github.com/FedTax/si
 ## Contributing
 
 * [Submit an issue](https://github.com/FedTax/simplesalestax/issues/new) or work on a feature branch and [submit a pull request](https://github.com/FedTax/simplesalestax/compare).
-* Follow [WordPress Coding Standards](http://codex.wordpress.org/WordPress_Coding_Standards)
+* Follow [WordPress Coding Standards](https://developer.wordpress.org/coding-standards/wordpress-coding-standards/)
