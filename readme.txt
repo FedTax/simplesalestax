@@ -139,6 +139,6 @@ None yet.
 
 == Translation ==
 
-If you would like to translate Simple Sales Tax into your language, please [submit a pull request](https://github.com/FedTax/simplesalestax/pulls) with your .po file added to the "languages" directory or email your completed translation to bporcelli@taxcloud.com.
+If you would like to translate Simple Sales Tax into your language, please [submit a pull request](https://github.com/FedTax/simplesalestax/pulls) with your .po file added to the "languages" directory.
 
 Thanks in advance for your contribution!
