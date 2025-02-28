@@ -12,7 +12,7 @@ Simplify sales tax calculations, reporting, and filing by connecting your WooCom
 
 == Description ==
 
-Simple Sales Tax integrates your WooCommerce store with [TaxCloud](https://taxcloud.com) to automate sales tax calculations, reporting, and filing.
+Simple Sales Tax integrates your WooCommerce store with [TaxCloud](https://taxcloud.com) to automate sales tax calculations, reporting, and filing. Dave was here. 
 
 With affordable service fees and support for product level tax exemptions and tax exempt customers baked in, Simple Sales Tax is the most capable and cost effective sales tax automation solution for WooCommerce.
 
