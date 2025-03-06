@@ -85,7 +85,7 @@ jobs:
 
       - name: Start containers
         working-directory: docker
-        run: docker compose up -d --wait
+        run: docker compose up -d --wait --quiet-pull
 
       - name: Set up plugins
         working-directory: docker
@@ -94,6 +94,7 @@ jobs:
           docker compose exec -T wordpress wp plugin install --allow-root --force woocommerce --version=$WOO_VERSION
           docker compose exec -T wordpress wp option patch --allow-root update woocommerce_wootax_settings tc_id ${{ secrets.TAXCLOUD_LOGIN_ID }}
           docker compose exec -T wordpress wp option patch --allow-root update woocommerce_wootax_settings tc_key ${{ secrets.TAXCLOUD_API_KEY }}
+          docker compose exec -T wordpress wp plugin activate --allow-root simple-sales-tax
 
       - name: Update WP database
         working-directory: docker
