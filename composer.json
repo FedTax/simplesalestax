@@ -24,7 +24,7 @@
       "type": "package",
       "package": {
         "name": "woocommerce/woocommerce",
-        "version": "dev-trunk",
+        "version": "9.5.1",
         "dist": {
           "url": "https://github.com/woocommerce/woocommerce/archive/refs/heads/trunk.zip",
           "type": "zip"
@@ -33,6 +33,6 @@
     }
   ],
   "require-dev": {
-    "woocommerce/woocommerce": "dev-trunk"
+    "woocommerce/woocommerce": "9.5.1"
   }
 }

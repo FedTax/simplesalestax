@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "104da3bd11fa801d0e5d33dbbca2b623",
+    "content-hash": "103f1fa548f4000def6c630da7022d83",
     "packages": [
         {
             "name": "bporcelli/php-taxcloud",
@@ -67,7 +67,7 @@
     "packages-dev": [
         {
             "name": "woocommerce/woocommerce",
-            "version": "dev-trunk",
+            "version": "9.5.1",
             "dist": {
                 "type": "zip",
                 "url": "https://github.com/woocommerce/woocommerce/archive/refs/heads/trunk.zip"
@@ -77,12 +77,10 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "woocommerce/woocommerce": 20
-    },
+    "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
-    "platform": [],
-    "platform-dev": [],
+    "platform": {},
+    "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }
