@@ -29,8 +29,14 @@ jobs:
       - name: Install Javascript dependencies
         run: npm install
 
-      - name: Generate minified assets
-        run: npm run build
+      - name: Build blocks
+        run: npm run build:blocks
+
+      - name: Build makepot
+        run: npm run build:makepot
+
+      - name: Run grunt
+        run: grunt
 
       - name: Build plugin
         run: rsync -av --mkpath --exclude-from=.distignore . ./dist
