@@ -32,6 +32,15 @@ jobs:
       - name: Install Javascript dependencies
         run: npm ci
 
+      - name: Show some information
+        run: ls includes/vendor/woocommerce/woocommerce/plugins
+
+      - name: Copy some Composer dependencies where they can be found by wp-scripts
+        run: |
+          cp -r includes/vendor/woocommerce/woocommerce/plugins/woocommerce-blocks/assets/js/base/components node_modules/@woocommerce/base-components
+          cp -r includes/vendor/woocommerce/woocommerce/plugins/woocommerce-blocks/assets/js/settings/blocks node_modules/@woocommerce/block-settings
+          cp -r includes/vendor/woocommerce/woocommerce/plugins/woocommerce-blocks/assets/js/blocks/checkout node_modules/@woocommerce/blocks-checkout
+
       - name: Build blocks
         run: npm run build:blocks
 

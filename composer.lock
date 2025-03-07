@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "69a60db43cd96e2936ba36bd7919fa33",
+    "content-hash": "104da3bd11fa801d0e5d33dbbca2b623",
     "packages": [
         {
             "name": "bporcelli/php-taxcloud",
@@ -62,214 +62,27 @@
                 "source": "https://github.com/bporcelli/php-taxcloud/tree/1.1.0"
             },
             "time": "2024-06-21T14:54:42+00:00"
-        },
-        {
-            "name": "composer/installers",
-            "version": "v1.12.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/composer/installers.git",
-                "reference": "d20a64ed3c94748397ff5973488761b22f6d3f19"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/composer/installers/zipball/d20a64ed3c94748397ff5973488761b22f6d3f19",
-                "reference": "d20a64ed3c94748397ff5973488761b22f6d3f19",
-                "shasum": ""
-            },
-            "require": {
-                "composer-plugin-api": "^1.0 || ^2.0"
-            },
-            "replace": {
-                "roundcube/plugin-installer": "*",
-                "shama/baton": "*"
-            },
-            "require-dev": {
-                "composer/composer": "1.6.* || ^2.0",
-                "composer/semver": "^1 || ^3",
-                "phpstan/phpstan": "^0.12.55",
-                "phpstan/phpstan-phpunit": "^0.12.16",
-                "symfony/phpunit-bridge": "^4.2 || ^5",
-                "symfony/process": "^2.3"
-            },
-            "type": "composer-plugin",
-            "extra": {
-                "class": "Composer\\Installers\\Plugin",
-                "branch-alias": {
-                    "dev-main": "1.x-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Composer\\Installers\\": "src/Composer/Installers"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Kyle Robinson Young",
-                    "email": "kyle@dontkry.com",
-                    "homepage": "https://github.com/shama"
-                }
-            ],
-            "description": "A multi-framework Composer library installer",
-            "homepage": "https://composer.github.io/installers/",
-            "keywords": [
-                "Craft",
-                "Dolibarr",
-                "Eliasis",
-                "Hurad",
-                "ImageCMS",
-                "Kanboard",
-                "Lan Management System",
-                "MODX Evo",
-                "MantisBT",
-                "Mautic",
-                "Maya",
-                "OXID",
-                "Plentymarkets",
-                "Porto",
-                "RadPHP",
-                "SMF",
-                "Starbug",
-                "Thelia",
-                "Whmcs",
-                "WolfCMS",
-                "agl",
-                "aimeos",
-                "annotatecms",
-                "attogram",
-                "bitrix",
-                "cakephp",
-                "chef",
-                "cockpit",
-                "codeigniter",
-                "concrete5",
-                "croogo",
-                "dokuwiki",
-                "drupal",
-                "eZ Platform",
-                "elgg",
-                "expressionengine",
-                "fuelphp",
-                "grav",
-                "installer",
-                "itop",
-                "joomla",
-                "known",
-                "kohana",
-                "laravel",
-                "lavalite",
-                "lithium",
-                "magento",
-                "majima",
-                "mako",
-                "mediawiki",
-                "miaoxing",
-                "modulework",
-                "modx",
-                "moodle",
-                "osclass",
-                "pantheon",
-                "phpbb",
-                "piwik",
-                "ppi",
-                "processwire",
-                "puppet",
-                "pxcms",
-                "reindex",
-                "roundcube",
-                "shopware",
-                "silverstripe",
-                "sydes",
-                "sylius",
-                "symfony",
-                "tastyigniter",
-                "typo3",
-                "wordpress",
-                "yawik",
-                "zend",
-                "zikula"
-            ],
-            "support": {
-                "issues": "https://github.com/composer/installers/issues",
-                "source": "https://github.com/composer/installers/tree/v1.12.0"
-            },
-            "funding": [
-                {
-                    "url": "https://packagist.com",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/composer",
-                    "type": "github"
-                },
-                {
-                    "url": "https://tidelift.com/funding/github/packagist/composer/composer",
-                    "type": "tidelift"
-                }
-            ],
-            "time": "2021-09-13T08:19:44+00:00"
-        },
-        {
-            "name": "woocommerce/woocommerce",
-            "version": "3.5.10",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/woocommerce/woocommerce.git",
-                "reference": "2ff9d442abfcabed6d865c1b9ce2fa59b66aa613"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/woocommerce/woocommerce/zipball/2ff9d442abfcabed6d865c1b9ce2fa59b66aa613",
-                "reference": "2ff9d442abfcabed6d865c1b9ce2fa59b66aa613",
-                "shasum": ""
-            },
-            "require": {
-                "composer/installers": "~1.2"
-            },
-            "require-dev": {
-                "apigen/apigen": "^4",
-                "dealerdirect/phpcodesniffer-composer-installer": "^0.4.3",
-                "nette/utils": "~2.3.0",
-                "phpunit/phpunit": "6.*",
-                "squizlabs/php_codesniffer": "*",
-                "wimg/php-compatibility": "^8.0",
-                "woocommerce/woocommerce-git-hooks": "*",
-                "woocommerce/woocommerce-sniffs": "*",
-                "wp-coding-standards/wpcs": "^0.14"
-            },
-            "type": "wordpress-plugin",
-            "extra": {
-                "scripts-description": {
-                    "test": "Run unit tests",
-                    "phpcs": "Analyze code against the WordPress coding standards with PHP_CodeSniffer",
-                    "phpcbf": "Fix coding standards warnings/errors automatically with PHP Code Beautifier"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "GPL-3.0-or-later"
-            ],
-            "description": "An eCommerce toolkit that helps you sell anything. Beautifully.",
-            "homepage": "https://woocommerce.com/",
-            "support": {
-                "issues": "https://github.com/woocommerce/woocommerce/issues",
-                "source": "https://github.com/woocommerce/woocommerce/tree/3.5.10"
-            },
-            "time": "2022-03-11T17:37:48+00:00"
         }
     ],
-    "packages-dev": [],
+    "packages-dev": [
+        {
+            "name": "woocommerce/woocommerce",
+            "version": "dev-trunk",
+            "dist": {
+                "type": "zip",
+                "url": "https://github.com/woocommerce/woocommerce/archive/refs/heads/trunk.zip"
+            },
+            "type": "library"
+        }
+    ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "woocommerce/woocommerce": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
-    "platform": {},
-    "platform-dev": {},
+    "platform": [],
+    "platform-dev": [],
     "plugin-api-version": "2.6.0"
 }

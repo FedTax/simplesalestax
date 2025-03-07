@@ -10,8 +10,7 @@
   "description": "Sales tax compliance solution for WooCommerce.",
   "type": "project",
   "require": {
-    "bporcelli/php-taxcloud": "1.1.0",
-    "woocommerce/woocommerce": "^3.5"
+    "bporcelli/php-taxcloud": "1.1.0"
   },
   "license": "GPL-3.0+",
   "authors": [
@@ -19,5 +18,21 @@
       "name": "The WooTax Corporation",
       "email": "support@simplesalestax.com"
     }
-  ]
+  ],
+  "repositories": [
+    {
+      "type": "package",
+      "package": {
+        "name": "woocommerce/woocommerce",
+        "version": "dev-trunk",
+        "dist": {
+          "url": "https://github.com/woocommerce/woocommerce/archive/refs/heads/trunk.zip",
+          "type": "zip"
+        }
+      }
+    }
+  ],
+  "require-dev": {
+    "woocommerce/woocommerce": "dev-trunk"
+  }
 }
