@@ -33,9 +33,7 @@ jobs:
         run: npm ci
 
       - name: Show some information
-        run: |
-          pwd
-          ls node_modules/@woocommerce
+        run: ls includes/vendor/
 
       - name: Build blocks
         run: npm run build:blocks
