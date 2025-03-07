@@ -8,7 +8,6 @@ const defaultRules = defaultConfig.module.rules.filter((rule) => {
 	return String(rule.test) !== String(/\.(sc|sa)ss$/);
 });
 
-module.exports = {
 	...defaultConfig,
 	entry: {
 		'tax-exemption-block': path.resolve(
