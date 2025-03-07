@@ -33,9 +33,7 @@ jobs:
         run: npm ci
 
       - name: Show some information
-        run: |
-          cat webpack.config.js
-          ls includes/vendor/woocommerce/woocommerce/plugins
+        run: ls includes/vendor/woocommerce/woocommerce/plugins
 
       - name: Copy some Composer dependencies where they can be found by wp-scripts
         run: |
