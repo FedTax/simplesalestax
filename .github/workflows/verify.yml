@@ -29,6 +29,15 @@ jobs:
       - name: Install Javascript dependencies
         run: npm ci
 
+      - name: Show some information
+        run: |
+          pwd
+          ls node_modules/@woocommerce
+          ls assets
+          ls assets/js
+          ls assets/js/blocks
+          ls assets/js/blocks/tax-exemption
+
       - name: Build blocks
         run: npm run build:blocks
 
