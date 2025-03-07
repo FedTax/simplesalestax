@@ -14,3 +14,7 @@
 // ***********************************************************
 
 import './commands';
+
+Cypress.Screenshot.defaults({
+    capture: 'runner'
+});
