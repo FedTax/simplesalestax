@@ -16,7 +16,7 @@ jobs:
       max_woo: ${{ steps.woo.outputs.max_wc }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.4.2
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@2.21.1
@@ -26,6 +26,9 @@ jobs:
       - name: Install PHP dependencies
         run: composer install
 
+      - name: Setup node
+        uses: actions/setup-node@v2
+
       - name: Install Javascript dependencies
         run: npm ci
 
@@ -33,10 +36,6 @@ jobs:
         run: |
           pwd
           ls node_modules/@woocommerce
-          ls assets
-          ls assets/js
-          ls assets/js/blocks
-          ls assets/js/blocks/tax-exemption
 
       - name: Build blocks
         run: npm run build:blocks
