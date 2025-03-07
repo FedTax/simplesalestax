@@ -27,7 +27,7 @@ jobs:
         run: composer install
 
       - name: Install Javascript dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build blocks
         run: npm run build:blocks
