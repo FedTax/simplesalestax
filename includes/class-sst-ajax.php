@@ -229,9 +229,8 @@ class SST_Ajax {
 		}
 
 		// Parse jQuery serialized items.
-		$raw_items = sanitize_text_field( wp_unslash( $_POST['items'] ) );
+		$raw_items = wp_unslash( $_POST['items'] );
 		parse_str( $raw_items, $items );
-
 		$items = wc_clean( $items );
 
 		// Save items and recalc taxes.
