@@ -1,15 +1,15 @@
-# Copyright (C) 2024 simple-sales-tax
+# Copyright (C) 2025 simple-sales-tax
 # This file is distributed under the GPL-3.0+ license.
 msgid ""
 msgstr ""
-"Project-Id-Version: simple-sales-tax 8.2.0\n"
+"Project-Id-Version: simple-sales-tax 8.2.1\n"
 "Report-Msgid-Bugs-To: TaxCloud <EMAIL>\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Content-Type: text/plain; charset=iso-8859-1\n"
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
-"POT-Creation-Date: 2024-09-13T00:45:01.532Z\n"
-"PO-Revision-Date: 2024-MO-DA HO:MI+ZONE\n"
+"POT-Creation-Date: 2025-03-13T11:46:44.285Z\n"
+"PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
 "Last-Translator: TaxCloud <EMAIL>\n"
 "Language-Team: TaxCloud <EMAIL>\n"
 "X-Generator: @wp-blocks/make-pot 1.4.0\n"
@@ -46,8 +46,8 @@ msgid "https://taxcloud.com"
 msgstr ""
 
 #: includes/sst-update-functions.php:573
-#: includes/class-sst-order.php:316
-#: includes/class-sst-order.php:908
+#: includes/class-sst-order.php:320
+#: includes/class-sst-order.php:913
 msgid "Fee"
 msgstr ""
 
@@ -385,27 +385,27 @@ msgid "TIC"
 msgstr ""
 
 # WooCommerce order ID
-#: includes/class-sst-order.php:661
+#: includes/class-sst-order.php:666
 msgid "Failed to capture order %d: already captured."
 msgstr ""
 
 # WooCommerce order ID
-#: includes/class-sst-order.php:673
+#: includes/class-sst-order.php:678
 msgid "Failed to capture order %d: order was refunded."
 msgstr ""
 
 # 1 - WooCommerce order ID, 2 - Error message from TaxCloud
-#: includes/class-sst-order.php:703
+#: includes/class-sst-order.php:708
 msgid "Failed to capture order %1$d: %2$s."
 msgstr ""
 
 # WooCommerce order ID
-#: includes/class-sst-order.php:746
+#: includes/class-sst-order.php:751
 msgid "Can't refund order %d: order must be completed first."
 msgstr ""
 
 # 1 - WooCommerce order ID, 2 - Error message from TaxCloud
-#: includes/class-sst-order.php:841
+#: includes/class-sst-order.php:846
 msgid "Failed to refund order %1$d: %2$s."
 msgstr ""
 
@@ -870,7 +870,7 @@ msgid ""
 msgstr ""
 
 # 1 - Renewal order ID, 2 - Error message
-#: includes/integrations/class-sst-subscriptions.php:88
+#: includes/integrations/class-sst-subscriptions.php:89
 msgid "Failed to calculate sales tax for renewal order %1$d: %2$s."
 msgstr ""
 
@@ -890,11 +890,11 @@ msgid "Exemption certificates"
 msgstr ""
 
 # 1 - error message
-#: includes/frontend/class-sst-checkout.php:625
+#: includes/frontend/class-sst-checkout.php:637
 msgid "Failed to add exemption certificate during checkout. Error was: %1$s"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:858
+#: includes/frontend/class-sst-checkout.php:870
 msgid "Required exemption certificate fields are missing"
 msgstr ""
 
@@ -993,20 +993,20 @@ msgid ""
 msgstr ""
 
 # error message from TaxCloud API response.
-#: includes/abstracts/class-sst-abstract-cart.php:96
+#: includes/abstracts/class-sst-abstract-cart.php:72
 msgid "Failed to calculate sales tax: %s"
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:132
+#: includes/abstracts/class-sst-abstract-cart.php:140
 msgid "Failed to calculate sales tax: Shipping origin address is invalid."
 msgstr ""
 
 # WooCommerce product ID.
-#: includes/abstracts/class-sst-abstract-cart.php:330
+#: includes/abstracts/class-sst-abstract-cart.php:345
 msgid "Failed to calculate sales tax: no origin address for product %d."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:376
+#: includes/abstracts/class-sst-abstract-cart.php:391
 msgid ""
 "Origin address for shipping package is invalid. Using default origin "
 "address from Simple Sales Tax settings."
