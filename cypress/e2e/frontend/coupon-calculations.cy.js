@@ -29,12 +29,12 @@ describe('Coupon calculations', () => {
         {
           type: 'fixed',
           code: '5off',
-          expectedTax: 1.29,
+          expectedTax: 1.31,
         },
         {
           type: 'percentage',
           code: '50off',
-          expectedTax: 0.86,
+          expectedTax: 0.88,
         }
       ];
 

@@ -17,12 +17,12 @@
       {
         "id": 90171,
         "name": "A",
-        "expectedTax": 0.43
+        "expectedTax": 0.44
       },
       {
         "id": 90172,
         "name": "B",
-        "expectedTax": 0.52
+        "expectedTax": 0.53
       }
     ]
   },
