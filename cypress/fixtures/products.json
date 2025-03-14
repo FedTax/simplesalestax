@@ -2,7 +2,7 @@
   "simpleProduct": {
     "name": "General Product",
     "id": 14693,
-    "expectedTax": 1.72,
+    "expectedTax": 1.75,
     "price": 19.99
   },
   "downloadableProduct": {
