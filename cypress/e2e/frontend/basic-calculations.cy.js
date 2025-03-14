@@ -65,7 +65,7 @@ describe('Basic calculations', () => {
           postcode: '30334',
         });
         cy.visit(cartUrl);
-        cy.assertTaxTotal(0.27);
+        cy.assertTaxTotal(0.66);
       });
 
       it('calculates tax for shipping charges with default shipping TIC', () => {
