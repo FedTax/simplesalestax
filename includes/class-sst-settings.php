@@ -131,7 +131,7 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 			),
-			'default_origin_addresses'      => array(
+			'default_origin_addresses'    => array(
 				'title'       => __( 'Shipping Origin Addresses', 'simple-sales-tax' ),
 				'type'        => 'origin_address_select',
 				'description' => __(
@@ -316,6 +316,33 @@ class SST_Settings {
 				'desc_tip'    => true,
 			),
 		);
+
+		if (self::$settings['exemption_override']) {
+			$fields = array_merge($fields, array(
+				'exempt_domains' => array(
+					'title'       => __( 'Exempt Domains', 'simple-sales-tax' ),
+					'label'       => ' ',
+					'type'        => 'text',
+					'default'     => '',
+					'description' => __(
+						'Comma-separated list of email domains that should get the exempt treatment, for example: "example.org,example.com,example.net".',
+						'simple-sales-tax'
+					),
+					'desc_tip'    => true,
+				),
+				'exempt_products' => array(
+					'title'       => __( 'Exempt Products', 'simple-sales-tax' ),
+					'label'       => ' ',
+					'type'        => 'text',
+					'default'     => '',
+					'description' => __(
+						'Comma-separated list of product IDs that should have zero tax.',
+						'simple_sales_tax',
+					),
+					'desc_tip'    => true,
+				),
+			));
+		}
 
 		return apply_filters( 'sst_settings_form_fields', $fields );
 	}

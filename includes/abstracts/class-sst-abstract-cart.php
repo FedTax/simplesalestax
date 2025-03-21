@@ -87,6 +87,7 @@ abstract class SST_Abstract_Cart {
 								$item['cart_id'],
 								$tax_total
 							);
+							break;
 					}
 				}
 			} else {
@@ -106,6 +107,71 @@ abstract class SST_Abstract_Cart {
 		$this->update_taxes();
 
 		return true;
+	}
+
+	public function calculate_taxes_with_exemption_override(): void
+	{
+		$domains = explode( ',', SST_Settings::get( 'exempt_domains' ) ?? '' );
+		$products = explode( ',', SST_Settings::get( 'exempt_products' ) ?? '' );
+		$customer_domain = explode( '@', $this->order->data['billing']['email'] )[1] ?? '';
+		$exemption_eligible = in_array( $customer_domain, $domains, true );
+
+		$this->reset_taxes();
+
+		// No API Login ID or API Key? Bail.
+		if ( empty( $this->api_id ) || empty( $this->api_key ) ) {
+			SST_Logger::add( 'API Login ID or API Key is empty. Skipping lookup.' );
+			return;
+		}
+
+		// Perform tax lookup(s).
+		foreach ( $this->do_lookup() as $package ) {
+			$response = $package['response'];
+
+			if ( is_wp_error($response) ) {
+				$this->handle_error(
+					sprintf(
+						/* translators: error message from TaxCloud API response. */
+						__('Failed to calculate sales tax: %s', 'simple-sales-tax'),
+						$response->get_error_message()
+					)
+				);
+				return;
+			}
+
+			$tax_totals = current($package['response']);
+			$cart_items = $package['cart_items'];
+			foreach ($cart_items as $index => $item) {
+				$tax_total = $tax_totals[$index];
+				switch ($item['type']) {
+					case 'shipping':
+						$this->set_shipping_tax(
+							$item['cart_id'],
+							$tax_total
+						);
+						break;
+					case 'line_item':
+						if (
+							$exemption_eligible
+							&& in_array( (string)$item['id'], $products, true )
+						) {
+							$this->set_product_tax( $item['cart_id'], 0);
+							break;
+						}
+						$this->set_product_tax(
+							$item['cart_id'],
+							$tax_total
+						);
+						break;
+					case 'fee':
+						$this->set_fee_tax(
+							$item['cart_id'],
+							$tax_total
+						);
+						break;
+				}
+			}
+		}
 	}
 
 	/**

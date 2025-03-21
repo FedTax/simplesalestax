@@ -309,9 +309,12 @@ function sst_order_calculate_taxes( $order ) {
 	}
 
 	$_order = new SST_Order( $order );
-
 	try {
-		$_order->calculate_taxes();
+		if ( 'yes' === SST_Settings::get( 'exemption_override' ) ) {
+			$_order->calculate_taxes_with_exemption_override();
+		} else {
+			$_order->calculate_taxes();
+		}
 		$_order->calculate_totals( false );
 	} catch ( Exception $ex ) {
 		return new WP_Error( 'calculate_error', $ex->getMessage() );
