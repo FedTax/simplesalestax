@@ -97,7 +97,7 @@ jobs:
         working-directory: docker
         run: docker compose up -d --wait --quiet-pull
 
-      - name: Set up plugins
+      - name: Set up plugins.
         working-directory: docker
         run: |
           docker compose exec -T wordpress wp theme install --allow-root --activate storefront
