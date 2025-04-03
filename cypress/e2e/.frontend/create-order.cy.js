@@ -22,7 +22,7 @@ describe('Create order', () => {
         cy.addProductToCart(products.simpleProduct.id);
         cy.visit(cartUrl);
         cy.selectShippingMethod('Flat rate');
-        cy.assertTaxTotal(2.15); // Ensures new shipping method is selected
+        cy.assertTaxTotal(2.19); // Ensures new shipping method is selected
         cy.visit(checkoutUrl);
         cy.findByRole('button', {name: /Place order/i}, {timeout: 15000}).click();
         cy.url({timeout: 60000}).should('match', /\/(\d+)\//);

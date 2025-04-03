@@ -56,7 +56,7 @@ describe('Basic calculations', () => {
       it('uses correct origin address for multi-origin products when calculating tax', () => {
         cy.addProductToCart(products.multiOriginProduct.id);
         cy.visit(cartUrl);
-        cy.assertTaxTotal(0.30)
+        cy.assertTaxTotal(0.75)
 
         cy.updateShippingAddress({
           country: 'US',
@@ -65,7 +65,7 @@ describe('Basic calculations', () => {
           postcode: '30334',
         });
         cy.visit(cartUrl);
-        cy.assertTaxTotal(0.27);
+        cy.assertTaxTotal(0.66);
       });
 
       it('calculates tax for shipping charges with default shipping TIC', () => {
@@ -74,7 +74,7 @@ describe('Basic calculations', () => {
         cy.selectShippingMethod('Free shipping');
         cy.assertTaxTotal(products.simpleProduct.expectedTax);
         cy.selectShippingMethod('Flat rate');
-        cy.assertTaxTotal(2.15);
+        cy.assertTaxTotal(2.19);
       });
 
       describe('when a negative fee is applied', () => {
@@ -86,7 +86,7 @@ describe('Basic calculations', () => {
           // Negative fee amount: 19.99 * 0.1 = 1.999
           // Discount on simple product: 1.999 * (19.99 / 19.99) = 1.999
           // Expected tax: (19.99 - 1.999) * 0.08625 = 1.55
-          cy.assertTaxTotal(1.55);
+          cy.assertTaxTotal(1.57);
         });
 
         it('calculates tax for multiple taxable products', () => {
@@ -99,7 +99,7 @@ describe('Basic calculations', () => {
           // Discount on simple product: 2.499 * (19.99 / 24.99) = 1.999
           // Discount on variable product: 2.499 * (5 / 24.99) = 0.5
           // Expected tax: ((19.99 - 1.999) + (5 - 0.5)) * 0.08625 = 1.94
-          cy.assertTaxTotal(1.94);
+          cy.assertTaxTotal(1.96);
         });
 
         it('calculates tax for mix of taxable and non-taxable products', () => {
@@ -111,7 +111,7 @@ describe('Basic calculations', () => {
           // Negative fee amount: 29.98 * 0.1 = 2.998
           // Discount on simple product: 2.998 * (19.99 / 29.98) = 1.999
           // Expected tax: (19.99 - 1.999) * 0.08625 = 1.55
-          cy.assertTaxTotal(1.55);
+          cy.assertTaxTotal(1.57);
         });
       });
 

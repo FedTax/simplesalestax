@@ -16,20 +16,30 @@ jobs:
       max_woo: ${{ steps.woo.outputs.max_wc }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.4.2
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@2.21.1
         with:
           php-version: 8.0
 
-      - name: Install dependencies
-        run: |
-          composer install
-          npm install
+      - name: Install PHP dependencies
+        run: composer install
 
-      - name: Generate minified assets
-        run: npm run build
+      - name: Setup node
+        uses: actions/setup-node@v2
+
+      - name: Install Javascript dependencies
+        run: npm ci
+
+      - name: Build blocks
+        run: npm run build:blocks
+
+      - name: Build makepot
+        run: npm run build:makepot
+
+      - name: Run grunt
+        run: grunt
 
       - name: Build plugin
         run: rsync -av --mkpath --exclude-from=.distignore . ./dist
@@ -85,15 +95,19 @@ jobs:
 
       - name: Start containers
         working-directory: docker
-        run: docker compose up -d --wait
+        run: docker compose up -d --wait --quiet-pull
 
-      - name: Set up plugins
+      - name: Set up plugins.
         working-directory: docker
         run: |
           docker compose exec -T wordpress wp theme install --allow-root --activate storefront
           docker compose exec -T wordpress wp plugin install --allow-root --force woocommerce --version=$WOO_VERSION
+          echo "🔐 Setting TaxCloud credentials..."
           docker compose exec -T wordpress wp option patch --allow-root update woocommerce_wootax_settings tc_id ${{ secrets.TAXCLOUD_LOGIN_ID }}
           docker compose exec -T wordpress wp option patch --allow-root update woocommerce_wootax_settings tc_key ${{ secrets.TAXCLOUD_API_KEY }}
+          echo "🔎 Verifying stored TaxCloud credentials..."
+          docker compose exec -T wordpress wp option get woocommerce_wootax_settings --allow-root
+          docker compose exec -T wordpress wp plugin activate --allow-root simple-sales-tax
 
       - name: Update WP database
         working-directory: docker

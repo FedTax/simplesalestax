@@ -68,3 +68,15 @@ add_filter(
 	10,
 	3
 );
+
+
+// Mocking Process
+
+// Enable mock mode during testing via query param, e.g., ?mock_mode=1
+add_action('init', function () {
+	if (isset($_GET['mock_mode'])) {
+		$use_mock = $_GET['mock_mode'] === '1';
+		WC()->session->set('mock_mode', $use_mock);
+	}
+});
+

@@ -22,7 +22,7 @@ describe('Admin create order', () => {
 
   const createNewOrder = (orderStatus, productNames) => {
     cy.loginAsAdmin();
-    cy.visit('/wp-admin/admin.php?page=wc-orders&action=new');
+    cy.visit('/wp-admin/admin.php?page=wc-orders&action=new&mock_mode=1');
 
     setOrderStatus(orderStatus);
 
