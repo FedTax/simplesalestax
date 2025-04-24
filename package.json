@@ -46,5 +46,8 @@
     "grunt-contrib-cssmin": "^5.0.0",
     "grunt-contrib-uglify": "^5.2.2",
     "wordpress-components": "npm:@wordpress/components@28.3.0"
+  },
+  "dependencies": {
+    "npm": "^10.8.3"
   }
 }
