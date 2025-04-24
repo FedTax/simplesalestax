@@ -1,9 +1,9 @@
 === Simple Sales Tax ===
-Contributors: taxcloud, bporcelli
+Contributors: taxcloud
 Tags: woocommerce, taxcloud, tax, taxes, sales tax, tax calculation, sales tax compliance, sales tax filing, sales tax reporting
 Requires at least: 4.5
 Tested up to: 6.6
-Stable tag: 8.2.1
+Stable tag: 8.2.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -104,23 +104,23 @@ Please feel free to [contact us](https://taxcloud.com/contact-us/) if you need h
 
 == Frequently Asked Questions ==
 
-= What does TaxCloud cost? =
+= How much does TaxCloud cost? =
 
-Please consult the TaxCloud [Pricing](https://taxcloud.com/taxcloud-pricing/) page for details on the cost of TaxCloud.
+TaxCloud offers flexible pricing designed for businesses of all sizes. Visit the [TaxCloud Pricing page](https://taxcloud.com/taxcloud-pricing/) to explore our free and premium plans, which include features like nexus tracking, automated filings, and multi-state support.
 
 = Does the plugin support recurring payments? =
 
-Yes! Simple Sales Tax is fully compatible with the official WooCommerce Subscriptions extension.
+Yes! TaxCloud for WooCommerce is fully compatible with the official WooCommerce Subscriptions extension.
 
 = What versions of WooCommerce and WordPress are supported? =
 
-Simple Sales Tax supports WooCommerce 3.0+ and WordPress 4.5+.
+TaxCloud for WooCommerce supports WooCommerce 7.0 to 8.9 and WordPress 6.0+.
 
 = Does Simple Sales Tax work with marketplace plugins like Dokan? =
 
-Yes! Simple Sales Tax supports Dokan 2.9.11+, WCFM Marketplace 6.5.0+, WC Vendors 1.5.8+, and WC Marketplace 3.4.0+. When a supported marketplace plugin is installed, Simple Sales Tax will calculate the tax for each seller's shipment separately and sum the results to present a single tax total to the customer. Sellers can also set an appropriate [Taxability Information Code](https://taxcloud.net/tic/) (TIC) for each of their products through the seller dashboard so products that qualify for exemptions or reduced rates are taxed correctly.
+Yes. TaxCloud for WooCommerce supports Dokan 2.9.11+, WCFM Marketplace 6.5.0+, WC Vendors 1.5.8+, and WC Marketplace 3.4.0+. When a supported marketplace plugin is installed, TaxCloud for WooCommerce will calculate the tax for each seller’s shipment separately and sum the results to present a single tax total to the customer. Sellers can also set an appropriate Taxability Information Code (TIC) for each of their products through the seller dashboard so products that qualify for exemptions or reduced rates are taxed correctly.
 
-Currently we only support the use case where the marketplace acts as the seller of record and collects sales tax on behalf of all sellers through a single TaxCloud account. We believe that this is the best way to handle sales tax compliance in the marketplace setting - especially for marketplaces based in the U.S. - but if you would like us to add support for more advanced use cases, please leave us a message at go@taxcloud.com.
+Currently we only support the use case where the marketplace acts as the seller of record and collects sales tax on behalf of all sellers through a single TaxCloud account. We believe that this is the best way to handle sales tax compliance in the marketplace setting – especially for marketplaces based in the U.S. – but if you would like us to add support for more advanced use cases, please leave us a message at go@taxcloud.com.
 
 == Screenshots ==
 
