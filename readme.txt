@@ -2,7 +2,7 @@
 Contributors: taxcloud
 Tags: woocommerce, taxcloud, tax, taxes, sales tax, tax calculation, sales tax compliance, sales tax filing, sales tax reporting
 Requires at least: 4.5
-Tested up to: 6.6
+Tested up to: 6.8
 Stable tag: 8.2.4
 Requires PHP: 7.4
 License: GPLv2 or later
