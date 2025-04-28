@@ -27,7 +27,7 @@ jobs:
 
       - name: Deploy to WP.org
         id: plugin-deploy
-        uses: 10up/action-wordpress-plugin-deploy@2.1.0
+        uses: 10up/action-wordpress-plugin-deploy@2.3.0
         with:
           generate-zip: true
         env:
