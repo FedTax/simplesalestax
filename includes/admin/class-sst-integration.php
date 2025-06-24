@@ -77,7 +77,7 @@ class SST_Integration extends WC_Integration {
 		<tr valign="top">
 			<th scope="row" class="titledesc">
 				<label for="<?php echo esc_attr( $field ); ?>">
-					<?php echo wp_kses_post( $data['title'] ); ?><?php echo $this->get_tooltip_html( $data ); ?>
+					<?php echo wp_kses_post( $data['title'] ); ?><?php echo wp_kses_post( $this->get_tooltip_html( $data ) ); ?>
 				</label>
 			</th>
 			<td class="forminp">
@@ -88,7 +88,7 @@ class SST_Integration extends WC_Integration {
 					<button class="wp-core-ui button button-secondary" type="button" id="<?php echo esc_attr( $data['id'] ); ?>">
 						<?php echo wp_kses_post( $data['label'] ); ?>
 					</button>
-					<?php echo $this->get_description_html( $data ); ?>
+					<?php echo wp_kses_post( $this->get_description_html( $data ) ); ?>
 				</fieldset>
 			</td>
 		</tr>
@@ -112,7 +112,7 @@ class SST_Integration extends WC_Integration {
 		<tr valign="top">
 			<th scope="row" class="titledesc">
 				<label for="<?php echo esc_attr( $field ); ?>">
-					<?php echo wp_kses_post( $data['title'] ); ?><?php echo $this->get_tooltip_html( $data ); ?>
+					<?php echo wp_kses_post( $data['title'] ); ?><?php echo wp_kses_post( $this->get_tooltip_html( $data ) ); ?>
 				</label>
 			</th>
 			<td class="forminp">
@@ -124,7 +124,7 @@ class SST_Integration extends WC_Integration {
 					   class="wp-core-ui button button-secondary" id="<?php echo esc_attr( $data['id'] ); ?>">
 						<?php echo wp_kses_post( $data['label'] ); ?>
 					</a>
-					<?php echo $this->get_description_html( $data ); ?>
+					<?php echo wp_kses_post( $this->get_description_html( $data ) ); ?>
 				</fieldset>
 			</td>
 		</tr>
@@ -151,7 +151,7 @@ class SST_Integration extends WC_Integration {
 		<tr valign="top">
 			<th scope="row" class="titledesc">
 				<label for="<?php echo esc_attr( $field ); ?>">
-					<?php echo wp_kses_post( $data['title'] ); ?><?php echo $this->get_tooltip_html( $data ); ?>
+					<?php echo wp_kses_post( $data['title'] ); ?><?php echo wp_kses_post( $this->get_tooltip_html( $data ) ); ?>
 				</label>
 			</th>
 			<td class="forminp">
@@ -178,9 +178,11 @@ class SST_Integration extends WC_Integration {
 						<div class="notice notice-info inline sst-settings-notice">
 							<p>
 								<?php
-								_e(
-									'Enter your TaxCloud API credentials and click <strong>Save changes</strong> to configure your Origin Addresses.',
-									'simple-sales-tax'
+								echo wp_kses_post(
+									__(
+										'Enter your TaxCloud API credentials and click <strong>Save changes</strong> to configure your Origin Addresses.',
+										'simple-sales-tax'
+									)
 								);
 								?>
 							</p>
@@ -189,15 +191,17 @@ class SST_Integration extends WC_Integration {
 						<div class="notice notice-warning inline sst-settings-notice">
 							<p>
 								<?php
-								_e(
-									'Oops! It appears there are no addresses in your TaxCloud account. Please add at least one address on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud and then save your settings to refresh the address list.',
-									'simple-sales-tax'
+								echo wp_kses_post(
+									__(
+										'Oops! It appears there are no addresses in your TaxCloud account. Please add at least one address on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud and then save your settings to refresh the address list.',
+										'simple-sales-tax'
+									)
 								);
 								?>
 							</p>
 						</div>
 					<?php endif; ?>
-					<?php echo $this->get_description_html( $data ); ?>
+					<?php echo wp_kses_post( $this->get_description_html( $data ) ); ?>
 				</fieldset>
 			</td>
 		</tr>
@@ -256,6 +260,7 @@ class SST_Integration extends WC_Integration {
 		header( 'Pragma: public' );
 		header( "Content-Length: {$report_length}"  );
 
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is served as a download, not rendered in browser.
 		die( $report );
 	}
 

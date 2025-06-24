@@ -9,7 +9,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$post_data = $_POST['certificate'] ?? [];
+$post_data = isset( $_POST['certificate'] ) && is_array( $_POST['certificate'] )
+    ? array_map( 'sanitize_text_field', wp_unslash( $_POST['certificate'] ) )
+    : [];
 
 ?>
 <p>
