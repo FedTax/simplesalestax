@@ -79,9 +79,8 @@ function sst_update_42_migrate_settings() {
 	);
 
 	// Get old options.
-	$existing = $wpdb->get_results(
-		"SELECT * FROM {$wpdb->options} WHERE option_name IN ( " . implode( ',', $options ) . ' );'
-	);
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$existing = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name IN ( " . implode( ',', $options ) . ' );');
 
 	// Migrate.
 	$new_options = get_option( 'woocommerce_wootax_settings', array() );
@@ -93,6 +92,7 @@ function sst_update_42_migrate_settings() {
 	update_option( 'woocommerce_wootax_settings', $new_options );
 
 	// Delete old options.
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name IN ( " . implode( ',', $options ) . ' );' );
 
 	return false;
@@ -128,19 +128,8 @@ function sst_update_42_migrate_order_data() {
 		'_wootax_cart_taxes',
 	);
 
-	$wpdb->query(
-		"
-        UPDATE {$wpdb->postmeta} wt, (
-            SELECT * FROM {$wpdb->postmeta}
-            WHERE meta_key = '_wootax_wc_order_id'
-            AND meta_key <> 0
-        ) wc
-        SET wt.post_id = wc.meta_value
-        WHERE wt.post_id = wc.post_id
-        AND wt.meta_key <> 0
-        AND wt.meta_key IN ( " . implode( ',', $meta_keys ) . ' );
-    '
-	);
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$wpdb->query( "UPDATE {$wpdb->postmeta} wt, (SELECT * FROM {$wpdb->postmeta} WHERE meta_key = '_wootax_wc_order_id' AND meta_key <> 0) wc SET wt.post_id = wc.meta_value WHERE wt.post_id = wc.post_id AND wt.meta_key <> 0 AND wt.meta_key IN (" . implode( ',', $meta_keys ) . ');' );
 
 	/**
 	 * Process WooCommerce orders. Add new order and item metadata introduced
