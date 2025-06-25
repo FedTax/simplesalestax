@@ -1,7 +1,7 @@
 === Simple Sales Tax ===
 Contributors: taxcloud
 Tags: taxcloud, woocommerce, tax, sales tax, sales tax filing
-Requires at least: 4.5
+Requires at least: 4.5.0
 Tested up to: 6.8
 Stable tag: 8.2.4
 Requires PHP: 7.4
