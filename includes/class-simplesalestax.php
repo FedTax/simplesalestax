@@ -20,7 +20,7 @@ final class SimpleSalesTax {
 	 *
 	 * @var string
 	 */
-	public $version = '8.2.4';
+	public $version = '8.2.5-beta.1';
 
 	/**
 	 * The singleton plugin instance.
@@ -190,12 +190,9 @@ final class SimpleSalesTax {
 			require_once $integrations_dir . '/class-sst-deposits-for-wc.php';
 		}
 
-		// LTL Freight Quotes - XPO Edition.
-		if ( is_plugin_active( 'ltl-freight-quotes-xpo/ltl-freight-quotes-xpo.php' ) || 
-			 is_plugin_active( 'ltl-freight-quotes/ltl-freight-quotes.php' ) ||
-			 is_plugin_active( 'woocommerce-ltl-freight/woocommerce-ltl-freight.php' ) ) {
-			require_once $integrations_dir . '/class-sst-ltl-freight.php';
-		}
+		// Generic Shipping Compatibility Integration.
+		// Handles LTL Freight Quotes, Small Package Quotes - UPS Edition, and other shipping plugins.
+		require_once $integrations_dir . '/class-sst-shipping-compatibility.php';
 	}
 
 	/**
