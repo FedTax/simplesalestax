@@ -189,6 +189,13 @@ final class SimpleSalesTax {
 		if ( is_plugin_active( 'deposits-for-woocommerce/deposits-for-woocommerce.php' ) ) {
 			require_once $integrations_dir . '/class-sst-deposits-for-wc.php';
 		}
+
+		// LTL Freight Quotes - XPO Edition.
+		if ( is_plugin_active( 'ltl-freight-quotes-xpo/ltl-freight-quotes-xpo.php' ) || 
+			 is_plugin_active( 'ltl-freight-quotes/ltl-freight-quotes.php' ) ||
+			 is_plugin_active( 'woocommerce-ltl-freight/woocommerce-ltl-freight.php' ) ) {
+			require_once $integrations_dir . '/class-sst-ltl-freight.php';
+		}
 	}
 
 	/**

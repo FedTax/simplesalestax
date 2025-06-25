@@ -55,4 +55,23 @@ class SST_Shipping {
 		);
 	}
 
+	/**
+	 * Get recognized shipping method IDs.
+	 *
+	 * @return array Array of shipping method IDs.
+	 * @since 8.2.4
+	 */
+	public static function get_shipping_method_ids() {
+		$method_ids = array(
+			'flat_rate',
+			'free_shipping',
+			'local_pickup',
+			'legacy_local_pickup',
+			'local_delivery',
+			'legacy_local_delivery',
+		);
+
+		return apply_filters( 'wootax_shipping_method_ids', $method_ids );
+	}
+
 }
