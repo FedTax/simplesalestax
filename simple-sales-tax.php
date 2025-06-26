@@ -6,7 +6,7 @@
  * Author:               TaxCloud
  * Author URI:           https://taxcloud.com
  * GitHub Plugin URI:    https://github.com/bporcelli/simplesalestax
- * Version:              8.2.5-beta.1
+ * Version:              8.2.5-beta.3
  * Text Domain:          simple-sales-tax
  * Domain Path:          /languages/
  *
@@ -38,7 +38,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require __DIR__ . '/includes/vendor/autoload.php';
+// Load compatibility wrapper first to prevent fatal errors
+require __DIR__ . '/includes/vendor/taxcloud-compatibility.php';
+
+// Try to load autoloader if it exists
+$autoload_file = __DIR__ . '/includes/vendor/autoload.php';
+if ( file_exists( $autoload_file ) ) {
+	require $autoload_file;
+}
+
 require __DIR__ . '/includes/class-simplesalestax.php';
 
 /**
