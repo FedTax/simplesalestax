@@ -1015,9 +1015,3 @@ Fixed:
 = [1.0] - 2014-01-20 =
 
 Initial public release.
-
-= 8.2.5-beta.3 =
-* Added generic shipping compatibility integration
-* Fixed PHP 8 compatibility issues
-* Improved error handling and logging
-* Rebranded from "Simple Sales Tax" to "TaxCloud for WooCommerce"
