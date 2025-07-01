@@ -9,6 +9,7 @@
  * Version:              8.2.4
  * Text Domain:          simple-sales-tax
  * Domain Path:          /languages/
+ * License:              GPLv2 or later
  *
  * Requires at least:    4.5.0
  * Tested up to:         6.8.0

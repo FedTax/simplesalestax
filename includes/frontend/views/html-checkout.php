@@ -70,6 +70,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 			?>
 		</div>
 	<?php else : ?>
-		<p><?php esc_html_e( 'Please log in or register to apply an exemption certificate.' ); ?></p>
+		<p><?php esc_html_e( 'Please log in or register to apply an exemption certificate.', 'simple-sales-tax' ); ?></p>
 	<?php endif; ?>
 </div>
