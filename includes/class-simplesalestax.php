@@ -18,7 +18,7 @@ final class SimpleSalesTax {
 	 *
 	 * @var string
 	 */
-	const VERSION = '8.2.5-beta.3';
+	const VERSION = '8.2.4';
 
 	/**
 	 * Plugin instance.

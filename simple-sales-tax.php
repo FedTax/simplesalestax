@@ -4,7 +4,7 @@
  * Plugin Name:          TaxCloud for WooCommerce
  * Plugin URI:           https://wordpress.org/plugins/simple-sales-tax/
  * Description:          Automate sales tax calculation, reporting, and filing with TaxCloud integration for WooCommerce.
- * Version:              8.2.5-beta.3
+ * Version:              8.2.4
  * Requires at least:    5.0
  * Tested up to:         6.4
  * Requires PHP:         7.2

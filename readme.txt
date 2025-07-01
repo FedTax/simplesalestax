@@ -4,7 +4,7 @@ Tags: woocommerce, sales tax, tax, taxcloud, ecommerce, tax calculation, tax fil
 Requires at least: 5.0
 Tested up to: 6.4
 Requires PHP: 7.2
-Stable tag: 8.2.5-beta.3
+Stable tag: 8.2.4
 WC requires at least: 6.9.0
 WC tested up to: 8.5.0
 License: GPLv2 or later
@@ -156,15 +156,12 @@ If you need help with TaxCloud for WooCommerce, you can:
 
 == Changelog ==
 
-= 8.2.5-beta.3 =
+= 8.2.4 =
 * Added generic shipping compatibility integration
 * Fixed PHP 8 compatibility issues
 * Improved error handling and logging
 * Rebranded from "Simple Sales Tax" to "TaxCloud for WooCommerce"
-
-= 8.2.4 =
 * Fixed compatibility with various shipping plugins
-* Improved error handling
 * Bug fixes and performance improvements
 
 = 8.2.3 =
@@ -232,8 +229,8 @@ If you need help with TaxCloud for WooCommerce, you can:
 
 == Upgrade Notice ==
 
-= 8.2.5-beta.3 =
-This is a beta release with new shipping compatibility features and PHP 8 improvements. Please test thoroughly before using in production.
+= 8.2.4 =
+This release includes new shipping compatibility features, PHP 8 improvements, and a rebrand to "TaxCloud for WooCommerce".
 
 == Translation ==
 

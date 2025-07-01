@@ -1,6 +1,6 @@
 {
   "name": "taxcloud-for-woocommerce",
-  "version": "8.2.5-beta.3",
+  "version": "8.2.4",
   "description": "A TaxCloud integration for WooCommerce.",
   "scripts": {
     "build": "npm run build:blocks && npm run build:makepot && grunt",
