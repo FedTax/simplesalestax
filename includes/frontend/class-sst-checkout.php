@@ -650,7 +650,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 				)
 			);
 
-			throw new Exception( $ex->getMessage() );
+			throw new Exception( esc_html( $ex->getMessage() ) );
 		}
 	}
 
@@ -994,7 +994,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$this->validate_checkout( $data, $error );
 
 		if ( $error->has_errors() ) {
-			throw new RouteException( 'sst_checkout_invalid_fields', $error->get_error_message(), 400 );
+			throw new RouteException(
+				'sst_checkout_invalid_fields',
+				esc_html( sanitize_text_field( $error->get_error_message() ) ),
+				400
+			);
 		}
 
 		$this->process_checkout( $data, $order );

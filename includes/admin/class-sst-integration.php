@@ -229,7 +229,7 @@ class SST_Integration extends WC_Integration {
 		}
 
 		if ( empty( $value ) ) {
-			throw new Exception( __( 'Please select at least one origin address.', 'simple-sales-tax' ) );
+			throw new Exception( esc_html__( 'Please select at least one origin address.', 'simple-sales-tax' ) );
 		}
 
 		return array_map( 'sanitize_title', (array) $value );
@@ -285,43 +285,33 @@ class SST_Integration extends WC_Integration {
 	 * @return string Report content.
 	 */
 	protected function generate_debug_report() {
-		$settings    = wp_json_encode(
-			$this->get_settings_for_report(),
-			JSON_PRETTY_PRINT
-		);
-		$report      = wp_json_encode(
-			$this->get_system_status_report(),
-			JSON_PRETTY_PRINT
-		);
+		$settings    = wp_json_encode( $this->get_settings_for_report(), JSON_PRETTY_PRINT );
+		$report      = wp_json_encode( $this->get_system_status_report(), JSON_PRETTY_PRINT );
 		$request_log = $this->tail_log( 'wootax', 100 );
 		$error_log   = $this->tail_log( 'fatal-errors', 100 );
 
-		return <<<REPORT
-##################################
-### System Status Report       ###
-##################################
+		return
+			"##################################\n" .
+			"### System Status Report       ###\n" .
+			"##################################\n\n" .
+			$report . "\n\n" .
 
-{$report}
+			"##################################\n" .
+			"### SST Settings               ###\n" .
+			"##################################\n\n" .
+			$settings . "\n\n" .
 
-##################################
-### SST Settings               ###
-##################################
+			"##################################\n" .
+			"### SST Request Log (last 100) ###\n" .
+			"##################################\n\n" .
+			$request_log . "\n\n" .
 
-{$settings}
-
-##################################
-### SST Request Log (last 100) ###
-##################################
-
-{$request_log}
-
-##################################
-### Fatal Error Log (last 100) ###
-##################################
-
-{$error_log}
-REPORT;
+			"##################################\n" .
+			"### Fatal Error Log (last 100) ###\n" .
+			"##################################\n\n" .
+			$error_log;
 	}
+
 
 	/**
 	 * Get SST settings formatted for the debug report.

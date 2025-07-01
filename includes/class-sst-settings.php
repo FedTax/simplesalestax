@@ -118,7 +118,7 @@ class SST_Settings {
 				'type'        => 'button',
 				'description' => __(
 					'Use this button to verify that your site can communicate with TaxCloud.',
-					'woocommerce-integration-demo'
+					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
 				'id'          => 'verifySettings',

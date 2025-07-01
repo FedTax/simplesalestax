@@ -559,7 +559,7 @@ function sst_update_50_order_data() {
 					foreach ( $items as $item_id => $item ) {
 						if ( 'fee' === $item['type'] ) {
 							$taxcloud_id = sanitize_title(
-								empty( $item['name'] ) ? __( 'Fee', 'woocommerce' ) : $item['name']
+								empty( $item['name'] ) ? __( 'Fee', 'simple-sales-tax' ) : $item['name']
 							);
 
 							$new_packages[0]['contents'][] = new TaxCloud\CartItem(
@@ -687,7 +687,7 @@ function sst_update_606_fix_duplicate_transactions() {
 						$api_key,
 						$package_order_id,
 						$cart_items,
-						date( 'c' )
+						gmdate( 'c' )
 					);
 
 					TaxCloud()->Returned( $request );
@@ -926,14 +926,9 @@ function _sst_update_620_get_address_mismatch_notice( $mismatched_addresses ) {
 
 	$address_list_html .= '</ul>';
 
-	return sprintf(
-		__(
-			'<strong>IMPORTANT: Your TaxCloud Locations are out of sync.</strong> One or more of the addresses from your Simple Sales Tax settings are not registered as Locations in your TaxCloud account. Please add all of the addresses listed below on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud, then click Dismiss to dismiss this notice. %2$s',
-			'simple-sales-tax'
-		),
-		add_query_arg( $dismiss_args, admin_url( 'admin.php' ) ),
-		$address_list_html
-	);
+	// translators: %1$s is the dismiss link URL. %2$s is the HTML list of missing addresses.
+	return sprintf( __( '<strong>IMPORTANT: Your TaxCloud Locations are out of sync.</strong> One or more of the addresses from your Simple Sales Tax settings are not registered as Locations in your TaxCloud account. Please add all of the addresses listed below on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud, then click Dismiss to dismiss this notice. %2$s', 'simple-sales-tax' ), add_query_arg( $dismiss_args, admin_url( 'admin.php' ) ), $address_list_html );
+
 }
 
 /**
