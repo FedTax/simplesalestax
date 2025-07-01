@@ -7,11 +7,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Handles admin functionality.
+ *
+ * @package SST
+ * @author  TaxCloud
+ * @since   1.0
+ */
+
+/**
  * Admin.
  *
  * Handles the admin interface.
  *
- * @author  Simple Sales Tax
+ * @author  TaxCloud for WooCommerce
  * @package SST
  * @since   4.2
  */
@@ -291,7 +299,7 @@ class SST_Admin {
 						'<strong>%1$s</strong> %2$s',
 						esc_html__( 'Heads up!', 'simple-sales-tax' ),
 						esc_html__(
-							'The WooCommerce "Calculate tax based on" setting is not respected by Simple Sales Tax. The customer billing address will only be used for tax calculations when the shipping address is not provided (e.g. for sales of digital goods).',
+							'The WooCommerce "Calculate tax based on" setting is not respected by TaxCloud for WooCommerce. The customer billing address will only be used for tax calculations when the shipping address is not provided (e.g. for sales of digital goods).',
 							'simple-sales-tax'
 						)
 					);

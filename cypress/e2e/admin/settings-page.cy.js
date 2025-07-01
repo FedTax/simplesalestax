@@ -6,8 +6,8 @@ describe('Settings page', () => {
     cy.goToSettingsPage();
   });
 
-  it('has a heading Simple Sales Tax', () => {
-    cy.findByRole('heading', {name: 'Simple Sales Tax'}).should('exist');
+  it('has a heading TaxCloud for WooCommerce', () => {
+    cy.findByRole('heading', {name: 'TaxCloud for WooCommerce'}).should('exist');
   });
 
   it('has a working Verify Settings button', () => {

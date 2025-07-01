@@ -4,9 +4,9 @@
  *
  * Functions related to dependency checking.
  *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

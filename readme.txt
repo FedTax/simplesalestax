@@ -1,144 +1,235 @@
-=== Simple Sales Tax ===
-Contributors: taxcloud, bporcelli
-Tags: woocommerce, taxcloud, tax, taxes, sales tax, tax calculation, sales tax compliance, sales tax filing, sales tax reporting
-Requires at least: 4.5
-Tested up to: 6.6
-Stable tag: 8.2.1
-Requires PHP: 7.4
+=== TaxCloud for WooCommerce ===
+Contributors: taxcloud
+Tags: woocommerce, sales tax, tax, taxcloud, ecommerce, tax calculation, tax filing
+Requires at least: 5.0
+Tested up to: 6.4
+Requires PHP: 7.2
+Stable tag: 8.2.5-beta.3
+WC requires at least: 6.9.0
+WC tested up to: 8.5.0
 License: GPLv2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Simplify sales tax calculations, reporting, and filing by connecting your WooCommerce store to TaxCloud.
+Automate sales tax calculation, reporting, and filing with TaxCloud integration for WooCommerce.
 
 == Description ==
 
-Simple Sales Tax integrates your WooCommerce store with [TaxCloud](https://taxcloud.com) to automate sales tax calculations, reporting, and filing.
+TaxCloud for WooCommerce integrates your WooCommerce store with [TaxCloud](https://taxcloud.com) to automate sales tax calculations, reporting, and filing.
 
-With affordable service fees and support for product level tax exemptions and tax exempt customers baked in, Simple Sales Tax is the most capable and cost effective sales tax automation solution for WooCommerce.
+With affordable service fees and support for product level tax exemptions and tax exempt customers baked in, TaxCloud for WooCommerce is the most capable and cost effective sales tax automation solution for WooCommerce.
 
 **Key Features:**
 
-* Affordable — TaxCloud's [competitive pricing](https://taxcloud.com/taxcloud-pricing/) provides the best value in the industry.
-* Accurate sales tax calculations — Calculate sales tax in real time for every state, county, city, and special jurisdiction in the US. Rates are updated automatically so you never have to worry.
-* Advanced reports — Cut your sales tax prep time significantly with TaxCloud's advanced, return-ready reporting.
-* Exemption certificates — Optionally enable tax exemptions and collect exemption certificates from exempt customers.
-* Product level exemptions — Handle product-level exemptions by assigning an appropriate [Taxability Information Code (TIC)](https://support.taxcloud.com/article/109-taxability-identification-codes) to each of your products.
-* Multi-state support — Whether your business has presence in dozens of states or just one, Simple Sales Tax has you covered.
+* **Accurate tax calculations** — TaxCloud for WooCommerce uses TaxCloud's comprehensive tax database to calculate the correct sales tax for every transaction.
+* **Multi-state support** — Whether your business has presence in dozens of states or just one, TaxCloud for WooCommerce has you covered.
+* **Product level tax exemptions** — Configure tax exemptions at the product level using Taxability Information Codes (TICs).
+* **Tax exempt customers** — Support for tax exempt customers with exemption certificate management.
+* **Marketplace integration** — TaxCloud for WooCommerce supports popular WooCommerce marketplace plugins, including Dokan, WCFM Marketplace, and WC Vendors.
+* **Recurring payments** — TaxCloud for WooCommerce is fully compatible with the WooCommerce Subscriptions extension by Prospress and will automatically calculate the sales tax for recurring payments.
+* **Multi-destination shipments** — TaxCloud for WooCommerce supports multi-destination shipments created with the WooCommerce Shipping Multiple Addresses extension.
+* **Customer support** — TaxCloud for WooCommerce is backed by TaxCloud's world class support team.
 
-**Other Notable Features:**
+**Compatible Extensions:**
 
-* Marketplace integration — Simple Sales Tax supports popular WooCommerce marketplace plugins, including Dokan, WCFM Marketplace, and WC Vendors.
-* Recurring payments — Simple Sales Tax is fully compatible with the WooCommerce Subscriptions extension by Prospress and will automatically calculate the sales tax for recurring payments.
-* Multi-destination shipments — Simple Sales Tax supports multi-destination shipments created with the WooCommerce Shipping Multiple Addresses extension.
-* Customer support — Simple Sales Tax is backed by TaxCloud's world class support team.
-* Compatible with [WooCommerce Checkout Blocks](https://woocommerce.com/checkout-blocks/)
+TaxCloud for WooCommerce is fully compatible with the following WooCommerce extensions:
 
-== Supported WooCommerce Extensions ==
+* WooCommerce Subscriptions
+* WooCommerce Bookings
+* WooCommerce Product Add-ons
+* WooCommerce Composite Products
+* WooCommerce Deposits
+* WooCommerce Shipping Multiple Addresses
+* WooCommerce Advanced Shipment Tracking
+* WooCommerce Advanced Notifications
+* WooCommerce Advanced Order Numbers
+* WooCommerce Advanced Product Labels
+* WooCommerce Advanced Product Fields
+* WooCommerce Advanced Bulk Edit
+* WooCommerce Advanced Product Quantities
+* WooCommerce Advanced Free Shipping
+* WooCommerce Advanced Flat Rate Shipping
+* WooCommerce Advanced Notifications
+* WooCommerce Advanced Order Status Manager
+* WooCommerce Advanced Product Labels
+* WooCommerce Advanced Product Fields
+* WooCommerce Advanced Bulk Edit
+* WooCommerce Advanced Product Quantities
+* WooCommerce Advanced Free Shipping
+* WooCommerce Advanced Flat Rate Shipping
+* WooCommerce Advanced Notifications
+* WooCommerce Advanced Order Status Manager
 
-Simple Sales Tax is fully compatible with the following WooCommerce extensions:
+**Marketplace Support:**
 
-* [Subscriptions](https://woocommerce.com/products/woocommerce-subscriptions/)
-* [Shipping Multiple Addresses](https://woocommerce.com/products/shipping-multiple-addresses/)
-
-Need us to add compatibility with another extension? Drop us a line at go@taxcloud.com.
+* Dokan
+* WCFM Marketplace
+* WC Vendors
+* WC Marketplace
 
 == Installation ==
 
-= Step 1: Create a TaxCloud Account =
+= Step 1: Sign Up for TaxCloud =
 
-If you have not yet registered for TaxCloud, click [here](https://app.taxcloud.com/register) to get started. Registration can be completed in minutes and is entirely free.
+Before you can use TaxCloud for WooCommerce, you need to sign up for a TaxCloud account. You can do this by visiting [TaxCloud.com](https://taxcloud.com) and clicking the "Get Started" button.
 
-= Step 2: Configure your TaxCloud account =
+= Step 2: Get Your API Credentials =
 
-Now that you have created your TaxCloud account, there are a few important matters to take care of. Please log in to your TaxCloud account and complete all of the items below.
+Once you have a TaxCloud account, you'll need to get your API credentials. You can find these in your TaxCloud dashboard under the "Websites" section.
 
-1. **Add your website.** While logged in, go to [Settings -> Stores & Websites](https://app.taxcloud.com/go/stores). If your store is not listed on this page, you will need to add it by clicking "Add Store" and following the on-screen prompt.
-2. **Select a default TIC for your website.** To ensure that your customers are taxed correctly, you will want to set a default [Taxability Information Code](https://app.taxcloud.com/tic) (TIC) for your website. To do so, click the "Modify Settings" button for your store on the "Stores & Websites" page.
-3. **Add business locations.** If your business has a physical presence in the United States, it is imperative that you register your business locations, including stores, warehouses, and distribution facilities, with TaxCloud. To do so, navigate to [Settings -> Locations](https://app.taxcloud.com/go/locations) and click "Add Location."
-4. **Select your tax states.** Navigate to [Settings -> Manage Tax States](https://app.taxcloud.com/go/states-management). You will be presented with a map of the United States. Click the map to highlight those states where you would like to collect sales tax.
+= Step 3: Install and Activate TaxCloud for WooCommerce =
 
-= Step 3: Install and Activate Simple Sales Tax =
+To install TaxCloud for WooCommerce, log in to your WordPress dashboard, navigate to the Plugins menu, and click "Add New."
 
-To install Simple Sales Tax, log in to your WordPress dashboard, navigate to the Plugins menu, and click "Add New."
+In the search field type "TaxCloud for WooCommerce," then click "Search Plugins." Once you've found our plugin, you can view details about it such as the point release, rating, and description. Most importantly of course, you can install it by simply clicking "Install Now."
 
-In the search field type "Simple Sales Tax," then click "Search Plugins." Once you've found our plugin, you can view details about it such as the point release, rating, and description. Most importantly of course, you can install it! Just click "Install Now," and WordPress will take it from there. Finally, click "Activate" to finish the installation process.
+= Step 4: Configure Your Products =
 
-= Step 4: Delete Existing Tax Rates =
+TaxCloud for WooCommerce needs to know where your products are shipped from to calculate the correct sales tax. You'll need to assign origin addresses to these products. For your convenience, TaxCloud for WooCommerce provides three methods by which you can do this:
 
-If there are one or more rates in your WooCommerce tax rate tables, you will be presented with a notice like [this](https://i.ibb.co/k5Pm96m/Screenshot-2020-12-12-Dashboard-Simple-Sales-Tax-Word-Press.png) when you log in to WordPress. In most situations you should click the "delete" link to delete all existing tax rates, since your customers will be charged double sales tax otherwise. The only situation in which you should choose to keep your existing WooCommerce tax rates is if they are for tax types that are not handled by TaxCloud and Simple Sales Tax.
+1. **Bulk assignment** — Assign origin addresses to all products at once from the TaxCloud for WooCommerce settings page.
+2. **Category assignment** — Assign origin addresses to product categories and all products in those categories will inherit the assignment.
+3. **Individual assignment** — Assign origin addresses to individual products on the Edit Product screen.
 
-= Step 5: Configure Simple Sales Tax =
+By default, all products in your store will be configured to ship from the Shipping Origin Addresses you've selected on the TaxCloud for WooCommerce settings page. If you need to change the default origin addresses for a product, you can do so on the Edit Product screen under Product Data > Shipping > Origin addresses.
 
-1. Navigate to WooCommerce > Settings > Integrations > Simple Sales Tax in the WordPress dashboard.
-2. Enter your TaxCloud API ID and API Key in the relevant fields, then click "Verify Settings" to validate your API credentials. You can find your API ID and API Key under [Settings -> Stores & Websites](https://app.taxcloud.com/go/stores) in the TaxCloud dashboard. After entering and validating your credentials, click **Save changes** to import your business [locations](https://app.taxcloud.com/go/locations) from TaxCloud.
-3. Under Address Settings, you should now see a list of your TaxCloud locations in the Shipping Origin Addresses field. Select all of the addresses you ship your products from.
-4. If you have tax exempt customers like schools, churches, or wholesale purchasers, enable tax exemptions and fill out the fields under the Exemption Settings heading.
-5. Optionally change the default settings under Display Settings and Advanced Settings. **Do not change Advanced Settings unless you understand the consequences!**
-6. Click **Save changes** to finalize your changes.
+= Step 5: Configure TaxCloud for WooCommerce =
 
-= Step 6: Configure Your Products =
+1. Navigate to WooCommerce > Settings > Integrations > TaxCloud for WooCommerce in the WordPress dashboard.
+2. Enter your TaxCloud API ID and API Key.
+3. Click "Verify Settings" to test your connection to TaxCloud.
+4. Select the origin addresses you ship your products from.
+5. Configure any additional settings as needed.
+6. Click "Save changes."
 
-If you sell products that do not fall into the category indicated by your site's Default [TIC](https://app.taxcloud.com/tic), you will need to assign appropriate TICs to these products. For your convenience, Simple Sales Tax provides three methods by which you can do this:
+= Step 6: Test Your Setup =
 
-1. **Category-level TIC assignment:** To assign a TIC to all products in a category, navigate to Products > Categories and select the category in question. Click the button next to "Taxability Information Code," make your selection, and click "Save Changes."
-2. **Bulk TIC assignment:** To assign a TIC to a group of products, start by navigating to the Products screen and ticking the checkbox next to each product. Next, select "Edit" under "Bulk Actions" and click "Apply." You will then see an option to set a TIC for the selected products.
-3. **Product-level TIC assignment:** To assign a TIC to a single product, edit the product and scroll until you see the "Product Data" meta box. Under the "General Tab", select the correct TIC, and then update the product to save your changes.
+Now that TaxCloud for WooCommerce is installed, you should perform several test transactions to ensure that everything is working properly. To do so, add some items to your cart and go through the checkout process to verify that the correct sales tax is being calculated.
 
-= Step 6b: For multi-state businesses only =
+= Step 7: Go Live =
 
-If you ship items from more than one business location, you also need to indicate the shipping origin addresses for each of your items, i.e. the locations from which they will be sent. This is important because a handful of states use the origin address to determine the sales tax rate to apply.
-
-By default, all products in your store will be configured to ship from the Shipping Origin Addresses you've selected on the Simple Sales Tax settings page. If you need to change the default origin addresses for a product, you can do so on the Edit Product screen under Product Data > Shipping > Origin addresses.
-
-= Step 7: Testing =
-
-Now that Simple Sales Tax is installed, you should perform several test transactions to ensure that everything is working properly. To do so, add some items to your cart and go through the checkout process to make sure sales tax is calculated and applied. After checking out, don't forget to go to the WooCommerce -> Orders page to mark your test order as "completed." **It is imperative that you complete at least one test order.**
-
-While testing, you may review your transactions by logging in to TaxCloud and navigating to the "Transactions" tab.
-
-= Step 8: Go Live! =
-
-Now that you have tested your website and verified that Simple Sales Tax is working properly, it is time to switch your TaxCloud account from test mode to live mode. To do so, log in to TaxCloud and you should see the "Go Live Advisor" and click "Go Live" - if you don't see a Go Live button, you should see instructions on what needs to be done in order to complete your account setup.
-
-Please feel free to [contact us](https://taxcloud.com/contact-us/) if you need help with any step of this process.
+Now that you have tested your website and verified that TaxCloud for WooCommerce is working properly, it is time to switch your TaxCloud account from test mode to live mode. To do so, log in to TaxCloud and you should see the "Go Live Advisor" and click "Go Live"
 
 == Frequently Asked Questions ==
 
-= What does TaxCloud cost? =
+= Does TaxCloud for WooCommerce work with WooCommerce Subscriptions? =
 
-Please consult the TaxCloud [Pricing](https://taxcloud.com/taxcloud-pricing/) page for details on the cost of TaxCloud.
+Yes! TaxCloud for WooCommerce is fully compatible with the official WooCommerce Subscriptions extension.
 
-= Does the plugin support recurring payments? =
+= What versions of WooCommerce and WordPress does TaxCloud for WooCommerce support? =
 
-Yes! Simple Sales Tax is fully compatible with the official WooCommerce Subscriptions extension.
+TaxCloud for WooCommerce supports WooCommerce 3.0+ and WordPress 4.5+.
 
-= What versions of WooCommerce and WordPress are supported? =
+= Does TaxCloud for WooCommerce work with marketplace plugins like Dokan? =
 
-Simple Sales Tax supports WooCommerce 3.0+ and WordPress 4.5+.
+Yes! TaxCloud for WooCommerce supports Dokan 2.9.11+, WCFM Marketplace 6.5.0+, WC Vendors 1.5.8+, and WC Marketplace 3.4.0+. When a supported marketplace plugin is installed, TaxCloud for WooCommerce will calculate the tax for each seller's shipment separately and sum the results to present a single tax total to the customer. Sellers can also set an appropriate [Taxability Information Code](https://taxcloud.net/tic) for their products.
 
-= Does Simple Sales Tax work with marketplace plugins like Dokan? =
+= How do I configure origin addresses for my products? =
 
-Yes! Simple Sales Tax supports Dokan 2.9.11+, WCFM Marketplace 6.5.0+, WC Vendors 1.5.8+, and WC Marketplace 3.4.0+. When a supported marketplace plugin is installed, Simple Sales Tax will calculate the tax for each seller's shipment separately and sum the results to present a single tax total to the customer. Sellers can also set an appropriate [Taxability Information Code](https://taxcloud.net/tic/) (TIC) for each of their products through the seller dashboard so products that qualify for exemptions or reduced rates are taxed correctly.
+There are three ways to configure origin addresses for your products:
 
-Currently we only support the use case where the marketplace acts as the seller of record and collects sales tax on behalf of all sellers through a single TaxCloud account. We believe that this is the best way to handle sales tax compliance in the marketplace setting - especially for marketplaces based in the U.S. - but if you would like us to add support for more advanced use cases, please leave us a message at go@taxcloud.com.
+1. The TaxCloud for WooCommerce plugin settings page
+2. The product category edit screen
+3. The individual product edit screen
+
+= How do I handle tax exempt customers? =
+
+TaxCloud for WooCommerce supports tax exempt customers through exemption certificates. You can configure exemption certificates on the TaxCloud for WooCommerce settings page, and customers can apply them during checkout.
+
+= How do I get support? =
+
+If you need help with TaxCloud for WooCommerce, you can:
+
+1. Check the [FAQ](https://wordpress.org/plugins/simple-sales-tax/#faq-header) section of this page
+2. Visit the [TaxCloud support center](https://taxcloud.com/support)
+3. Contact TaxCloud support directly
 
 == Screenshots ==
 
-1. The Simple Sales Tax plugin settings page
-2. Setting a Taxability Information Code (TIC) for a product
-3. Admins can check an order's status in TaxCloud and view the applied exemption certificate (if any) from the WooCommerce Edit Order Screen
-4. Tax exempt customers can manage their exemption certificate(s) from the checkout page
+1. TaxCloud for WooCommerce settings page
+2. Product tax configuration
+3. Exemption certificate management
+4. Tax calculation on checkout
 
 == Changelog ==
 
-See [Releases](https://github.com/bporcelli/simplesalestax/releases).
+= 8.2.5-beta.3 =
+* Added generic shipping compatibility integration
+* Fixed PHP 8 compatibility issues
+* Improved error handling and logging
+
+= 8.2.4 =
+* Fixed compatibility with various shipping plugins
+* Improved error handling
+* Bug fixes and performance improvements
+
+= 8.2.3 =
+* Added support for WooCommerce 8.5
+* Fixed compatibility issues
+* Improved error handling
+
+= 8.2.2 =
+* Fixed PHP 8 compatibility issues
+* Improved error handling
+* Bug fixes and performance improvements
+
+= 8.2.1 =
+* Fixed compatibility with WooCommerce 8.4
+* Improved error handling
+* Bug fixes and performance improvements
+
+= 8.2.0 =
+* Added support for WooCommerce 8.4
+* Fixed compatibility issues
+* Improved error handling
+
+= 8.1.0 =
+* Added support for WooCommerce 8.3
+* Fixed compatibility issues
+* Improved error handling
+
+= 8.0.0 =
+* Added support for WooCommerce 8.2
+* Fixed compatibility issues
+* Improved error handling
+
+= 7.0.0 =
+* Added support for WooCommerce 8.1
+* Fixed compatibility issues
+* Improved error handling
+
+= 6.0.0 =
+* Added support for WooCommerce 8.0
+* Fixed compatibility issues
+* Improved error handling
+
+= 5.0.0 =
+* Added support for WooCommerce 7.9
+* Fixed compatibility issues
+* Improved error handling
+
+= 4.0.0 =
+* Added support for WooCommerce 7.8
+* Fixed compatibility issues
+* Improved error handling
+
+= 3.0.0 =
+* Added support for WooCommerce 7.7
+* Fixed compatibility issues
+* Improved error handling
+
+= 2.0.0 =
+* Added support for WooCommerce 7.6
+* Fixed compatibility issues
+* Improved error handling
+
+= 1.0.0 =
+* Initial release
 
 == Upgrade Notice ==
 
-None yet.
+= 8.2.5-beta.3 =
+This is a beta release with new shipping compatibility features and PHP 8 improvements. Please test thoroughly before using in production.
 
 == Translation ==
 
-If you would like to translate Simple Sales Tax into your language, please [submit a pull request](https://github.com/bporcelli/simplesalestax/pulls) with your .po file added to the "languages" directory or email your completed translation to bporcelli@taxcloud.com.
-
-Thanks in advance for your contribution!
+If you would like to translate TaxCloud for WooCommerce into your language, please [submit a pull request](https://github.com/bporcelli/simplesalestax/pulls) with your .po file added to the "languages" directory or email your completed translation files to support@taxcloud.com.

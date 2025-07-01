@@ -5,13 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Simple Sales Tax.
+ * Main SimpleSalesTax class.
  *
- * Main plugin class.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   6.0.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 final class SimpleSalesTax {
 
@@ -20,22 +18,22 @@ final class SimpleSalesTax {
 	 *
 	 * @var string
 	 */
-	public $version = '8.2.1';
+	const VERSION = '8.2.5-beta.3';
 
 	/**
-	 * The singleton plugin instance.
+	 * Plugin instance.
 	 *
 	 * @var SimpleSalesTax
 	 */
-	protected static $instance = null;
+	private static $instance = null;
 
 	/**
-	 * Singleton instance accessor.
+	 * Returns the plugin instance.
 	 *
 	 * @return SimpleSalesTax
 	 */
 	public static function instance() {
-		if ( is_null( self::$instance ) ) {
+		if ( null === self::$instance ) {
 			self::$instance = new self();
 		}
 
@@ -43,145 +41,125 @@ final class SimpleSalesTax {
 	}
 
 	/**
-	 * Plugin constructor.
+	 * Constructor.
 	 */
 	private function __construct() {
 		$this->define_constants();
-		$this->load_text_domain();
-
-		add_action( 'plugins_loaded', array( $this, 'init' ) );
-		add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
-		add_action( 'before_woocommerce_init', array( $this, 'declare_cart_block_compatibility' ) );
-		add_filter( 'woocommerce_get_query_vars', array( $this, 'add_tax_exemptions_query_var' ) );
-	}
-
-	/**
-	 * Initializes the plugin on `plugins_loaded` if all requirements are met.
-	 */
-	public function init() {
-		if ( $this->check_environment() ) {
-			$this->includes();
-			$this->add_hooks();
-		}
+		$this->includes();
+		$this->add_hooks();
 	}
 
 	/**
 	 * Defines plugin constants.
 	 */
 	protected function define_constants() {
-		define( 'SST_DEFAULT_SHIPPING_TIC', 11010 );
-		define( 'SST_SHIPPING_ITEM', 'SHIPPING' );
-		define( 'SST_DEFAULT_FEE_TIC', 10010 );
-		define( 'SST_RATE_ID', get_option( 'wootax_rate_id' ) );
-		define( 'SST_DIR', dirname( dirname( __FILE__ ) ) );
-		define( 'SST_FILE', SST_DIR . '/simple-sales-tax.php' );
-		define( 'SST_PLUGIN_BASENAME', plugin_basename( SST_FILE ) );
-		define( 'SST_SINGLE_PURCHASE_CERT_ID', 'single-purchase' );
+		define( 'SST_VERSION', self::VERSION );
+		define( 'SST_FILE', __FILE__ );
+		define( 'SST_PATH', plugin_dir_path( SST_FILE ) );
+		define( 'SST_URL', plugin_dir_url( SST_FILE ) );
+		define( 'SST_BASENAME', plugin_basename( SST_FILE ) );
 	}
 
 	/**
-	 * Runs on plugin activation.
-	 *
-	 * Adjusts WooCommerce settings for optimal plugin performance.
-	 *
-	 * @since 6.0.0
+	 * Initializes the plugin.
+	 */
+	public function init() {
+		if ( ! $this->check_environment() ) {
+			return;
+		}
+
+		$this->load_text_domain();
+		$this->load_integrations();
+	}
+
+	/**
+	 * Activates the plugin.
 	 */
 	public function activate() {
-		update_option( 'woocommerce_calc_taxes', 'yes' );
-		update_option( 'woocommerce_prices_include_tax', 'no' );
-		update_option( 'woocommerce_tax_based_on', 'shipping' );
-		update_option( 'woocommerce_default_customer_address', 'base' );
-		update_option( 'woocommerce_shipping_tax_class', '' );
-		update_option( 'woocommerce_tax_round_at_subtotal', false );
-		update_option( 'woocommerce_tax_display_shop', 'excl' );
-		update_option( 'woocommerce_tax_display_cart', 'excl' );
-		update_option( 'woocommerce_tax_total_display', 'itemized' );
+		if ( ! $this->check_environment() ) {
+			return;
+		}
+
+		require_once SST_PATH . 'includes/class-sst-install.php';
+		SST_Install::install();
 	}
 
 	/**
-	 * Runs on plugin deactivation.
-	 *
-	 * @since 6.0.0
+	 * Deactivates the plugin.
 	 */
 	public function deactivate() {
-		SST_Install::deactivate();
+		// Cleanup if needed.
 	}
 
 	/**
-	 * Include required plugin files.
-	 *
-	 * @since 4.4
+	 * Includes required files.
 	 */
 	private function includes() {
-		/**
-		 * Abstract classes.
-		 */
-		require_once __DIR__ . '/abstracts/class-sst-abstract-cart.php';
+		// Core classes.
+		require_once SST_PATH . 'includes/class-sst-settings.php';
+		require_once SST_PATH . 'includes/class-sst-product.php';
+		require_once SST_PATH . 'includes/class-sst-order.php';
+		require_once SST_PATH . 'includes/class-sst-order-controller.php';
+		require_once SST_PATH . 'includes/class-sst-certificates.php';
+		require_once SST_PATH . 'includes/class-sst-addresses.php';
+		require_once SST_PATH . 'includes/class-sst-origin-address.php';
+		require_once SST_PATH . 'includes/class-sst-tic.php';
+		require_once SST_PATH . 'includes/class-sst-shipping.php';
+		require_once SST_PATH . 'includes/class-sst-assets.php';
+		require_once SST_PATH . 'includes/class-sst-ajax.php';
+		require_once SST_PATH . 'includes/class-sst-logger.php';
+		require_once SST_PATH . 'includes/class-sst-updater.php';
+		require_once SST_PATH . 'includes/class-sst-blocks.php';
+		require_once SST_PATH . 'includes/class-sst-blocks-integration.php';
 
-		/**
-		 * Core classes.
-		 */
-		require_once __DIR__ . '/sst-functions.php';
-		require_once __DIR__ . '/sst-compatibility-functions.php';
-		require_once __DIR__ . '/class-sst-install.php';
-		require_once __DIR__ . '/class-sst-settings.php';
-		require_once __DIR__ . '/class-sst-logger.php';
-		require_once __DIR__ . '/class-sst-ajax.php';
-		require_once __DIR__ . '/class-sst-tic.php';
-		require_once __DIR__ . '/class-sst-product.php';
-		require_once __DIR__ . '/class-sst-shipping.php';
-		require_once __DIR__ . '/class-sst-addresses.php';
-		require_once __DIR__ . '/class-sst-origin-address.php';
-		require_once __DIR__ . '/class-sst-certificates.php';
-		require_once __DIR__ . '/class-sst-order.php';
-		require_once __DIR__ . '/class-sst-order-controller.php';
-		require_once __DIR__ . '/class-sst-assets.php';
-		require_once __DIR__ . '/class-sst-marketplaces.php';
-		require_once __DIR__ . '/class-sst-blocks.php';
+		// Abstract classes.
+		require_once SST_PATH . 'includes/abstracts/class-sst-abstract-cart.php';
+		require_once SST_PATH . 'includes/abstracts/class-sst-marketplace-integration.php';
 
-		/**
-		 * Third party integrations.
-		 */
-		$this->load_integrations();
+		// Functions.
+		require_once SST_PATH . 'includes/sst-functions.php';
+		require_once SST_PATH . 'includes/sst-message-functions.php';
+		require_once SST_PATH . 'includes/sst-update-functions.php';
+		require_once SST_PATH . 'includes/sst-compatibility-functions.php';
 
-		/**
-		 * Admin only.
-		 */
-		if ( $this->is_request( 'admin' ) ) {
-			require_once __DIR__ . '/admin/class-sst-admin.php';
+		// Admin classes.
+		if ( is_admin() ) {
+			require_once SST_PATH . 'includes/admin/class-sst-admin.php';
+			require_once SST_PATH . 'includes/admin/class-sst-integration.php';
 		}
 
-		/**
-		 * Frontend only.
-		 */
-		if ( $this->is_request( 'frontend' ) ) {
-			require_once __DIR__ . '/frontend/class-sst-cart-proxy.php';
-			require_once __DIR__ . '/frontend/class-sst-checkout.php';
-			require_once __DIR__ . '/frontend/class-sst-my-account.php';
+		// Frontend classes.
+		if ( ! is_admin() || defined( 'DOING_AJAX' ) ) {
+			require_once SST_PATH . 'includes/frontend/class-sst-checkout.php';
+			require_once SST_PATH . 'includes/frontend/class-sst-my-account.php';
+			require_once SST_PATH . 'includes/frontend/class-sst-cart-proxy.php';
 		}
-	}
 
-	/**
-	 * Registers the plugin activation and deactivation hooks.
-	 */
-	private function add_hooks() {
-		register_activation_hook( SST_FILE, array( $this, 'activate' ) );
-		register_deactivation_hook( SST_FILE, array( $this, 'deactivate' ) );
-	}
+		// Integration classes.
+		$integrations_dir = SST_PATH . 'includes/integrations';
 
-	/**
-	 * Loads integrations with third party extensions as needed.
-	 */
-	private function load_integrations() {
-		$integrations_dir = __DIR__ . '/integrations';
-
-		// WooCommerce Subscriptions by Prospress.
-		if ( sst_subs_active() ) {
+		// WooCommerce Subscriptions.
+		if ( class_exists( 'WC_Subscriptions' ) ) {
 			require_once $integrations_dir . '/class-sst-subscriptions.php';
 		}
 
-		// WooCommerce Composite Products.
-		if ( is_plugin_active( 'woocommerce-composite-products/woocommerce-composite-products.php' ) ) {
+		// Dokan.
+		if ( class_exists( 'WeDevs_Dokan' ) ) {
+			require_once $integrations_dir . '/class-sst-dokan.php';
+		}
+
+		// WCFM Marketplace.
+		if ( class_exists( 'WCFMmp' ) ) {
+			require_once $integrations_dir . '/class-sst-wcfm.php';
+		}
+
+		// WC Marketplace.
+		if ( class_exists( 'WCMp' ) ) {
+			require_once $integrations_dir . '/class-sst-wcmp.php';
+		}
+
+		// Composite Products.
+		if ( class_exists( 'WC_Composite_Products' ) ) {
 			require_once $integrations_dir . '/class-sst-composite-products.php';
 		}
 
@@ -189,6 +167,23 @@ final class SimpleSalesTax {
 		if ( is_plugin_active( 'deposits-for-woocommerce/deposits-for-woocommerce.php' ) ) {
 			require_once $integrations_dir . '/class-sst-deposits-for-wc.php';
 		}
+	}
+
+	/**
+	 * Adds WordPress hooks.
+	 */
+	private function add_hooks() {
+		add_action( 'plugins_loaded', array( $this, 'init' ) );
+		add_action( 'woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
+		add_action( 'woocommerce_init', array( $this, 'declare_cart_block_compatibility' ) );
+		add_filter( 'query_vars', array( $this, 'add_tax_exemptions_query_var' ) );
+	}
+
+	/**
+	 * Loads integration classes.
+	 */
+	private function load_integrations() {
+		// Integration classes are loaded in the includes() method.
 	}
 
 	/**
@@ -256,7 +251,7 @@ final class SimpleSalesTax {
 	}
 
 	/**
-	 * Checks for plugins that conflict with Simple Sales Tax.
+	 * Checks for plugins that conflict with TaxCloud for WooCommerce.
 	 *
 	 * @return bool Were any conflicting plugins detected?
 	 */
@@ -285,7 +280,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be used alongside the <a href="https://wordpress.org/plugins/taxjar-simplified-taxes-for-woocommerce/" target="_blank">TaxJar</a> plugin. Please deactivate TaxJar to use Simple Sales Tax.',
+				'<strong>TaxCloud for WooCommerce is inactive.</strong> TaxCloud for WooCommerce cannot be used alongside the <a href="https://wordpress.org/plugins/taxjar-simplified-taxes-for-woocommerce/" target="_blank">TaxJar</a> plugin. Please deactivate TaxJar to use TaxCloud for WooCommerce.',
 				'simple-sales-tax'
 			)
 		);
@@ -298,7 +293,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be used alongside the <a href="https://woocommerce.com/products/woocommerce-avatax/" target="_blank">WooCommerce AvaTax</a> plugin. Please deactivate WooCommerce AvaTax to use Simple Sales Tax.',
+				'<strong>TaxCloud for WooCommerce is inactive.</strong> TaxCloud for WooCommerce cannot be used alongside the <a href="https://woocommerce.com/products/woocommerce-avatax/" target="_blank">WooCommerce AvaTax</a> plugin. Please deactivate WooCommerce AvaTax to use TaxCloud for WooCommerce.',
 				'simple-sales-tax'
 			)
 		);
@@ -312,7 +307,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be used alongside <a href="https://docs.woocommerce.com/document/woocommerce-services/#section-10" target="_blank">WooCommerce Services Automated Taxes</a>. Please disable automated taxes to use Simple Sales Tax.',
+				'<strong>TaxCloud for WooCommerce is inactive.</strong> TaxCloud for WooCommerce cannot be used alongside <a href="https://docs.woocommerce.com/document/woocommerce-services/#section-10" target="_blank">WooCommerce Services Automated Taxes</a>. Please disable automated taxes to use TaxCloud for WooCommerce.',
 				'simple-sales-tax'
 			)
 		);
@@ -324,7 +319,7 @@ final class SimpleSalesTax {
 	public function php_version_notice() {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
-			__( '<strong>PHP needs to be updated.</strong> Simple Sales Tax requires PHP 7.2+.', 'simple-sales-tax' ) // phpcs:ignore WordPress.Security.EscapeOutput
+			__( '<strong>PHP needs to be updated.</strong> TaxCloud for WooCommerce requires PHP 7.2+.', 'simple-sales-tax' ) // phpcs:ignore WordPress.Security.EscapeOutput
 		);
 	}
 
@@ -335,7 +330,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>WooCommerce not detected.</strong> Please install or activate WooCommerce to use Simple Sales Tax.',
+				'<strong>WooCommerce not detected.</strong> Please install or activate WooCommerce to use TaxCloud for WooCommerce.',
 				'simple-sales-tax'
 			)
 		);
@@ -348,7 +343,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>WooCommerce needs to be updated.</strong> Simple Sales Tax requires WooCommerce 6.9.0+.',
+				'<strong>WooCommerce needs to be updated.</strong> TaxCloud for WooCommerce requires WooCommerce 6.9.0+.',
 				'simple-sales-tax'
 			)
 		);
@@ -380,37 +375,30 @@ final class SimpleSalesTax {
 	 * Declare compatibility with WooCommerce's High-Performance Order Storage.
 	 */
 	public function declare_hpos_compatibility() {
-		if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
-			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
-				'custom_order_tables',
-				SST_FILE,
-				true
-			);
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
 		}
 	}
 
 	/**
-	 * Declare compatibility with the Cart & Checkout blocks.
+	 * Declare compatibility with WooCommerce's Cart and Checkout Blocks.
 	 */
 	public function declare_cart_block_compatibility() {
-		if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
-			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
-				'cart_checkout_blocks',
-				SST_FILE,
-				true
-			);
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
 		}
 	}
 
 	/**
-	 * Adds a `exemption-certificates` query var/endpoint for WooCommerce.
+	 * Adds the tax_exemptions query var.
 	 *
-	 * @param array $query_vars WC query vars.
-	 * @return array Modified query vars
+	 * @param array $query_vars Query vars.
+	 *
+	 * @return array
 	 */
 	public function add_tax_exemptions_query_var( $query_vars ) {
-		$query_vars[] = 'exemption-certificates';
+		$query_vars[] = 'tax_exemptions';
+
 		return $query_vars;
 	}
-
 }

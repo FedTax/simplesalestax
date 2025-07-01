@@ -1,12 +1,9 @@
 <?php
 /**
- * Template for My Account > Exemption Certificates page.
- * You may override this template by copying it to THEME_PATH/sst/html-my-account.php.
+ * My Account view template.
  *
- * @since   8.0.0
- * @author  Brett Porcelli
- * @package Simple Sales Tax
- * @version 8.0.0
+ * @package SST
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

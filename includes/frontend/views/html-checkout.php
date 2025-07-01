@@ -1,12 +1,9 @@
 <?php
 /**
- * Checkout tax exemption form template.
- * Override by copying to `THEME_PATH/sst/html-checkout.php`.
+ * Checkout view template.
  *
- * @since   8.0.0
- * @author  Brett Porcelli
- * @package Simple Sales Tax
- * @version 8.0.0
+ * @package SST
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

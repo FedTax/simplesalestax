@@ -7,13 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 use TaxCloud\Address;
 
 /**
- * Origin Address.
+ * Origin address class.
  *
- * Represents an origin address.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Origin_Address extends Address {
 

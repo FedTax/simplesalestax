@@ -4,9 +4,9 @@
  *
  * Functions for displaying admin notices.
  *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

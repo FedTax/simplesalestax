@@ -1,10 +1,11 @@
 <?php
 /**
- * Simple Sales Tax Dokan Integration.
+ * TaxCloud for WooCommerce Dokan Integration.
  *
- * Integrates Simple Sales Tax with Dokan.
+ * Integrates TaxCloud for WooCommerce with Dokan.
  *
- * @package simple-sales-tax
+ * @package SST
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -101,7 +102,7 @@ class SST_Dokan extends SST_Marketplace_Integration {
 				printf(
 					/* translators: minimum supported Dokan version */
 					esc_html__(
-						'Simple Sales Tax does not support the installed version of Dokan. Dokan %s+ is required.',
+						'TaxCloud for WooCommerce does not support the installed version of Dokan. Dokan %s+ is required.',
 						'simple-sales-tax'
 					),
 					esc_html( $this->min_version )

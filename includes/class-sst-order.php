@@ -8,13 +8,13 @@ use \TaxCloud\ExemptionCertificate;
 use \TaxCloud\ExemptionCertificateBase;
 
 /**
- * Order.
+ * Order class.
  *
  * Extends WC_Order to add extra functionality.
  *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Order extends SST_Abstract_Cart {
 

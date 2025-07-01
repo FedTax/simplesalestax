@@ -7,13 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 use Automattic\WooCommerce\Utilities\RestApiUtil;
 
 /**
- * SST Integration.
+ * WooCommerce integration for TaxCloud for WooCommerce.
  *
- * WooCommerce integration for Simple Sales Tax.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Integration extends WC_Integration {
 
@@ -24,9 +22,9 @@ class SST_Integration extends WC_Integration {
 	 */
 	public function __construct() {
 		$this->id                 = 'wootax';
-		$this->method_title       = __( 'Simple Sales Tax', 'simple-sales-tax' );
+		$this->method_title       = __( 'TaxCloud for WooCommerce', 'simple-sales-tax' );
 		$this->method_description = __(
-			'<p>Simple Sales Tax makes sales tax easy by connecting your store with <a href="https://www.taxcloud.com" target="_blank">TaxCloud</a>. If you have trouble with Simple Sales Tax, please consult the <a href="https://wordpress.org/plugins/simple-sales-tax/#faq-header" target="_blank">FAQ</a> and the <a href="https://wordpress.org/plugins/simple-sales-tax/#installation" target="_blank">Installation Guide</a> before contacting support.</p><p>Need help? <a href="https://taxcloud.com/contact-us/" target="_blank">Contact us</a>.</p>',
+			'<p>TaxCloud for WooCommerce makes sales tax easy by connecting your store with <a href="https://www.taxcloud.com" target="_blank">TaxCloud</a>. If you have trouble with TaxCloud for WooCommerce, please consult the <a href="https://wordpress.org/plugins/simple-sales-tax/#faq-header" target="_blank">FAQ</a> and the <a href="https://wordpress.org/plugins/simple-sales-tax/#installation" target="_blank">installation guide</a>.</p><p>Need help? <a href="https://taxcloud.com/contact-us/" target="_blank">Contact us</a>.</p>',
 			'simple-sales-tax'
 		);
 
