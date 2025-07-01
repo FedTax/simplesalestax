@@ -82,11 +82,13 @@ class SST_Order_Controller {
 		try {
 			$result = $order->do_refund( $refund );
 
-			if ( ! $result ) {
-				$refund->delete( true );
-			}
+			// Avoid Deleting the refund - WooApi errors if the refund is deleted
+			// if ( ! $result ) {
+			// 	$refund->delete( true );
+			// }
 		} catch ( Exception $ex ) {
-			$refund->delete( true );
+			// Avoid Deleting the refund - WooApi errors if the refund is deleted
+			// $refund->delete( true );
 			throw $ex; /* Let Woo handle the exception */
 		}
 
