@@ -436,13 +436,16 @@ class SST_Deposits_For_WC {
 			return $total;
 		}
 
-		$post_data = array();
-		parse_str( $_POST['post_data'], $post_data );
+		$post_data_raw = sanitize_text_field( wp_unslash( $_POST['post_data'] ) );
 
-		$_POST['wcd_option'] = $post_data['wcd_option'] ?? '';
+		$post_data = array();
+		parse_str( $post_data_raw, $post_data );
+
+		$_POST['wcd_option'] = isset( $post_data['wcd_option'] ) ? sanitize_text_field( $post_data['wcd_option'] ) : '';
 
 		return $total;
 	}
+
 
 	/**
 	 * Adjust the total of the items in a set of cart packages to match

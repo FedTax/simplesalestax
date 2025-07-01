@@ -111,6 +111,10 @@ Now that you have tested your website and verified that TaxCloud for WooCommerce
 
 == Frequently Asked Questions ==
 
+= How much does TaxCloud cost? =
+
+TaxCloud offers flexible pricing designed for businesses of all sizes. Visit the [TaxCloud Pricing page](https://taxcloud.com/taxcloud-pricing/) to explore our free and premium plans, which include features like nexus tracking, automated filings, and multi-state support.
+
 = Does TaxCloud for WooCommerce work with WooCommerce Subscriptions? =
 
 Yes! TaxCloud for WooCommerce is fully compatible with the official WooCommerce Subscriptions extension.
@@ -156,6 +160,7 @@ If you need help with TaxCloud for WooCommerce, you can:
 * Added generic shipping compatibility integration
 * Fixed PHP 8 compatibility issues
 * Improved error handling and logging
+* Rebranded from "Simple Sales Tax" to "TaxCloud for WooCommerce"
 
 = 8.2.4 =
 * Fixed compatibility with various shipping plugins

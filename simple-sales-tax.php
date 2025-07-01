@@ -12,6 +12,7 @@
  * WC tested up to:      8.5.0
  * Author:               TaxCloud
  * Author URI:           https://taxcloud.com
+ * GitHub Plugin URI:    https://github.com/bporcelli/simplesalestax
  * License:              GPL v2 or later
  * License URI:          http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:          simple-sales-tax

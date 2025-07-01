@@ -1,6 +1,24 @@
 Changelog for TaxCloud for WooCommerce
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+- [8.2.4] - 2025-04-24 =
+
+Changed:
+- Verified compatibility with **WPC Composite Products for WooCommerce** by WPClever.
+- Verified compatibility with **WordPress 6.8**.
+
+Fixed:
+- Resolved a compatibility issue with the **"Tax Exemption for WooCommerce (PRO)"** plugin by RelyWP where exempted customers were not being correctly processed.
+
+- [8.2.3] - 2025-02-19 =
+
+Changed:
+- Change description
+
+- [8.2.2] - 2025-01-17 =
+
+Fixed:
+- Calculate Tax when edit subscription
 
 - [8.2.1] - 2024-10-24 =
 

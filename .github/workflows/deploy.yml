@@ -7,7 +7,7 @@ on:
 jobs:
   deploy:
     name: Deploy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v2.4.2
@@ -27,7 +27,7 @@ jobs:
 
       - name: Deploy to WP.org
         id: plugin-deploy
-        uses: 10up/action-wordpress-plugin-deploy@2.1.0
+        uses: 10up/action-wordpress-plugin-deploy@2.3.0
         with:
           generate-zip: true
         env:

@@ -681,7 +681,7 @@ class SST_Order extends SST_Abstract_Cart {
 
 		// Send AuthorizedWithCapture for all packages.
 		foreach ( $packages as $key => $package ) {
-			$now      = date( 'c' );
+			$now      = gmdate( 'c' );
 			$order_id = $this->get_package_order_id( $key, $package );
 
 			try {
@@ -830,7 +830,7 @@ class SST_Order extends SST_Abstract_Cart {
 						$this->api_key,
 						$order_id,
 						$refund_items,
-						date( 'c' )
+						gmdate( 'c' )
 					);
 
 					TaxCloud()->Returned( $request );

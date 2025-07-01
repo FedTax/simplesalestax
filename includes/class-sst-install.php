@@ -282,12 +282,9 @@ class SST_Install {
 
 		// Get existing rate, if any.
 		$rate_id  = get_option( 'wootax_rate_id', 0 );
-		$existing = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $tax_rates_table WHERE tax_rate_id = %d;",
-				$rate_id
-			)
-		);
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tax_rates_table WHERE tax_rate_id = %d;",$rate_id));
 
 		// Add or update tax rate.
 		$_tax_rate = array(

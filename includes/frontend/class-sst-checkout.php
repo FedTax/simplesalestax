@@ -70,6 +70,14 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function calculate_tax_totals( $total, $cart ) {
+		// The Tax Exemption for WooCommerce (PRO) plugin sets the
+		// is_tax_exempt session variable, and we need to respect that so we
+		// can allow customers that aren't logged in to show no tax when
+		// they're tax-exempt.
+		if ( WC()->session->get( 'is_tax_exempt', false ) ) {
+			return $total;
+		}
+
 		$tax_total = 0;
 
 		$this->cart = new SST_Cart_Proxy( $cart );
@@ -78,7 +86,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 			is_cart() ||
 			is_checkout() ||
 			doing_action( 'wc_ajax_square_digital_wallet_recalculate_totals' ) ||
-			$this->is_store_api_request()
+			$this->is_store_api_request() ||
+			$this->is_edit_subscription_request()
 		);
 
 		if ( apply_filters( 'sst_calculate_tax_totals', $should_calculate ) ) {
@@ -110,7 +119,18 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$rest_route = $wp->query_vars['rest_route'] ?? '';
 		return 0 === strpos( $rest_route, '/wc/store/' );
 	}
-
+    /**
+     * Check come from edit-subscription
+     * @return bool
+     */
+    protected function is_edit_subscription_request() {
+        global $wp;
+        $subscriptionId = $wp->query_vars['edit-subscription'] ?? '';
+        if(!$subscriptionId){
+            $subscriptionId = $wp->query_vars['view-subscription'] ?? '';
+        }
+        return $subscriptionId > 0;
+    }
 	/**
 	 * Calculates the tax due for the cart.
 	 */
@@ -628,7 +648,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 				)
 			);
 
-			throw new Exception( $ex->getMessage() );
+			throw new Exception( esc_html( $ex->getMessage() ) );
 		}
 	}
 
@@ -972,7 +992,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$this->validate_checkout( $data, $error );
 
 		if ( $error->has_errors() ) {
-			throw new RouteException( 'sst_checkout_invalid_fields', $error->get_error_message(), 400 );
+			throw new RouteException(
+				'sst_checkout_invalid_fields',
+				esc_html( sanitize_text_field( $error->get_error_message() ) ),
+				400
+			);
 		}
 
 		$this->process_checkout( $data, $order );
