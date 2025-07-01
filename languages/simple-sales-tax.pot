@@ -1,20 +1,21 @@
-# Copyright (C) 2024 simple-sales-tax
+# Copyright (C) 2025 Simple Sales Tax
 # This file is distributed under the GPL-3.0+ license.
 msgid ""
 msgstr ""
-"Project-Id-Version: simple-sales-tax 8.2.0\n"
-"Report-Msgid-Bugs-To: TaxCloud <EMAIL>\n"
+"Project-Id-Version: Simple Sales Tax 8.2.5-beta.3\n"
+"Report-Msgid-Bugs-To: "
+"https://wordpress.org/support/plugins/simple-sales-tax\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Content-Type: text/plain; charset=iso-8859-1\n"
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
-"POT-Creation-Date: 2024-09-13T00:45:01.532Z\n"
-"PO-Revision-Date: 2024-MO-DA HO:MI+ZONE\n"
-"Last-Translator: TaxCloud <EMAIL>\n"
-"Language-Team: TaxCloud <EMAIL>\n"
-"X-Generator: @wp-blocks/make-pot 1.4.0\n"
+"POT-Creation-Date: 2025-06-26T23:35:40.200Z\n"
+"PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
+"Last-Translator: TaxCloud <support@simplesalestax.com>\n"
+"Language-Team: TaxCloud <support@simplesalestax.com>\n"
+"X-Generator: @wp-blocks/make-pot 1.6.0\n"
 "Language: en\n"
-"domain: X-Domain: simple-sales-tax\n"
+"X-Domain: simple-sales-tax\n"
 
 #: simple-sales-tax.php
 #: includes/admin/class-sst-integration.php:27
@@ -467,7 +468,7 @@ msgstr ""
 msgid "Invalid request."
 msgstr ""
 
-#: includes/class-simplesalestax.php:287
+#: includes/class-simplesalestax.php:291
 msgid ""
 "<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be "
 "used alongside the <a "
@@ -476,7 +477,7 @@ msgid ""
 "TaxJar to use Simple Sales Tax."
 msgstr ""
 
-#: includes/class-simplesalestax.php:300
+#: includes/class-simplesalestax.php:304
 msgid ""
 "<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be "
 "used alongside the <a "
@@ -485,7 +486,7 @@ msgid ""
 "WooCommerce AvaTax to use Simple Sales Tax."
 msgstr ""
 
-#: includes/class-simplesalestax.php:314
+#: includes/class-simplesalestax.php:318
 msgid ""
 "<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be "
 "used alongside <a "
@@ -494,19 +495,19 @@ msgid ""
 "disable automated taxes to use Simple Sales Tax."
 msgstr ""
 
-#: includes/class-simplesalestax.php:327
+#: includes/class-simplesalestax.php:331
 msgid ""
 "<strong>PHP needs to be updated.</strong> Simple Sales Tax requires PHP "
 "7.2+."
 msgstr ""
 
-#: includes/class-simplesalestax.php:337
+#: includes/class-simplesalestax.php:341
 msgid ""
 "<strong>WooCommerce not detected.</strong> Please install or activate "
 "WooCommerce to use Simple Sales Tax."
 msgstr ""
 
-#: includes/class-simplesalestax.php:350
+#: includes/class-simplesalestax.php:354
 msgid ""
 "<strong>WooCommerce needs to be updated.</strong> Simple Sales Tax requires "
 "WooCommerce 6.9.0+."
@@ -870,8 +871,15 @@ msgid ""
 msgstr ""
 
 # 1 - Renewal order ID, 2 - Error message
-#: includes/integrations/class-sst-subscriptions.php:88
+#: includes/integrations/class-sst-subscriptions.php:89
 msgid "Failed to calculate sales tax for renewal order %1$d: %2$s."
+msgstr ""
+
+#: includes/integrations/class-sst-shipping-compatibility.php:315
+msgid ""
+"Simple Sales Tax has detected and is now compatible with: %s. Tax "
+"calculations for shipping charges from these plugins will be handled "
+"automatically."
 msgstr ""
 
 # minimum supported Dokan version
@@ -890,11 +898,11 @@ msgid "Exemption certificates"
 msgstr ""
 
 # 1 - error message
-#: includes/frontend/class-sst-checkout.php:625
+#: includes/frontend/class-sst-checkout.php:645
 msgid "Failed to add exemption certificate during checkout. Error was: %1$s"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:858
+#: includes/frontend/class-sst-checkout.php:878
 msgid "Required exemption certificate fields are missing"
 msgstr ""
 
@@ -1108,4 +1116,14 @@ msgstr ""
 
 #: assets/js/blocks/tax-exemption/constants.js:103
 msgid "Select a reason"
+msgstr ""
+
+#: block.json
+#. block title
+msgid "Tax Exemption Block"
+msgstr ""
+
+#: block.json
+#. block description
+msgid "Adds a tax exemption form to the checkout."
 msgstr ""
