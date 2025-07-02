@@ -1,20 +1,21 @@
-# Copyright (C) 2024 simple-sales-tax
-# This file is distributed under the GPL-3.0+ license.
+# Copyright (C) 2025 Simple Sales Tax
+# This file is distributed under the GPLv2 or later license.
 msgid ""
 msgstr ""
-"Project-Id-Version: simple-sales-tax 8.2.0\n"
-"Report-Msgid-Bugs-To: TaxCloud <EMAIL>\n"
+"Project-Id-Version: Simple Sales Tax 8.2.4\n"
+"Report-Msgid-Bugs-To: "
+"https://wordpress.org/support/plugins/simple-sales-tax\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Content-Type: text/plain; charset=iso-8859-1\n"
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
-"POT-Creation-Date: 2024-09-13T00:45:01.532Z\n"
-"PO-Revision-Date: 2024-MO-DA HO:MI+ZONE\n"
-"Last-Translator: TaxCloud <EMAIL>\n"
-"Language-Team: TaxCloud <EMAIL>\n"
-"X-Generator: @wp-blocks/make-pot 1.4.0\n"
+"POT-Creation-Date: 2025-07-02T23:51:37.545Z\n"
+"PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
+"Last-Translator: TaxCloud <support@taxcloud.com>\n"
+"Language-Team: TaxCloud <support@taxcloud.com>\n"
+"X-Generator: @wp-blocks/make-pot 1.6.0\n"
 "Language: en\n"
-"domain: X-Domain: simple-sales-tax\n"
+"X-Domain: simple-sales-tax\n"
 
 #: simple-sales-tax.php
 #: includes/admin/class-sst-integration.php:27
@@ -45,18 +46,18 @@ msgstr ""
 msgid "https://taxcloud.com"
 msgstr ""
 
-#: includes/sst-update-functions.php:573
+#: includes/sst-update-functions.php:562
 #: includes/class-sst-order.php:316
 #: includes/class-sst-order.php:908
 msgid "Fee"
 msgstr ""
 
 # 1 - WooCommerce order ID, 2 - Error message
-#: includes/sst-update-functions.php:709
+#: includes/sst-update-functions.php:698
 msgid "Failed to refund extraneous package for order #%1$d: %2$s."
 msgstr ""
 
-#: includes/sst-update-functions.php:941
+#: includes/sst-update-functions.php:930
 msgid ""
 "<strong>IMPORTANT: Your TaxCloud Locations are out of sync.</strong> One or "
 "more of the addresses from your Simple Sales Tax settings are not "
@@ -101,21 +102,21 @@ msgid "Certificate added successfully! Don't forget to recalculate taxes."
 msgstr ""
 
 #: includes/sst-functions.php:414
-#: includes/sst-functions.php:477
+#: includes/sst-functions.php:478
 msgid "Failed to add certificate"
 msgstr ""
 
-#: includes/sst-functions.php:476
+#: includes/sst-functions.php:477
 msgid "Failed to delete certificate"
 msgstr ""
 
-#: includes/sst-functions.php:478
+#: includes/sst-functions.php:479
 msgid ""
 "Are you sure you want to delete this certificate? This action is "
 "irreversible."
 msgstr ""
 
-#: includes/sst-functions.php:561
+#: includes/sst-functions.php:562
 msgid "Sales Tax"
 msgstr ""
 
@@ -611,12 +612,12 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:16
+#: includes/views/html-certificate-form.php:18
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:67
 msgid "WARNING:"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:18
+#: includes/views/html-certificate-form.php:20
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:68
 msgid ""
 "You are responsible for knowing if you qualify to claim exemption from tax "
@@ -625,219 +626,219 @@ msgid ""
 "member state, if you are not eligible to claim this exemption."
 msgstr ""
 
-#: includes/views/html-certificate-form.php:31
+#: includes/views/html-certificate-form.php:33
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:80
 msgid "This is a single-purchase exemption certificate"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:50
+#: includes/views/html-certificate-form.php:52
 msgid "Where does this exemption apply?"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:65
+#: includes/views/html-certificate-form.php:67
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:103
 msgid "Tax ID type"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:71
-#: includes/views/html-certificate-form.php:106
-#: includes/views/html-certificate-form.php:130
-#: includes/views/html-certificate-form.php:247
+#: includes/views/html-certificate-form.php:73
+#: includes/views/html-certificate-form.php:108
+#: includes/views/html-certificate-form.php:132
+#: includes/views/html-certificate-form.php:249
 msgid "Select one"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:72
+#: includes/views/html-certificate-form.php:74
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:117
 msgid "Federal Employer ID"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:73
+#: includes/views/html-certificate-form.php:75
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:110
 msgid "State Issued Exemption ID or Drivers License"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:88
+#: includes/views/html-certificate-form.php:90
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:145
 msgid "Tax ID"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:105
+#: includes/views/html-certificate-form.php:107
 msgid "ID issued by..."
 msgstr ""
 
-#: includes/views/html-certificate-form.php:121
+#: includes/views/html-certificate-form.php:123
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:153
 msgid "Business type"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:134
+#: includes/views/html-certificate-form.php:136
 #: assets/js/blocks/tax-exemption/constants.js:14
 msgid "Accommodation And Food Services"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:138
+#: includes/views/html-certificate-form.php:140
 #: assets/js/blocks/tax-exemption/constants.js:18
 msgid "Agricultural/Forestry/Fishing/Hunting"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:142
+#: includes/views/html-certificate-form.php:144
 #: assets/js/blocks/tax-exemption/constants.js:25
 msgid "Construction"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:146
+#: includes/views/html-certificate-form.php:148
 #: assets/js/blocks/tax-exemption/constants.js:29
 msgid "Finance or Insurance"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:150
+#: includes/views/html-certificate-form.php:152
 #: assets/js/blocks/tax-exemption/constants.js:33
 msgid "Information Publishing and Communications"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:154
+#: includes/views/html-certificate-form.php:156
 #: assets/js/blocks/tax-exemption/constants.js:40
 msgid "Manufacturing"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:158
+#: includes/views/html-certificate-form.php:160
 #: assets/js/blocks/tax-exemption/constants.js:44
 msgid "Mining"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:162
+#: includes/views/html-certificate-form.php:164
 #: assets/js/blocks/tax-exemption/constants.js:48
 msgid "Real Estate"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:166
+#: includes/views/html-certificate-form.php:168
 #: assets/js/blocks/tax-exemption/constants.js:52
 msgid "Rental and Leasing"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:170
+#: includes/views/html-certificate-form.php:172
 #: assets/js/blocks/tax-exemption/constants.js:56
 msgid "Retail Trade"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:174
+#: includes/views/html-certificate-form.php:176
 #: assets/js/blocks/tax-exemption/constants.js:60
 msgid "Transportation and Warehousing"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:178
+#: includes/views/html-certificate-form.php:180
 #: assets/js/blocks/tax-exemption/constants.js:64
 msgid "Utilities"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:182
+#: includes/views/html-certificate-form.php:184
 #: assets/js/blocks/tax-exemption/constants.js:68
 msgid "Wholesale Trade"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:186
+#: includes/views/html-certificate-form.php:188
 #: assets/js/blocks/tax-exemption/constants.js:72
 msgid "Business Services"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:190
+#: includes/views/html-certificate-form.php:192
 #: assets/js/blocks/tax-exemption/constants.js:76
 msgid "Professional Services"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:194
+#: includes/views/html-certificate-form.php:196
 #: assets/js/blocks/tax-exemption/constants.js:80
 msgid "Education and Health Care Services"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:198
+#: includes/views/html-certificate-form.php:200
 #: assets/js/blocks/tax-exemption/constants.js:84
 msgid "Nonprofit Organization"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:202
+#: includes/views/html-certificate-form.php:204
 #: assets/js/blocks/tax-exemption/constants.js:88
 msgid "Government"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:206
+#: includes/views/html-certificate-form.php:208
 #: assets/js/blocks/tax-exemption/constants.js:92
 msgid "Not a Business"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:210
-#: includes/views/html-certificate-form.php:292
+#: includes/views/html-certificate-form.php:212
+#: includes/views/html-certificate-form.php:294
 #: assets/js/blocks/tax-exemption/constants.js:96
 #: assets/js/blocks/tax-exemption/constants.js:158
 msgid "Other"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:225
-#: includes/views/html-certificate-form.php:309
+#: includes/views/html-certificate-form.php:227
+#: includes/views/html-certificate-form.php:311
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:199
 msgid "Please explain"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:226
+#: includes/views/html-certificate-form.php:228
 msgid "Explain the nature of your business."
 msgstr ""
 
-#: includes/views/html-certificate-form.php:241
+#: includes/views/html-certificate-form.php:243
 #: assets/js/blocks/tax-exemption/new-certificate-form.js:187
 msgid "Reason for exemption"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:248
+#: includes/views/html-certificate-form.php:250
 #: assets/js/blocks/tax-exemption/constants.js:108
 msgid "Federal Government Department"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:252
+#: includes/views/html-certificate-form.php:254
 #: assets/js/blocks/tax-exemption/constants.js:112
 msgid "State Or Local Government"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:256
+#: includes/views/html-certificate-form.php:258
 #: assets/js/blocks/tax-exemption/constants.js:116
 msgid "Tribal Government"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:260
+#: includes/views/html-certificate-form.php:262
 #: assets/js/blocks/tax-exemption/constants.js:120
 msgid "Foreign Diplomat"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:264
+#: includes/views/html-certificate-form.php:266
 #: assets/js/blocks/tax-exemption/constants.js:124
 msgid "Charitable Organization"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:268
+#: includes/views/html-certificate-form.php:270
 #: assets/js/blocks/tax-exemption/constants.js:128
 msgid "Religious or Educational Organization"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:272
+#: includes/views/html-certificate-form.php:274
 #: assets/js/blocks/tax-exemption/constants.js:135
 msgid "Resale"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:276
+#: includes/views/html-certificate-form.php:278
 #: assets/js/blocks/tax-exemption/constants.js:139
 msgid "Agricultural Production"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:280
+#: includes/views/html-certificate-form.php:282
 #: assets/js/blocks/tax-exemption/constants.js:143
 msgid "Industrial Production or Manufacturing"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:284
+#: includes/views/html-certificate-form.php:286
 #: assets/js/blocks/tax-exemption/constants.js:150
 msgid "Direct Pay Permit"
 msgstr ""
 
-#: includes/views/html-certificate-form.php:288
+#: includes/views/html-certificate-form.php:290
 #: assets/js/blocks/tax-exemption/constants.js:154
 msgid "Direct Mail"
 msgstr ""
@@ -858,7 +859,7 @@ msgstr ""
 #: includes/integrations/class-sst-wcmp.php:161
 #: includes/integrations/class-sst-wcfm.php:148
 #: includes/integrations/class-sst-wcfm.php:190
-#: includes/admin/class-sst-admin.php:247
+#: includes/admin/class-sst-admin.php:254
 msgid "Taxability Information Code"
 msgstr ""
 
@@ -870,7 +871,7 @@ msgid ""
 msgstr ""
 
 # 1 - Renewal order ID, 2 - Error message
-#: includes/integrations/class-sst-subscriptions.php:88
+#: includes/integrations/class-sst-subscriptions.php:89
 msgid "Failed to calculate sales tax for renewal order %1$d: %2$s."
 msgstr ""
 
@@ -890,11 +891,11 @@ msgid "Exemption certificates"
 msgstr ""
 
 # 1 - error message
-#: includes/frontend/class-sst-checkout.php:625
+#: includes/frontend/class-sst-checkout.php:645
 msgid "Failed to add exemption certificate during checkout. Error was: %1$s"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:858
+#: includes/frontend/class-sst-checkout.php:878
 msgid "Required exemption certificate fields are missing"
 msgstr ""
 
@@ -915,13 +916,13 @@ msgstr ""
 msgid "Select origin addresses"
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:181
+#: includes/admin/class-sst-integration.php:182
 msgid ""
 "Enter your TaxCloud API credentials and click <strong>Save changes</strong> "
 "to configure your Origin Addresses."
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:192
+#: includes/admin/class-sst-integration.php:195
 msgid ""
 "Oops! It appears there are no addresses in your TaxCloud account. Please "
 "add at least one address on the <a "
@@ -930,7 +931,7 @@ msgid ""
 "settings to refresh the address list."
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:228
+#: includes/admin/class-sst-integration.php:232
 msgid "Please select at least one origin address."
 msgstr ""
 
@@ -962,15 +963,15 @@ msgstr ""
 msgid "Tax rate cache cleared."
 msgstr ""
 
-#: includes/admin/class-sst-admin.php:255
+#: includes/admin/class-sst-admin.php:262
 msgid "This TIC will be used as the default for all products in this category."
 msgstr ""
 
-#: includes/admin/class-sst-admin.php:292
+#: includes/admin/class-sst-admin.php:300
 msgid "Heads up!"
 msgstr ""
 
-#: includes/admin/class-sst-admin.php:293
+#: includes/admin/class-sst-admin.php:301
 msgid ""
 "The WooCommerce \"Calculate tax based on\" setting is not respected by "
 "Simple Sales Tax. The customer billing address will only be used for tax "
@@ -978,11 +979,11 @@ msgid ""
 "digital goods)."
 msgstr ""
 
-#: includes/admin/class-sst-admin.php:326
+#: includes/admin/class-sst-admin.php:334
 msgid "Exemption Certificates"
 msgstr ""
 
-#: includes/admin/class-sst-admin.php:330
+#: includes/admin/class-sst-admin.php:338
 msgid "Manage this customer's TaxCloud exemption certificates."
 msgstr ""
 
@@ -1108,4 +1109,14 @@ msgstr ""
 
 #: assets/js/blocks/tax-exemption/constants.js:103
 msgid "Select a reason"
+msgstr ""
+
+#: block.json
+#. block title
+msgid "Tax Exemption Block"
+msgstr ""
+
+#: block.json
+#. block description
+msgid "Adds a tax exemption form to the checkout."
 msgstr ""

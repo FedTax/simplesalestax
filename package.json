@@ -24,7 +24,7 @@
     "woocommerce",
     "sales tax"
   ],
-  "author": "Simple Sales Tax",
+  "author": "TaxCloud <support@taxcloud.com>",
   "license": "GPL-3.0+",
   "bugs": {
     "url": "https://github.com/bporcelli/simplesalestax/issues"

@@ -10,6 +10,7 @@ import { registerBlockType } from '@wordpress/blocks';
 import { Edit, Save } from './edit';
 import metadata from './block.json';
 
+// Register the block using the metadata from block.json
 registerBlockType( metadata, {
 	icon: {
 		src: (
