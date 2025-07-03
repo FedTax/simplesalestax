@@ -5,13 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Addresses.
+ * Addresses class.
  *
- * Contains methods for getting and validating origin and destination addresses.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Addresses {
 

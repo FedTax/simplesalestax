@@ -1,12 +1,10 @@
 <?php
 /**
- * SST functions.
+ * Plugin functions.
  *
- * Utility functions used throughout the plugin.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

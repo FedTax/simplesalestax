@@ -1,4 +1,4 @@
-Changelog for Simple Sales Tax
+Changelog for TaxCloud for WooCommerce
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - [8.2.4] - 2025-04-24 =

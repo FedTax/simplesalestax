@@ -5,13 +5,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * My Account.
+ * My Account class.
  *
  * Responsible for outputting the interface to manage exemption certificates on the WooCommerce My Account page.
  *
- * @author  Simple Sales Tax
  * @package SST
- * @since   7.1
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_My_Account {
 	/**

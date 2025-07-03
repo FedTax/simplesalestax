@@ -5,13 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Class SST_TIC.
+ * TIC (Taxability Information Code) class.
  *
- * Represents a Taxability Information Code (TIC).
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_TIC implements JsonSerializable {
 

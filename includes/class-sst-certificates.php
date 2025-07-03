@@ -5,13 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Certificates.
+ * Certificates class.
  *
- * Used for creating, updating, and deleting customer exemption certificates.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Certificates {
 

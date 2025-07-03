@@ -5,13 +5,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Shipping.
+ * Shipping class.
  *
  * Contains functionality related to shipping.
  *
- * @author  Simple Sales Tax
+ * @author  TaxCloud
  * @package SST
- * @since   5.0
+ * @since   1.0
  */
 class SST_Shipping {
 

@@ -1,10 +1,11 @@
 <?php
 /**
- * Simple Sales Tax WC Vendors Pro Integration.
+ * TaxCloud for WooCommerce WC Vendors Pro Integration.
  *
- * Integrates Simple Sales Tax with WC Vendors Pro.
+ * Integrates TaxCloud for WooCommerce with WC Vendors Pro.
  *
- * @package simple-sales-tax
+ * @package SST
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -86,7 +87,7 @@ class SST_WC_Vendors extends SST_Marketplace_Integration {
 				printf(
 					/* translators: minimum supported WC Vendors Pro version */
 					esc_html__(
-						'Simple Sales Tax does not support the installed version of WC Vendors Pro. WC Vendors Pro %s+ is required.',
+						'TaxCloud for WooCommerce does not support the installed version of WC Vendors Pro. WC Vendors Pro %s+ is required.',
 						'simple-sales-tax'
 					),
 					esc_html( $this->min_version )

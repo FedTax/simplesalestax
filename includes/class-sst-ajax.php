@@ -5,13 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * SST Ajax.
+ * AJAX handler class.
  *
- * Ajax functions.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Ajax {
 

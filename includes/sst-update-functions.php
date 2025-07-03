@@ -4,9 +4,9 @@
  *
  * Callbacks invoked by the SST updater.
  *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -926,9 +926,14 @@ function _sst_update_620_get_address_mismatch_notice( $mismatched_addresses ) {
 
 	$address_list_html .= '</ul>';
 
-	// translators: %1$s is the dismiss link URL. %2$s is the HTML list of missing addresses.
-	return sprintf( __( '<strong>IMPORTANT: Your TaxCloud Locations are out of sync.</strong> One or more of the addresses from your Simple Sales Tax settings are not registered as Locations in your TaxCloud account. Please add all of the addresses listed below on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud, then click Dismiss to dismiss this notice. %2$s', 'simple-sales-tax' ), add_query_arg( $dismiss_args, admin_url( 'admin.php' ) ), $address_list_html );
-
+	return sprintf(
+		__(
+			'<strong>IMPORTANT: Your TaxCloud Locations are out of sync.</strong> One or more of the addresses from your TaxCloud for WooCommerce settings are not registered as Locations in your TaxCloud account. Please add all of the addresses listed below on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud, then click Dismiss to dismiss this notice. %2$s',
+			'simple-sales-tax'
+		),
+		add_query_arg( $dismiss_args, admin_url( 'admin.php' ) ),
+		$address_list_html
+	);
 }
 
 /**

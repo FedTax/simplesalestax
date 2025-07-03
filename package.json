@@ -1,5 +1,5 @@
 {
-  "name": "simplesalestax",
+  "name": "taxcloud-for-woocommerce",
   "version": "8.2.4",
   "description": "A TaxCloud integration for WooCommerce.",
   "scripts": {
@@ -22,9 +22,10 @@
   "keywords": [
     "wordpress",
     "woocommerce",
-    "sales tax"
+    "sales tax",
+    "taxcloud"
   ],
-  "author": "Simple Sales Tax",
+  "author": "TaxCloud <support@taxcloud.com>",
   "license": "GPL-3.0+",
   "bugs": {
     "url": "https://github.com/bporcelli/simplesalestax/issues"

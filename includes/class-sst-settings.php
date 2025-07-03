@@ -7,6 +7,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 use \Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils;
 
 /**
+ * Handles plugin settings.
+ *
+ * @package SST
+ * @author  TaxCloud
+ * @since   1.0
+ */
+
+/**
  * SST Settings.
  *
  * Contains methods for getting/setting plugin options.
@@ -84,13 +92,11 @@ class SST_Settings {
 		);
 
 		$fields = array(
-			'taxcloud_settings'           => array(
-				'title'       => __( 'TaxCloud Settings', 'simple-sales-tax' ),
-				'type'        => 'title',
-				'description' => __(
-					'You must enter a valid TaxCloud API ID and API Key for Simple Sales Tax to work properly. Use the "Verify Settings" button to test your settings.',
-					'simple-sales-tax'
-				),
+			'section_title' => array(
+				'name' => __( 'TaxCloud Settings', 'simple-sales-tax' ),
+				'type' => 'title',
+				'desc' => __( 'You must enter a valid TaxCloud API ID and API Key for TaxCloud for WooCommerce to work properly. Use the "Verify Settings" button to test your settings.', 'simple-sales-tax' ),
+				'id'   => 'sst_settings_title',
 			),
 			'tc_id'                       => array(
 				'title'       => __( 'TaxCloud API ID', 'simple-sales-tax' ),
@@ -123,13 +129,11 @@ class SST_Settings {
 				'desc_tip'    => true,
 				'id'          => 'verifySettings',
 			),
-			'address_settings'            => array(
-				'title'       => __( 'Address Settings', 'simple-sales-tax' ),
-				'type'        => 'title',
-				'description' => __(
-					'To accurately determine the sales tax for an order, Simple Sales Tax needs to know the locations you ship your products from.<br>You can select from the addresses entered on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud.',
-					'simple-sales-tax'
-				),
+			'address_settings_title' => array(
+				'name' => __( 'Address Settings', 'simple-sales-tax' ),
+				'type' => 'title',
+				'desc' => __( 'To accurately determine the sales tax for an order, TaxCloud for WooCommerce needs to know the locations you ship your products from.<br>You can select from the addresses entered on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud.', 'simple-sales-tax' ),
+				'id'   => 'sst_address_settings_title',
 			),
 			'default_origin_addresses'      => array(
 				'title'       => __( 'Shipping Origin Addresses', 'simple-sales-tax' ),
@@ -292,28 +296,17 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
-			'remove_all_data'             => array(
-				'title'       => __( 'Remove All Data', 'simple-sales-tax' ),
-				'label'       => ' ',
-				'type'        => 'checkbox',
-				'default'     => 'no',
-				'description' => __(
-					'When this feature is enabled, all Simple Sales Tax options and data will be removed when you click deactivate and delete the plugin.',
-					'simple-sales-tax'
-				),
-				'desc_tip'    => true,
+			'remove_data'                 => array(
+				'name' => __( 'Remove Data on Uninstall', 'simple-sales-tax' ),
+				'type' => 'checkbox',
+				'desc' => __( 'When this feature is enabled, all TaxCloud for WooCommerce options and data will be removed when you click deactivate and delete the plugin.', 'simple-sales-tax' ),
+				'id'   => 'sst_remove_data',
 			),
-			'debug_report_button'         => array(
-				'title'       => __( 'Debug Report', 'simple-sales-tax' ),
-				'label'       => __( 'Download', 'simple-sales-tax' ),
-				'type'        => 'anchor',
-				'url'         => add_query_arg( 'download_debug_report', true ),
-				'id'          => 'debug_report_button',
-				'description' => __(
-					'Send a copy of this report to TaxCloud support to help with debugging Simple Sales Tax issues.',
-					'simple-sales-tax'
-				),
-				'desc_tip'    => true,
+			'debug_mode'                => array(
+				'name' => __( 'Debug Mode', 'simple-sales-tax' ),
+				'type' => 'checkbox',
+				'desc' => __( 'When selected, TaxCloud for WooCommerce will log all requests sent to TaxCloud for debugging purposes.', 'simple-sales-tax' ),
+				'id'   => 'sst_debug_mode',
 			),
 		);
 

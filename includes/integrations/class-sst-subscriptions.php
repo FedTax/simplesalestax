@@ -5,13 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Subscriptions.
+ * WooCommerce Subscriptions integration.
  *
- * Enables WooCommerce Subscriptions support.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Subscriptions {
 
@@ -301,7 +299,9 @@ class SST_Subscriptions {
 	}
 
 	/**
-	 * Filters `wootax_save_packages_for_capture` to prevent Simple Sales Tax from sending recurring totals to TaxCloud.
+	 * Filters `wootax_save_packages_for_capture` to prevent TaxCloud for WooCommerce from sending recurring totals to TaxCloud.
+	 *
+	 * @param bool $save_packages Whether to save packages for capture.
 	 *
 	 * @return bool
 	 */
