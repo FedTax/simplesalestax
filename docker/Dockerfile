@@ -161,6 +161,9 @@ RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli
     chmod +x wp-cli.phar; \
     mv wp-cli.phar /usr/local/bin/wp
 
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
 # Set up WC_LOG_DIR
 RUN mkdir -p /usr/src/wordpress/wp-content/uploads/wc-logs
 

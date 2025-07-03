@@ -3,7 +3,7 @@
   "version": "8.2.4",
   "description": "A TaxCloud integration for WooCommerce.",
   "scripts": {
-    "build": "npm run build:blocks && npm run build:makepot && grunt",
+    "build": "composer install && npm run build:blocks && npm run build:makepot && grunt",
     "build:makepot": "npx @wp-blocks/make-pot . ./languages --slug simple-sales-tax --domain plugin --exclude .git,build,cypress,docker,node_modules,vendor,*.config.js",
     "archive": "cross-var wp dist-archive . releases/simple-sales-tax-$npm_package_version.zip --plugin-dirname=simple-sales-tax --format=zip",
     "cypress:open": "cypress open",
