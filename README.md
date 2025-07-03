@@ -1,25 +1,42 @@
-# WooCommerce Sales Tax Automation by TaxCloud
+# TaxCloud for WooCommerce
 
-Simple Sales Tax connects your WooCommerce store to [TaxCloud](https://taxcloud.com) to automate sales tax calculation, filing, and remittance.
+TaxCloud for WooCommerce connects your WooCommerce store to [TaxCloud](https://taxcloud.com) to automate sales tax calculation, filing, and remittance.
 
-For more information, please check our [plugin page](https://wordpress.org/plugins/simple-sales-tax/) on WordPress.org or contact [TaxCloud Customer Service](https://support.taxcloud.com) at service@taxcloud.net.
+## Features
+
+- **Accurate tax calculations** — Uses TaxCloud's comprehensive tax database
+- **Multi-state support** — Calculate tax for all US states and jurisdictions
+- **Product level exemptions** — Configure tax exemptions using Taxability Information Codes (TICs)
+- **Tax exempt customers** — Support for exemption certificate management
+- **Marketplace integration** — Compatible with Dokan, WCFM Marketplace, and WC Vendors
+- **Recurring payments** — Full compatibility with WooCommerce Subscriptions
+- **Multi-destination shipments** — Support for WooCommerce Shipping Multiple Addresses
+
+## Installation
+
+1. Download the TaxCloud for WooCommerce .zip file from [WordPress.org](https://wordpress.org/plugins/simple-sales-tax/).
+2. Upload the plugin to your `/wp-content/plugins/` directory.
+3. Activate the plugin through the 'Plugins' menu in WordPress.
+4. Configure your TaxCloud API credentials in WooCommerce > Settings > Integrations > TaxCloud for WooCommerce.
 
 ## Requirements
 
-- WordPress 4.5+
-- WooCommerce 6.9+
-- [TaxCloud account](https://app.taxcloud.com/register)
-
-## Getting Started
-
-1. Download the Simple Sales Tax .zip file from [WordPress.org](https://wordpress.org/plugins/simple-sales-tax/).
-2. Go to **WordPress Admin > Plugins > Add New** and **Upload Plugin** with the zip file.
-3. **Install Now** and **Activate** the plugin.
-4. Follow the instructions in our [Setup Guide](https://wordpress.org/plugins/simple-sales-tax/#installation)
+- WordPress 5.0+
+- WooCommerce 6.9.0+
+- PHP 7.2+
+- TaxCloud account
 
 ## Support
 
-If you find a bug in our plugin, [open a new issue](https://github.com/bporcelli/simplesalestax/issues/new) right here in GitHub. For other issues please [contact us](https://taxcloud.com/contact-us/).
+For support, please visit the [TaxCloud support center](https://taxcloud.com/support) or contact us directly.
+
+## License
+
+This plugin is licensed under the GPL v2 or later.
+
+## Changelog
+
+See the [changelog](changelog.txt) for a complete list of changes.
 
 ## Contributing
 

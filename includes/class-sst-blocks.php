@@ -1,10 +1,9 @@
 <?php
 /**
- * Blocks.
+ * Registers TaxCloud for WooCommerce blocks.
  *
- * Registers Simple Sales Tax blocks.
- *
- * @package simple-sales-tax
+ * @package SST
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

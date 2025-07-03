@@ -5,7 +5,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Composite Products integration for Simple Sales Tax.
+ * Composite Products integration for TaxCloud for WooCommerce.
+ *
+ * @package SST
+ * @since   1.0
  *
  * @author Brett Porcelli <bporcelli@taxcloud.com>
  */

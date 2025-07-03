@@ -9,13 +9,11 @@ use \TaxCloud\ExemptionCertificate;
 use \TaxCloud\ExemptionCertificateBase;
 
 /**
- * Checkout.
+ * Checkout class.
  *
- * Responsible for computing the sales tax due during checkout.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Checkout extends SST_Abstract_Cart {
 

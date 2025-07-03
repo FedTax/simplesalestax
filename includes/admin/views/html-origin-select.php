@@ -37,7 +37,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php
 		sst_tip(
 			esc_html__(
-				'Used by Simple Sales Tax for tax calculations. These are the addresses from which this product will be shipped.',
+				'Used by TaxCloud for WooCommerce for tax calculations. These are the addresses from which this product will be shipped.',
 				'simple-sales-tax'
 			)
 		);

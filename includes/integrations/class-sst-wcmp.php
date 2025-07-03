@@ -1,10 +1,11 @@
 <?php
 /**
- * Simple Sales Tax WCMp Integration.
+ * TaxCloud for WooCommerce WCMp Integration.
  *
- * Integrates Simple Sales Tax with WC Marketplace.
+ * Integrates TaxCloud for WooCommerce with WC Marketplace.
  *
- * @package simple-sales-tax
+ * @package SST
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -91,7 +92,7 @@ class SST_WCMP extends SST_Marketplace_Integration {
 				printf(
 					/* translators: minimum supported WCMp version */
 					esc_html__(
-						'Simple Sales Tax does not support the installed version of WC Marketplace. WC Marketplace %s+ is required.',
+						'TaxCloud for WooCommerce does not support the installed version of WC Marketplace. WC Marketplace %s+ is required.',
 						'simple-sales-tax'
 					),
 					esc_html( $this->min_version )

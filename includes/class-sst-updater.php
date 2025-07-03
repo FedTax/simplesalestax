@@ -13,14 +13,11 @@ if ( ! class_exists( 'WP_Background_Process', false ) ) {
 }
 
 /**
- * SST Updater.
+ * Updater class.
  *
- * Uses https://github.com/A5hleyRich/wp-background-processing to handle DB
- * updates in the background. Ripped from WooCommerce core.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Updater extends WP_Background_Process {
 
@@ -43,7 +40,7 @@ class SST_Updater extends WP_Background_Process {
 		if ( is_wp_error( $dispatched ) ) {
 			$logger->add(
 				'sst_db_updates',
-				sprintf( 'Unable to dispatch Simple Sales Tax updater: %s', $dispatched->get_error_message() )
+				sprintf( 'Unable to dispatch TaxCloud for WooCommerce updater: %s', $dispatched->get_error_message() )
 			);
 		}
 	}

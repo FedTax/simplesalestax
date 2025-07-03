@@ -5,12 +5,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Deposits for WooCommerce integration for Simple Sales Tax.
+ * Deposits for WooCommerce integration for TaxCloud for WooCommerce.
  *
  * NOTE: Applying a discount on the full cart total including tax
  * is NOT supported (`deposit_on_total_incl_tax`).
  *
  * @author Brett Porcelli <bporcelli@taxcloud.com>
+ * @package SST
+ * @since   1.0
  */
 class SST_Deposits_For_WC {
 

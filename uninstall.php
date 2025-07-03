@@ -1,13 +1,13 @@
 <?php
 
 /**
- * Uninstalls Simple Sales Tax.
+ * Uninstalls TaxCloud for WooCommerce.
  *
  * Uninstalling removes all user roles, product data, and options.
  *
- * @author  Simple Sales Tax
+ * @author  TaxCloud
  * @package SST
- * @since   5.0
+ * @since   1.0
  */
 
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {

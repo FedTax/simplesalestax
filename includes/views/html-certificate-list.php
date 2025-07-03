@@ -1,10 +1,9 @@
 <?php
 /**
- * Certificate list table template.
+ * Certificate list template.
  *
- * @author  Brett Porcelli
- * @package Simple Sales Tax
- * @version 7.0.0
+ * @package SST
+ * @since   1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

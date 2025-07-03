@@ -5,13 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * SST Install.
+ * Install class.
  *
- * Handles plugin installation and upgrades.
- *
- * @author  Simple Sales Tax
  * @package SST
- * @since   5.0
+ * @author  TaxCloud
+ * @since   1.0
  */
 class SST_Install {
 
@@ -120,7 +118,9 @@ class SST_Install {
 	}
 
 	/**
-	 * Install Simple Sales Tax.
+	 * Install TaxCloud for WooCommerce.
+	 *
+	 * @since 1.0
 	 */
 	public static function install() {
 		// Include required classes.
@@ -146,16 +146,10 @@ class SST_Install {
 
 		// Prompt user to remove rates if any are present.
 		if ( 'yes' !== get_option( 'wootax_keep_rates' ) && self::has_other_rates() ) {
-			$keep_url   = esc_url( admin_url( '?sst_keep_rates=yes' ) );
-			$delete_url = esc_url( admin_url( '?sst_keep_rates=no' ) );
-			$notice     = sprintf(
-				/* translators: 1 - URL to keep found rates, 2 - URL to delete found rates */
-				__(
-					'Simple Sales Tax found extra rates in your tax tables. Please choose to <a href="%1$s">keep the rates</a> or <a href="%2$s">delete them</a>.',
-					'simple-sales-tax'
-				),
-				$keep_url,
-				$delete_url
+			$notice = sprintf(
+				__( 'TaxCloud for WooCommerce found extra rates in your tax tables. Please choose to <a href="%1$s">keep the rates</a> or <a href="%2$s">delete them</a>.', 'simple-sales-tax' ),
+				wp_nonce_url( admin_url( 'admin.php?page=wc-settings&tab=tax&section=standard&action=keep_rates' ), 'wootax_keep_rates' ),
+				wp_nonce_url( admin_url( 'admin.php?page=wc-settings&tab=tax&section=standard&action=delete_rates' ), 'wootax_delete_rates' )
 			);
 			WC_Admin_Notices::add_custom_notice( 'sst_rates', $notice );
 		}

@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Handles requests related to orders.
  *
- * @author  Simple Sales Tax
+ * @author  TaxCloud
  * @package SST
  * @since   5.0
  */
@@ -113,19 +113,18 @@ class SST_Order_Controller {
 	}
 
 	/**
-	 * Hides Simple Sales Tax order item meta.
+	 * Hides TaxCloud for WooCommerce order item meta.
 	 *
-	 * @param array $to_hide Meta keys to hide.
+	 * @param array $hidden_meta Hidden meta keys.
 	 *
 	 * @return array
-	 * @since 5.0
 	 */
-	public function hide_order_item_meta( $to_hide ) {
-		$to_hide[] = '_wootax_tax_amount';
-		$to_hide[] = '_wootax_location_id';
-		$to_hide[] = '_wootax_index';
+	public function hide_order_item_meta( $hidden_meta ) {
+		$hidden_meta[] = '_wootax_tax_amount';
+		$hidden_meta[] = '_wootax_location_id';
+		$hidden_meta[] = '_wootax_index';
 
-		return $to_hide;
+		return $hidden_meta;
 	}
 
 	/**
