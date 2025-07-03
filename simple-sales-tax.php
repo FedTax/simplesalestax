@@ -39,7 +39,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require __DIR__ . '/includes/vendor/autoload.php';
+// Load Composer autoloader if available
+$autoload_file = __DIR__ . '/includes/vendor/autoload.php';
+if ( file_exists( $autoload_file ) ) {
+	require $autoload_file;
+}
+
 require __DIR__ . '/includes/class-simplesalestax.php';
 
 /**

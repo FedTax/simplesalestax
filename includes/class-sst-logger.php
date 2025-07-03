@@ -35,7 +35,8 @@ class SST_Logger {
 	 * @since 5.0
 	 */
 	public static function init() {
-		if ( 'yes' === SST_Settings::get( 'log_requests' ) ) {
+		// Only initialize if WooCommerce is available and logging is enabled
+		if ( class_exists( 'WC_Logger' ) && 'yes' === SST_Settings::get( 'log_requests' ) ) {
 			self::$logger = function_exists( 'wc_get_logger' ) ? wc_get_logger() : new WC_Logger();
 		}
 	}
@@ -47,6 +48,9 @@ class SST_Logger {
 	 * @since 5.0
 	 */
 	public static function get_log_path() {
+		if ( ! function_exists( 'wc_get_log_file_path' ) ) {
+			return '';
+		}
 		return wc_get_log_file_path( self::$handle );
 	}
 
@@ -58,11 +62,14 @@ class SST_Logger {
 	 * @since 5.0
 	 */
 	public static function add( $message ) {
+		// Initialize logger if not already done
+		if ( is_null( self::$logger ) ) {
+			self::init();
+		}
+		
 		if ( ! is_null( self::$logger ) ) {
 			self::$logger->add( self::$handle, $message );
 		}
 	}
 
 }
-
-SST_Logger::init();

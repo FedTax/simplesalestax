@@ -179,6 +179,7 @@ final class SimpleSalesTax {
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
 		add_action( 'woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
 		add_action( 'woocommerce_init', array( $this, 'declare_cart_block_compatibility' ) );
+		add_action( 'woocommerce_init', array( $this, 'init_logger' ) );
 		add_filter( 'query_vars', array( $this, 'add_tax_exemptions_query_var' ) );
 	}
 
@@ -403,5 +404,14 @@ final class SimpleSalesTax {
 		$query_vars[] = 'tax_exemptions';
 
 		return $query_vars;
+	}
+
+	/**
+	 * Initializes the logger after WooCommerce is loaded.
+	 */
+	public function init_logger() {
+		if ( class_exists( 'SST_Logger' ) ) {
+			SST_Logger::init();
+		}
 	}
 }
