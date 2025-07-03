@@ -80,7 +80,7 @@ final class SimpleSalesTax {
 			return;
 		}
 
-		require_once SST_PATH . 'includes/class-sst-install.php';
+		require_once SST_PATH . 'class-sst-install.php';
 		SST_Install::install();
 	}
 
@@ -96,47 +96,47 @@ final class SimpleSalesTax {
 	 */
 	private function includes() {
 		// Core classes.
-		require_once SST_PATH . 'includes/class-sst-settings.php';
-		require_once SST_PATH . 'includes/class-sst-product.php';
-		require_once SST_PATH . 'includes/class-sst-order.php';
-		require_once SST_PATH . 'includes/class-sst-order-controller.php';
-		require_once SST_PATH . 'includes/class-sst-certificates.php';
-		require_once SST_PATH . 'includes/class-sst-addresses.php';
-		require_once SST_PATH . 'includes/class-sst-origin-address.php';
-		require_once SST_PATH . 'includes/class-sst-tic.php';
-		require_once SST_PATH . 'includes/class-sst-shipping.php';
-		require_once SST_PATH . 'includes/class-sst-assets.php';
-		require_once SST_PATH . 'includes/class-sst-ajax.php';
-		require_once SST_PATH . 'includes/class-sst-logger.php';
-		require_once SST_PATH . 'includes/class-sst-updater.php';
-		require_once SST_PATH . 'includes/class-sst-blocks.php';
-		require_once SST_PATH . 'includes/class-sst-blocks-integration.php';
+		require_once SST_PATH . 'class-sst-settings.php';
+		require_once SST_PATH . 'class-sst-product.php';
+		require_once SST_PATH . 'class-sst-order.php';
+		require_once SST_PATH . 'class-sst-order-controller.php';
+		require_once SST_PATH . 'class-sst-certificates.php';
+		require_once SST_PATH . 'class-sst-addresses.php';
+		require_once SST_PATH . 'class-sst-origin-address.php';
+		require_once SST_PATH . 'class-sst-tic.php';
+		require_once SST_PATH . 'class-sst-shipping.php';
+		require_once SST_PATH . 'class-sst-assets.php';
+		require_once SST_PATH . 'class-sst-ajax.php';
+		require_once SST_PATH . 'class-sst-logger.php';
+		require_once SST_PATH . 'class-sst-updater.php';
+		require_once SST_PATH . 'class-sst-blocks.php';
+		require_once SST_PATH . 'class-sst-blocks-integration.php';
 
 		// Abstract classes.
-		require_once SST_PATH . 'includes/abstracts/class-sst-abstract-cart.php';
-		require_once SST_PATH . 'includes/abstracts/class-sst-marketplace-integration.php';
+		require_once SST_PATH . 'abstracts/class-sst-abstract-cart.php';
+		require_once SST_PATH . 'abstracts/class-sst-marketplace-integration.php';
 
 		// Functions.
-		require_once SST_PATH . 'includes/sst-functions.php';
-		require_once SST_PATH . 'includes/sst-message-functions.php';
-		require_once SST_PATH . 'includes/sst-update-functions.php';
-		require_once SST_PATH . 'includes/sst-compatibility-functions.php';
+		require_once SST_PATH . 'sst-functions.php';
+		require_once SST_PATH . 'sst-message-functions.php';
+		require_once SST_PATH . 'sst-update-functions.php';
+		require_once SST_PATH . 'sst-compatibility-functions.php';
 
 		// Admin classes.
 		if ( is_admin() ) {
-			require_once SST_PATH . 'includes/admin/class-sst-admin.php';
-			require_once SST_PATH . 'includes/admin/class-sst-integration.php';
+			require_once SST_PATH . 'admin/class-sst-admin.php';
+			require_once SST_PATH . 'admin/class-sst-integration.php';
 		}
 
 		// Frontend classes.
 		if ( ! is_admin() || defined( 'DOING_AJAX' ) ) {
-			require_once SST_PATH . 'includes/frontend/class-sst-checkout.php';
-			require_once SST_PATH . 'includes/frontend/class-sst-my-account.php';
-			require_once SST_PATH . 'includes/frontend/class-sst-cart-proxy.php';
+			require_once SST_PATH . 'frontend/class-sst-checkout.php';
+			require_once SST_PATH . 'frontend/class-sst-my-account.php';
+			require_once SST_PATH . 'frontend/class-sst-cart-proxy.php';
 		}
 
 		// Integration classes.
-		$integrations_dir = SST_PATH . 'includes/integrations';
+		$integrations_dir = SST_PATH . 'integrations';
 
 		// WooCommerce Subscriptions.
 		if ( class_exists( 'WC_Subscriptions' ) ) {
