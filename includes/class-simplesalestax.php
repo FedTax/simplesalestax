@@ -97,7 +97,6 @@ final class SimpleSalesTax {
 		// Admin classes.
 		if ( is_admin() ) {
 			require_once $plugin_root . '/includes/admin/class-sst-admin.php';
-			require_once $plugin_root . '/includes/admin/class-sst-integration.php';
 		}
 
 		// Frontend classes.
@@ -130,6 +129,11 @@ final class SimpleSalesTax {
 		// Make sure is_plugin_active() is defined before using it.
 		if ( ! function_exists( 'is_plugin_active' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		// Load the main integration file after WooCommerce is loaded
+		if ( class_exists( 'WC_Integration' ) ) {
+			require_once $plugin_root . '/includes/admin/class-sst-integration.php';
 		}
 
 		// WooCommerce Subscriptions.

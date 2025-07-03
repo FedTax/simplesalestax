@@ -39,7 +39,7 @@ class SST_Admin {
 	 * @since 4.7
 	 */
 	private function hooks() {
-		add_filter( 'woocommerce_integrations', array( __CLASS__, 'add_integration' ) );
+		add_action( 'woocommerce_init', array( __CLASS__, 'register_integration' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_scripts_and_styles' ) );
 		add_action( 'add_meta_boxes', array( __CLASS__, 'add_metaboxes' ) );
 		add_action( 'woocommerce_reports_charts', array( __CLASS__, 'add_reports_tab' ) );
@@ -65,6 +65,15 @@ class SST_Admin {
 
 	/**
 	 * Register our WooCommerce integration.
+	 *
+	 * @since 4.2
+	 */
+	public static function register_integration() {
+		add_filter( 'woocommerce_integrations', array( __CLASS__, 'add_integration' ) );
+	}
+
+	/**
+	 * Add our integration to the WooCommerce integrations list.
 	 *
 	 * @param array $integrations Registered WooCommerce integrations.
 	 *

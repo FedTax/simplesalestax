@@ -33,11 +33,17 @@ Cypress.Commands.add('loginAsAdmin', () => {
     cy.findByRole('button', {name: 'Show password'}).click();
     cy.findByRole('textbox', {name: 'Password'}).type('password');
     cy.findByRole('button', {name: 'Log In'}).click();
+    
+    // Wait for login to complete and verify we're logged in
+    cy.url().should('not.include', 'wp-login.php');
+    cy.get('body').should('not.have.class', 'login');
   }, {cacheAcrossSpecs: true});
 });
 
 Cypress.Commands.add('goToSettingsPage', () => {
   cy.visit('/wp-admin/admin.php?page=wc-settings&tab=integration&section=wootax');
+  cy.get('body').should('not.have.class', 'login');
+  cy.url().should('include', 'wc-settings');
 });
 
 Cypress.Commands.add('addProductToCart', (productOrVariationId, quantity = 1) => {
