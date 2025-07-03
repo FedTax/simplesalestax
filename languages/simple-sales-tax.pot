@@ -9,7 +9,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Content-Type: text/plain; charset=iso-8859-1\n"
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
-"POT-Creation-Date: 2025-07-01T20:39:09.892Z\n"
+"POT-Creation-Date: 2025-07-03T00:54:35.644Z\n"
 "PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
 "Last-Translator: TaxCloud <support@taxcloud.com>\n"
 "Language-Team: TaxCloud <support@taxcloud.com>\n"
@@ -844,6 +844,44 @@ msgstr ""
 msgid "Add certificate"
 msgstr ""
 
+# minimum supported WCMp version
+#: includes/integrations/class-sst-wcmp.php:94
+msgid ""
+"TaxCloud for WooCommerce does not support the installed version of WC "
+"Marketplace. WC Marketplace %s+ is required."
+msgstr ""
+
+#: includes/integrations/class-sst-wcmp.php:131
+#: includes/integrations/class-sst-wcmp.php:162
+#: includes/integrations/class-sst-wcfm.php:149
+#: includes/integrations/class-sst-wcfm.php:191
+#: includes/admin/class-sst-admin.php:262
+msgid "Taxability Information Code"
+msgstr ""
+
+# minimum supported WCFM version
+#: includes/integrations/class-sst-wcfm.php:100
+msgid ""
+"TaxCloud for WooCommerce does not support the installed version of WCFM. "
+"WCFM %s+ is required."
+msgstr ""
+
+# 1 - Renewal order ID, 2 - Error message
+#: includes/integrations/class-sst-subscriptions.php:87
+msgid "Failed to calculate sales tax for renewal order %1$d: %2$s."
+msgstr ""
+
+# minimum supported Dokan version
+#: includes/integrations/class-sst-dokan.php:104
+msgid ""
+"TaxCloud for WooCommerce does not support the installed version of Dokan. "
+"Dokan %s+ is required."
+msgstr ""
+
+#: includes/integrations/class-sst-dokan.php:154
+msgid "Taxability Information Code (TIC)"
+msgstr ""
+
 #: includes/frontend/class-sst-my-account.php:63
 msgid "Exemption certificates"
 msgstr ""
@@ -925,14 +963,6 @@ msgstr ""
 msgid "Tax rate cache cleared."
 msgstr ""
 
-#: includes/admin/class-sst-admin.php:262
-#: includes/integrations/class-sst-wcmp.php:131
-#: includes/integrations/class-sst-wcmp.php:162
-#: includes/integrations/class-sst-wcfm.php:149
-#: includes/integrations/class-sst-wcfm.php:191
-msgid "Taxability Information Code"
-msgstr ""
-
 #: includes/admin/class-sst-admin.php:270
 msgid "This TIC will be used as the default for all products in this category."
 msgstr ""
@@ -981,36 +1011,6 @@ msgstr ""
 msgid ""
 "Origin address for shipping package is invalid. Using default origin "
 "address from TaxCloud for WooCommerce settings."
-msgstr ""
-
-# minimum supported WCMp version
-#: includes/integrations/class-sst-wcmp.php:94
-msgid ""
-"TaxCloud for WooCommerce does not support the installed version of WC "
-"Marketplace. WC Marketplace %s+ is required."
-msgstr ""
-
-# minimum supported WCFM version
-#: includes/integrations/class-sst-wcfm.php:100
-msgid ""
-"TaxCloud for WooCommerce does not support the installed version of WCFM. "
-"WCFM %s+ is required."
-msgstr ""
-
-# 1 - Renewal order ID, 2 - Error message
-#: includes/integrations/class-sst-subscriptions.php:87
-msgid "Failed to calculate sales tax for renewal order %1$d: %2$s."
-msgstr ""
-
-# minimum supported Dokan version
-#: includes/integrations/class-sst-dokan.php:104
-msgid ""
-"TaxCloud for WooCommerce does not support the installed version of Dokan. "
-"Dokan %s+ is required."
-msgstr ""
-
-#: includes/integrations/class-sst-dokan.php:154
-msgid "Taxability Information Code (TIC)"
 msgstr ""
 
 #: includes/frontend/views/html-my-account.php:16
