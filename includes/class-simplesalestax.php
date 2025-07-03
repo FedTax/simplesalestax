@@ -45,7 +45,7 @@ final class SimpleSalesTax {
 	 */
 	private function __construct() {
 		$this->define_constants();
-		$this->includes();
+		$this->load_files_safely();
 		$this->add_hooks();
 	}
 
@@ -61,40 +61,9 @@ final class SimpleSalesTax {
 	}
 
 	/**
-	 * Initializes the plugin.
+	 * Loads files safely without dependencies.
 	 */
-	public function init() {
-		if ( ! $this->check_environment() ) {
-			return;
-		}
-
-		$this->load_text_domain();
-		$this->load_integrations();
-	}
-
-	/**
-	 * Activates the plugin.
-	 */
-	public function activate() {
-		if ( ! $this->check_environment() ) {
-			return;
-		}
-
-		require_once dirname( SST_PATH ) . '/includes/class-sst-install.php';
-		SST_Install::install();
-	}
-
-	/**
-	 * Deactivates the plugin.
-	 */
-	public function deactivate() {
-		// Cleanup if needed.
-	}
-
-	/**
-	 * Includes required files.
-	 */
-	private function includes() {
+	private function load_files_safely() {
 		// Get the plugin root directory (one level up from includes).
 		$plugin_root = dirname( SST_PATH );
 
@@ -102,7 +71,7 @@ final class SimpleSalesTax {
 		require_once $plugin_root . '/includes/abstracts/class-sst-abstract-cart.php';
 		require_once $plugin_root . '/includes/abstracts/class-sst-marketplace-integration.php';
 
-		// Core classes.
+		// Core classes that don't depend on WooCommerce.
 		require_once $plugin_root . '/includes/class-sst-settings.php';
 		require_once $plugin_root . '/includes/class-sst-product.php';
 		require_once $plugin_root . '/includes/class-sst-order.php';
@@ -127,19 +96,41 @@ final class SimpleSalesTax {
 
 		// Admin classes.
 		if ( is_admin() ) {
-			require_once $plugin_root . '/admin/class-sst-admin.php';
-			require_once $plugin_root . '/admin/class-sst-integration.php';
+			require_once $plugin_root . '/includes/admin/class-sst-admin.php';
+			require_once $plugin_root . '/includes/admin/class-sst-integration.php';
 		}
 
 		// Frontend classes.
 		if ( ! is_admin() || defined( 'DOING_AJAX' ) ) {
-			require_once $plugin_root . '/frontend/class-sst-checkout.php';
-			require_once $plugin_root . '/frontend/class-sst-my-account.php';
-			require_once $plugin_root . '/frontend/class-sst-cart-proxy.php';
+			require_once $plugin_root . '/includes/frontend/class-sst-checkout.php';
+			require_once $plugin_root . '/includes/frontend/class-sst-my-account.php';
+			require_once $plugin_root . '/includes/frontend/class-sst-cart-proxy.php';
 		}
+	}
 
-		// Integration classes.
+	/**
+	 * Adds WordPress hooks.
+	 */
+	private function add_hooks() {
+		add_action( 'plugins_loaded', array( $this, 'init' ) );
+		add_action( 'woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
+		add_action( 'woocommerce_init', array( $this, 'declare_cart_block_compatibility' ) );
+		add_action( 'woocommerce_init', array( $this, 'init_logger' ) );
+		add_action( 'woocommerce_init', array( $this, 'init_updater' ) );
+		add_filter( 'query_vars', array( $this, 'add_tax_exemptions_query_var' ) );
+	}
+
+	/**
+	 * Loads integration classes after WooCommerce is available.
+	 */
+	private function load_integrations() {
+		$plugin_root = dirname( SST_PATH );
 		$integrations_dir = $plugin_root . '/includes/integrations';
+
+		// Make sure is_plugin_active() is defined before using it.
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
 
 		// WooCommerce Subscriptions.
 		if ( class_exists( 'WC_Subscriptions' ) ) {
@@ -173,21 +164,34 @@ final class SimpleSalesTax {
 	}
 
 	/**
-	 * Adds WordPress hooks.
+	 * Initializes the plugin.
 	 */
-	private function add_hooks() {
-		add_action( 'plugins_loaded', array( $this, 'init' ) );
-		add_action( 'woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
-		add_action( 'woocommerce_init', array( $this, 'declare_cart_block_compatibility' ) );
-		add_action( 'woocommerce_init', array( $this, 'init_logger' ) );
-		add_filter( 'query_vars', array( $this, 'add_tax_exemptions_query_var' ) );
+	public function init() {
+		if ( ! $this->check_environment() ) {
+			return;
+		}
+
+		$this->load_text_domain();
+		$this->load_integrations();
 	}
 
 	/**
-	 * Loads integration classes.
+	 * Activates the plugin.
 	 */
-	private function load_integrations() {
-		// Integration classes are loaded in the includes() method.
+	public function activate() {
+		if ( ! $this->check_environment() ) {
+			return;
+		}
+
+		require_once dirname( SST_PATH ) . '/includes/class-sst-install.php';
+		SST_Install::install();
+	}
+
+	/**
+	 * Deactivates the plugin.
+	 */
+	public function deactivate() {
+		// Cleanup if needed.
 	}
 
 	/**
@@ -412,6 +416,15 @@ final class SimpleSalesTax {
 	public function init_logger() {
 		if ( class_exists( 'SST_Logger' ) ) {
 			SST_Logger::init();
+		}
+	}
+
+	/**
+	 * Initializes the updater after WooCommerce is loaded.
+	 */
+	public function init_updater() {
+		if ( function_exists( 'sst_init_wc_dependencies' ) ) {
+			sst_init_wc_dependencies();
 		}
 	}
 }

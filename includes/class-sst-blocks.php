@@ -67,7 +67,13 @@ class SST_Blocks {
 		add_action(
 			'woocommerce_blocks_checkout_block_registration',
 			function( $integration_registry ) {
-				$integration_registry->register( new SST_Blocks_Integration() );
+				// Only register if the integration implements the correct interface
+				if ( interface_exists( 'Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface' ) ) {
+					$integration = new SST_Blocks_Integration();
+					if ( $integration instanceof \Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface ) {
+						$integration_registry->register( $integration );
+					}
+				}
 			}
 		);
 	}
