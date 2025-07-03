@@ -1,7 +1,5 @@
 <?php
 
-use Automattic\WooCommerce\Utilities\OrderUtil;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
@@ -73,7 +71,9 @@ class SST_Admin {
 	 * @since 4.2
 	 */
 	public static function add_integration( $integrations ) {
-		$integrations[] = 'SST_Integration';
+		if ( class_exists( 'SST_Integration' ) ) {
+			$integrations[] = 'SST_Integration';
+		}
 
 		return $integrations;
 	}
@@ -84,9 +84,12 @@ class SST_Admin {
 	 * @return string
 	 */
 	protected static function get_order_screen_id() {
-		return OrderUtil::custom_orders_table_usage_is_enabled()
-			? wc_get_page_screen_id( 'shop-order' )
-			: 'shop_order';
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' ) ) {
+			return \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled()
+				? wc_get_page_screen_id( 'shop-order' )
+				: 'shop_order';
+		}
+		return 'shop_order';
 	}
 
 	/**
