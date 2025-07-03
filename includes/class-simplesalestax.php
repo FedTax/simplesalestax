@@ -95,32 +95,32 @@ final class SimpleSalesTax {
 	 * Includes required files.
 	 */
 	private function includes() {
-		// Core classes.
-		require_once SST_PATH . 'class-sst-settings.php';
-		require_once SST_PATH . 'class-sst-product.php';
-		require_once SST_PATH . 'class-sst-order.php';
-		require_once SST_PATH . 'class-sst-order-controller.php';
-		require_once SST_PATH . 'class-sst-certificates.php';
-		require_once SST_PATH . 'class-sst-addresses.php';
-		require_once SST_PATH . 'class-sst-origin-address.php';
-		require_once SST_PATH . 'class-sst-tic.php';
-		require_once SST_PATH . 'class-sst-shipping.php';
-		require_once SST_PATH . 'class-sst-assets.php';
-		require_once SST_PATH . 'class-sst-ajax.php';
-		require_once SST_PATH . 'class-sst-logger.php';
-		require_once SST_PATH . 'class-sst-updater.php';
-		require_once SST_PATH . 'class-sst-blocks.php';
-		require_once SST_PATH . 'class-sst-blocks-integration.php';
+		// Abstract classes (must be loaded first).
+		require_once SST_PATH . 'includes/abstracts/class-sst-abstract-cart.php';
+		require_once SST_PATH . 'includes/abstracts/class-sst-marketplace-integration.php';
 
-		// Abstract classes.
-		require_once SST_PATH . 'abstracts/class-sst-abstract-cart.php';
-		require_once SST_PATH . 'abstracts/class-sst-marketplace-integration.php';
+		// Core classes.
+		require_once SST_PATH . 'includes/class-sst-settings.php';
+		require_once SST_PATH . 'includes/class-sst-product.php';
+		require_once SST_PATH . 'includes/class-sst-order.php';
+		require_once SST_PATH . 'includes/class-sst-order-controller.php';
+		require_once SST_PATH . 'includes/class-sst-certificates.php';
+		require_once SST_PATH . 'includes/class-sst-addresses.php';
+		require_once SST_PATH . 'includes/class-sst-origin-address.php';
+		require_once SST_PATH . 'includes/class-sst-tic.php';
+		require_once SST_PATH . 'includes/class-sst-shipping.php';
+		require_once SST_PATH . 'includes/class-sst-assets.php';
+		require_once SST_PATH . 'includes/class-sst-ajax.php';
+		require_once SST_PATH . 'includes/class-sst-logger.php';
+		require_once SST_PATH . 'includes/class-sst-updater.php';
+		require_once SST_PATH . 'includes/class-sst-blocks.php';
+		require_once SST_PATH . 'includes/class-sst-blocks-integration.php';
 
 		// Functions.
-		require_once SST_PATH . 'sst-functions.php';
-		require_once SST_PATH . 'sst-message-functions.php';
-		require_once SST_PATH . 'sst-update-functions.php';
-		require_once SST_PATH . 'sst-compatibility-functions.php';
+		require_once SST_PATH . 'includes/sst-functions.php';
+		require_once SST_PATH . 'includes/sst-message-functions.php';
+		require_once SST_PATH . 'includes/sst-update-functions.php';
+		require_once SST_PATH . 'includes/sst-compatibility-functions.php';
 
 		// Admin classes.
 		if ( is_admin() ) {
@@ -136,7 +136,7 @@ final class SimpleSalesTax {
 		}
 
 		// Integration classes.
-		$integrations_dir = SST_PATH . 'integrations';
+		$integrations_dir = SST_PATH . 'includes/integrations';
 
 		// WooCommerce Subscriptions.
 		if ( class_exists( 'WC_Subscriptions' ) ) {
