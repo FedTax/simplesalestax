@@ -1,5 +1,5 @@
 {
-	"apiVersion": 2,
+	"apiVersion": 3,
 	"name": "simple-sales-tax/tax-exemption",
 	"version": "1.0.0",
 	"title": "Tax Exemption Block",
@@ -12,5 +12,9 @@
 		"reusable": false
 	},
 	"parent": [ "woocommerce/checkout-fields-block" ],
-	"textdomain": "simple-sales-tax"
+	"textdomain": "simple-sales-tax",
+	"attributes": {},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css"
 }
