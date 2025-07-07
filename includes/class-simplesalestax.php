@@ -232,19 +232,16 @@ final class SimpleSalesTax {
 
 		// Check PHP version.
 		if ( version_compare( phpversion(), '7.2', '<' ) ) {
-			add_action( 'admin_notices', array( $this, 'php_version_notice' ) );
-
+			$this->add_admin_notice( array( $this, 'php_version_notice' ) );
 			return false;
 		}
 
 		// Check WooCommerce version.
 		if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
-			add_action( 'admin_notices', array( $this, 'woocommerce_required_notice' ) );
-
+			$this->add_admin_notice( array( $this, 'woocommerce_required_notice' ) );
 			return false;
 		} elseif ( ! defined( 'WC_VERSION' ) || version_compare( WC_VERSION, '6.9', '<' ) ) {
-			add_action( 'admin_notices', array( $this, 'woocommerce_version_notice' ) );
-
+			$this->add_admin_notice( array( $this, 'woocommerce_version_notice' ) );
 			return false;
 		}
 
@@ -256,6 +253,45 @@ final class SimpleSalesTax {
 	}
 
 	/**
+	 * Adds an admin notice only on relevant pages.
+	 *
+	 * @param callable $callback Notice callback function.
+	 */
+	private function add_admin_notice( $callback ) {
+		$screen = get_current_screen();
+		$should_show = false;
+		
+		// Check if we should show notices based on screen
+		if ( $screen ) {
+			$should_show = (
+				strpos( $screen->id, 'woocommerce' ) !== false ||
+				strpos( $screen->id, 'plugins' ) !== false ||
+				strpos( $screen->id, 'dashboard' ) !== false ||
+				strpos( $screen->id, 'update' ) !== false
+			);
+		} else {
+			// Fallback: check based on current page/action
+			$current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
+			$current_action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
+			$current_post_type = isset( $_GET['post_type'] ) ? sanitize_text_field( wp_unslash( $_GET['post_type'] ) ) : '';
+			
+			$should_show = (
+				strpos( $current_page, 'woocommerce' ) !== false ||
+				$current_page === 'plugins.php' ||
+				$current_page === 'index.php' ||
+				$current_page === 'update-core.php' ||
+				$current_post_type === 'shop_order' ||
+				$current_post_type === 'product'
+			);
+		}
+		
+		// Show notice if needed
+		if ( $should_show ) {
+			add_action( 'admin_notices', $callback );
+		}
+	}
+
+	/**
 	 * Checks for plugins that conflict with Simple Sales Tax.
 	 *
 	 * @return bool Were any conflicting plugins detected?
@@ -263,15 +299,15 @@ final class SimpleSalesTax {
 	private function detect_plugin_conflicts() {
 		if ( class_exists( 'WC_TaxJar' ) ) {
 			// TaxJar.
-			add_action( 'admin_notices', array( $this, 'taxjar_conflict_notice' ) );
+			$this->add_admin_notice( array( $this, 'taxjar_conflict_notice' ) );
 			return true;
 		} elseif ( class_exists( 'WC_AvaTax_Loader' ) ) {
 			// WooCommerce AvaTax.
-			add_action( 'admin_notices', array( $this, 'avatax_conflict_notice' ) );
+			$this->add_admin_notice( array( $this, 'avatax_conflict_notice' ) );
 			return true;
 		} elseif ( class_exists( 'WC_Connect_Loader' ) && 'yes' === get_option( 'wc_connect_taxes_enabled' ) ) {
 			// WooCommerce Services Automated Taxes.
-			add_action( 'admin_notices', array( $this, 'woocommerce_services_notice' ) );
+			$this->add_admin_notice( array( $this, 'woocommerce_services_notice' ) );
 			return true;
 		}
 

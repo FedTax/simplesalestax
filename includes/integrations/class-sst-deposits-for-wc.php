@@ -235,8 +235,12 @@ class SST_Deposits_For_WC {
 	 * These are removed promptly once the problematic DFW code runs.
 	 */
 	public function add_pre_option_filters() {
+		// Only run on order edit pages or when DFW is creating orders
 		if ( ! $this->is_dfw_creating_order() ) {
-			return;
+			$screen = get_current_screen();
+			if ( ! $screen || strpos( $screen->id, 'shop_order' ) === false ) {
+				return;
+			}
 		}
 
 		// Prevents DFW from setting item total to 0 when creating orders for future payments

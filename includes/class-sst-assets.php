@@ -250,7 +250,42 @@ class SST_Assets {
 	 * Registers admin assets.
 	 */
 	public function register_admin_assets() {
-		$this->register_assets_for_context( 'admin' );
+		$screen = get_current_screen();
+		$should_register = false;
+		
+		// Check if we should register assets based on screen
+		if ( $screen ) {
+			$should_register = (
+				strpos( $screen->id, 'woocommerce_page_wc-settings' ) !== false ||
+				strpos( $screen->id, 'shop_order' ) !== false ||
+				strpos( $screen->id, 'product' ) !== false ||
+				strpos( $screen->id, 'edit-product_cat' ) !== false
+			);
+		} else {
+			// Fallback: check based on current page/action
+			$current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
+			$current_action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
+			$current_post_type = isset( $_GET['post_type'] ) ? sanitize_text_field( wp_unslash( $_GET['post_type'] ) ) : '';
+			$current_path = isset( $_GET['path'] ) ? sanitize_text_field( wp_unslash( $_GET['path'] ) ) : '';
+			
+			$should_register = (
+				$current_page === 'wc-settings' ||
+				$current_post_type === 'shop_order' ||
+				$current_post_type === 'product' ||
+				( $current_post_type === 'product_cat' && $current_action === 'edit' ) ||
+				// WooCommerce Admin settings pages (but not the main dashboard)
+				( $current_page === 'wc-admin' && (
+					strpos( $current_path, '/settings' ) !== false ||
+					strpos( $current_path, '/payments' ) !== false ||
+					strpos( $current_path, '/tax' ) !== false
+				) )
+			);
+		}
+		
+		// Register admin assets if needed
+		if ( $should_register ) {
+			$this->register_assets_for_context( 'admin' );
+		}
 	}
 
 	/**

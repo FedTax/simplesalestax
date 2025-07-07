@@ -87,11 +87,44 @@ class SST_Admin {
 	 * @since 4.2
 	 */
 	public static function enqueue_scripts_and_styles() {
-		// Global admin CSS.
-		wp_enqueue_style( 'sst-admin-css' );
-
-		// Edit Order screen CSS.
 		$screen = get_current_screen();
+		$should_load = false;
+		
+		// Check if we should load assets based on screen
+		if ( $screen ) {
+			$should_load = (
+				strpos( $screen->id, 'woocommerce_page_wc-settings' ) !== false ||
+				$screen->id === self::get_order_screen_id() ||
+				strpos( $screen->id, 'product' ) !== false ||
+				strpos( $screen->id, 'edit-product_cat' ) !== false
+			);
+		} else {
+			// Fallback: check based on current page/action
+			$current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
+			$current_action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
+			$current_post_type = isset( $_GET['post_type'] ) ? sanitize_text_field( wp_unslash( $_GET['post_type'] ) ) : '';
+			$current_path = isset( $_GET['path'] ) ? sanitize_text_field( wp_unslash( $_GET['path'] ) ) : '';
+			
+			$should_load = (
+				$current_page === 'wc-settings' ||
+				$current_post_type === 'shop_order' ||
+				$current_post_type === 'product' ||
+				( $current_post_type === 'product_cat' && $current_action === 'edit' ) ||
+				// WooCommerce Admin settings pages (but not the main dashboard)
+				( $current_page === 'wc-admin' && (
+					strpos( $current_path, '/settings' ) !== false ||
+					strpos( $current_path, '/payments' ) !== false ||
+					strpos( $current_path, '/tax' ) !== false
+				) )
+			);
+		}
+		
+		// Load admin CSS if needed
+		if ( $should_load ) {
+			wp_enqueue_style( 'sst-admin-css' );
+		}
+
+		// Edit Order screen CSS - only if we have a screen and it's an order screen
 		if ( $screen && $screen->id === self::get_order_screen_id() ) {
 			wp_enqueue_style( 'sst-certificate-modal-css' );
 		}

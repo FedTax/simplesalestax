@@ -258,7 +258,32 @@ function sst_output_tic_select_field( $args = array() ) {
 	</button>
 	<?php
 
-	add_action( 'admin_footer', 'sst_print_tic_select_modal_template' );
+	// Only add footer template on pages where TIC select might be used
+	$screen = get_current_screen();
+	$should_add_template = false;
+	
+	if ( $screen ) {
+		$should_add_template = (
+			strpos( $screen->id, 'woocommerce_page_wc-settings' ) !== false ||
+			strpos( $screen->id, 'product' ) !== false ||
+			strpos( $screen->id, 'edit-product_cat' ) !== false
+		);
+	} else {
+		// Fallback: check based on current page/action
+		$current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
+		$current_action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
+		$current_post_type = isset( $_GET['post_type'] ) ? sanitize_text_field( wp_unslash( $_GET['post_type'] ) ) : '';
+		
+		$should_add_template = (
+			$current_page === 'wc-settings' ||
+			$current_post_type === 'product' ||
+			( $current_post_type === 'product_cat' && $current_action === 'edit' )
+		);
+	}
+	
+	if ( $should_add_template ) {
+		add_action( 'admin_footer', 'sst_print_tic_select_modal_template' );
+	}
 	add_action( 'wp_footer', 'sst_print_tic_select_modal_template' );
 }
 
