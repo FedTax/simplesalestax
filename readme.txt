@@ -11,7 +11,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Simplify sales tax calculations, reporting, and filing by connecting your WooCommerce store to TaxCloud.
 
 == Description ==
-# Simplify Sales Tax Compliance with TaxCloud for WooCommerce
+# Simplify Sales Tax Compliance with TaxCloud for WooCommerce (formerly Simple Sales Tax)
 TaxCloud is the right-sized sales tax solution for growing eCommerce brands on WooCommerce. We take the complexity out of sales tax, automating calculation, nexus tracking, and filing across all 50 states and more than 13,000 tax jurisdictions.
 
 ## Quick, Code-Free Setup
