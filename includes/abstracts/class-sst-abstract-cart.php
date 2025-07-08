@@ -373,7 +373,7 @@ abstract class SST_Abstract_Cart {
 			$package['origin'] = SST_Addresses::get_default_address();
 		} elseif ( ! ( $package['origin'] instanceof SST_Origin_Address ) ) {
 			SST_Logger::add(
-				__( 'Origin address for shipping package is invalid. Using default origin address from Simple Sales Tax settings.', 'simple-sales-tax' )
+				__( 'Origin address for shipping package is invalid. Using default origin address from TaxCloud for WooCommerce settings.', 'simple-sales-tax' )
 			);
 			$package['origin'] = SST_Addresses::get_default_address();
 		}
