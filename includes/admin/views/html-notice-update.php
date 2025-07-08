@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php
 	printf(
 		'<strong>%s</strong> %s',
-		esc_html__( 'Simple Sales Tax data update.', 'simple-sales-tax' ),
+		esc_html__( 'TaxCloud for WooCommerce data update.', 'simple-sales-tax' ),
 		esc_html__( 'We need to update your database to the latest version.', 'simple-sales-tax' )
 	);
 	?>

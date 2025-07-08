@@ -45,6 +45,14 @@ class SST_Admin {
 		add_action( 'woocommerce_before_settings_tax', array( __CLASS__, 'tax_based_on_notice' ) );
 		add_action( 'edit_user_profile', array( __CLASS__, 'render_user_certificates' ), 11 );
 		add_action( 'show_user_profile', array( __CLASS__, 'render_user_certificates' ), 11 );
+		add_submenu_page(
+			'woocommerce',
+			__( 'TaxCloud for WooCommerce', 'simple-sales-tax' ),
+			__( 'TaxCloud for WooCommerce', 'simple-sales-tax' ),
+			'manage_woocommerce',
+			'wootax',
+			array( $this, 'output' )
+		);
 	}
 
 	/**
@@ -105,7 +113,7 @@ class SST_Admin {
 	public static function add_metaboxes() {
 		add_meta_box(
 			'sales_tax_meta',
-			__( 'Simple Sales Tax', 'simple-sales-tax' ),
+			__( 'TaxCloud for WooCommerce', 'simple-sales-tax' ),
 			array( __CLASS__, 'output_tax_metabox' ),
 			self::get_order_screen_id(),
 			'side',
@@ -291,22 +299,13 @@ class SST_Admin {
 		$section = isset( $_GET['section'] ) ? sanitize_text_field( wp_unslash( $_GET['section'] ) ) : ''; // phpcs:ignore WordPress.CSRF.NonceVerification
 
 		if ( in_array( $section, array( '', 'tax' ), true ) ) {
-			?>
-			<div class="notice notice-warning">
-				<p>
-					<?php
-					printf(
-						'<strong>%1$s</strong> %2$s',
-						esc_html__( 'Heads up!', 'simple-sales-tax' ),
-						esc_html__(
-							'The WooCommerce "Calculate tax based on" setting is not respected by Simple Sales Tax. The customer billing address will only be used for tax calculations when the shipping address is not provided (e.g. for sales of digital goods).',
-							'simple-sales-tax'
-						)
-					);
-					?>
-				</p>
-			</div>
-			<?php
+			printf(
+				'<div class="notice notice-warning"><p>%s</p></div>',
+				__( // phpcs:ignore WordPress.Security.EscapeOutput
+					'The WooCommerce "Calculate tax based on" setting is not respected by TaxCloud for WooCommerce. The customer billing address will only be used for tax calculations when the shipping address is not provided (e.g. for sales of digital goods).',
+					'simple-sales-tax'
+				)
+			);
 		}
 	}
 

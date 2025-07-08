@@ -151,7 +151,7 @@ class SST_Install {
 			$notice     = sprintf(
 				/* translators: 1 - URL to keep found rates, 2 - URL to delete found rates */
 				__(
-					'Simple Sales Tax found extra rates in your tax tables. Please choose to <a href="%1$s">keep the rates</a> or <a href="%2$s">delete them</a>.',
+					'TaxCloud for WooCommerce found extra rates in your tax tables. Please choose to <a href="%1$s">keep the rates</a> or <a href="%2$s">delete them</a>.',
 					'simple-sales-tax'
 				),
 				$keep_url,
