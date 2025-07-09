@@ -68,7 +68,7 @@ class SST_Install {
 	 */
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'init_background_updater' ), 5 );
-		add_action( 'init', array( __CLASS__, 'check_version' ), 5 );
+		add_action( 'admin_init', array( __CLASS__, 'check_version' ), 5 );
 		add_action( 'admin_init', array( __CLASS__, 'trigger_update' ) );
 		add_action( 'admin_init', array( __CLASS__, 'trigger_rate_removal' ) );
 		add_filter( 'plugin_action_links_' . SST_PLUGIN_BASENAME, array( __CLASS__, 'add_action_links' ) );
@@ -103,7 +103,15 @@ class SST_Install {
 	 * in the database and runs the installer if necessary.
 	 */
 	public static function check_version() {
-		if ( ! defined( 'IFRAME_REQUEST' ) && get_option( 'wootax_version' ) !== SST()->version ) {
+		if (
+			is_admin()
+			&& isset( $_GET['page'], $_GET['tab'], $_GET['section'] )
+			&& 'wc-settings' === $_GET['page']
+			&& 'integration' === $_GET['tab']
+			&& 'wootax' === $_GET['section']
+			&& ! defined( 'IFRAME_REQUEST' )
+			&& get_option( 'wootax_version' ) !== SST()->version
+		) {
 			self::install();
 		}
 	}
