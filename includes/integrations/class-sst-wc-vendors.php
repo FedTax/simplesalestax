@@ -86,7 +86,7 @@ class SST_WC_Vendors extends SST_Marketplace_Integration {
 				printf(
 					/* translators: minimum supported WC Vendors Pro version */
 					esc_html__(
-						'Simple Sales Tax does not support the installed version of WC Vendors Pro. WC Vendors Pro %s+ is required.',
+						'TaxCloud for WooCommerce does not support the installed version of WC Vendors Pro. WC Vendors Pro %s+ is required.',
 						'simple-sales-tax'
 					),
 					esc_html( $this->min_version )
