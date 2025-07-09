@@ -258,37 +258,19 @@ final class SimpleSalesTax {
 	 * @param callable $callback Notice callback function.
 	 */
 	private function add_admin_notice( $callback ) {
+		$screen = get_current_screen();
 		$should_show = false;
 		
-		// Check if we're in admin context and get_current_screen() is available
-		if ( is_admin() && function_exists( 'get_current_screen' ) ) {
-			$screen = get_current_screen();
-			
-			// Check if we should show notices based on screen
-			if ( $screen ) {
-				$should_show = (
-					strpos( $screen->id, 'woocommerce' ) !== false ||
-					strpos( $screen->id, 'plugins' ) !== false ||
-					strpos( $screen->id, 'dashboard' ) !== false ||
-					strpos( $screen->id, 'update' ) !== false
-				);
-			} else {
-				// Fallback: check based on current page/action
-				$current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
-				$current_action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
-				$current_post_type = isset( $_GET['post_type'] ) ? sanitize_text_field( wp_unslash( $_GET['post_type'] ) ) : '';
-				
-				$should_show = (
-					strpos( $current_page, 'woocommerce' ) !== false ||
-					$current_page === 'plugins.php' ||
-					$current_page === 'index.php' ||
-					$current_page === 'update-core.php' ||
-					$current_post_type === 'shop_order' ||
-					$current_post_type === 'product'
-				);
-			}
+		// Check if we should show notices based on screen
+		if ( $screen ) {
+			$should_show = (
+				strpos( $screen->id, 'woocommerce' ) !== false ||
+				strpos( $screen->id, 'plugins' ) !== false ||
+				strpos( $screen->id, 'dashboard' ) !== false ||
+				strpos( $screen->id, 'update' ) !== false
+			);
 		} else {
-			// If not in admin or get_current_screen() not available, use fallback
+			// Fallback: check based on current page/action
 			$current_page = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : '';
 			$current_action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
 			$current_post_type = isset( $_GET['post_type'] ) ? sanitize_text_field( wp_unslash( $_GET['post_type'] ) ) : '';
