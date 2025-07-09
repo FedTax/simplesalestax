@@ -47,7 +47,6 @@ final class SimpleSalesTax {
 	 */
 	private function __construct() {
 		$this->define_constants();
-		$this->load_text_domain();
 
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
 		add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
@@ -60,6 +59,7 @@ final class SimpleSalesTax {
 	 */
 	public function init() {
 		if ( $this->check_environment() ) {
+			$this->load_text_domain();
 			$this->includes();
 			$this->add_hooks();
 		}
