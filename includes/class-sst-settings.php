@@ -88,7 +88,7 @@ class SST_Settings {
 				'title'       => __( 'TaxCloud Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
 				'description' => __(
-					'You must enter a valid TaxCloud API ID and API Key for Simple Sales Tax to work properly. Use the "Verify Settings" button to test your settings.',
+					'You must enter a valid TaxCloud API ID and API Key for TaxCloud for WooCommerce to work properly. Use the "Verify Settings" button to test your settings.',
 					'simple-sales-tax'
 				),
 			),
@@ -127,7 +127,7 @@ class SST_Settings {
 				'title'       => __( 'Address Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
 				'description' => __(
-					'To accurately determine the sales tax for an order, Simple Sales Tax needs to know the locations you ship your products from.<br>You can select from the addresses entered on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud.',
+					'To accurately determine the sales tax for an order, TaxCloud for WooCommerce needs to know the locations you ship your products from.<br>You can select from the addresses entered on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in your TaxCloud account.',
 					'simple-sales-tax'
 				),
 			),
@@ -262,7 +262,7 @@ class SST_Settings {
 				'label'       => ' ',
 				'default'     => 'yes',
 				'description' => __(
-					'When selected, Simple Sales Tax will log all requests sent to TaxCloud for debugging purposes.',
+					'When selected, TaxCloud for WooCommerce will log all requests sent to TaxCloud for debugging purposes.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
@@ -298,7 +298,7 @@ class SST_Settings {
 				'type'        => 'checkbox',
 				'default'     => 'no',
 				'description' => __(
-					'When this feature is enabled, all Simple Sales Tax options and data will be removed when you click deactivate and delete the plugin.',
+					'When this feature is enabled, all TaxCloud for WooCommerce options and data will be removed when you click deactivate and delete the plugin.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
@@ -310,7 +310,7 @@ class SST_Settings {
 				'url'         => add_query_arg( 'download_debug_report', true ),
 				'id'          => 'debug_report_button',
 				'description' => __(
-					'Send a copy of this report to TaxCloud support to help with debugging Simple Sales Tax issues.',
+					'Send a copy of this report to TaxCloud support to help with debugging TaxCloud for WooCommerce issues.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,

@@ -97,7 +97,7 @@ class SST_WCFM extends SST_Marketplace_Integration {
 				printf(
 					/* translators: minimum supported WCFM version */
 					esc_html__(
-						'Simple Sales Tax does not support the installed version of WCFM. WCFM %s+ is required.',
+						'TaxCloud for WooCommerce does not support the installed version of WCFM. WCFM %s+ is required.',
 						'simple-sales-tax'
 					),
 					esc_html( $this->min_version )
