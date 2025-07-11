@@ -99,11 +99,7 @@ class SST_Dokan extends SST_Marketplace_Integration {
 			<p>
 				<?php
 				printf(
-					/* translators: minimum supported Dokan version */
-					esc_html__(
-						'Simple Sales Tax does not support the installed version of Dokan. Dokan %s+ is required.',
-						'simple-sales-tax'
-					),
+					esc_html__( 'TaxCloud for WooCommerce does not support the installed version of Dokan. Dokan %s+ is required.', 'simple-sales-tax' ),
 					esc_html( $this->min_version )
 				);
 				?>

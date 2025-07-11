@@ -1,7 +1,8 @@
 <?php
 
 /**
- * Plugin Name:          Simple Sales Tax
+ * Plugin Name:          TaxCloud for WooCommerce (formerly Simple Sales Tax)
+ * Plugin Slug:          simple-sales-tax-test
  * Description:          Harness the power of TaxCloud to accurately calculate sales tax for your WooCommerce store.
  * Author:               TaxCloud
  * Author URI:           https://taxcloud.com
@@ -9,6 +10,7 @@
  * Version:              8.2.4
  * Text Domain:          simple-sales-tax
  * Domain Path:          /languages/
+ * License:              GPLv2 or later
  *
  * Requires at least:    4.5.0
  * Tested up to:         6.8.0
@@ -20,18 +22,18 @@
  * @author               Brett Porcelli
  * @license              GPL2
  *
- * Simple Sales Tax is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by the
- * Free Software Foundation, either version 2 of the License, or any later
- * version.
+ * TaxCloud for WooCommerce is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * any later version.
  *
- * Simple Sales Tax is distributed in the hope that it will be useful,
+ * TaxCloud for WooCommerce is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along with
- * Simple Sales Tax. If not, see http://www.gnu.org/licenses/gpl-2.0.txt.
+ * You should have received a copy of the GNU General Public License
+ * along with TaxCloud for WooCommerce. If not, see http://www.gnu.org/licenses/gpl-2.0.txt.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

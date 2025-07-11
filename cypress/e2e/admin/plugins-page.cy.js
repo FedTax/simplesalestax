@@ -7,6 +7,6 @@ describe('Plugins page', () => {
     cy.get('[data-slug="simple-sales-tax"]')
       .findByRole('link', {name: 'Settings'})
       .click();
-    cy.findByRole('heading', {name: 'Simple Sales Tax'}).should('exist');
+    cy.findByRole('heading', {name: 'TaxCloud for WooCommerce'}).should('exist');
   });
 });

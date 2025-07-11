@@ -68,7 +68,7 @@ class SST_Install {
 	 */
 	public static function init() {
 		add_action( 'init', array( __CLASS__, 'init_background_updater' ), 5 );
-		add_action( 'init', array( __CLASS__, 'check_version' ), 5 );
+		add_action( 'admin_init', array( __CLASS__, 'check_version' ), 5 );
 		add_action( 'admin_init', array( __CLASS__, 'trigger_update' ) );
 		add_action( 'admin_init', array( __CLASS__, 'trigger_rate_removal' ) );
 		add_filter( 'plugin_action_links_' . SST_PLUGIN_BASENAME, array( __CLASS__, 'add_action_links' ) );
@@ -103,7 +103,15 @@ class SST_Install {
 	 * in the database and runs the installer if necessary.
 	 */
 	public static function check_version() {
-		if ( ! defined( 'IFRAME_REQUEST' ) && get_option( 'wootax_version' ) !== SST()->version ) {
+		if (
+			is_admin()
+			&& isset( $_GET['page'], $_GET['tab'], $_GET['section'] )
+			&& 'wc-settings' === $_GET['page']
+			&& 'integration' === $_GET['tab']
+			&& 'wootax' === $_GET['section']
+			&& ! defined( 'IFRAME_REQUEST' )
+			&& get_option( 'wootax_version' ) !== SST()->version
+		) {
 			self::install();
 		}
 	}
@@ -151,7 +159,7 @@ class SST_Install {
 			$notice     = sprintf(
 				/* translators: 1 - URL to keep found rates, 2 - URL to delete found rates */
 				__(
-					'Simple Sales Tax found extra rates in your tax tables. Please choose to <a href="%1$s">keep the rates</a> or <a href="%2$s">delete them</a>.',
+					'TaxCloud for WooCommerce found extra rates in your tax tables. Please choose to <a href="%1$s">keep the rates</a> or <a href="%2$s">delete them</a>.',
 					'simple-sales-tax'
 				),
 				$keep_url,
@@ -288,12 +296,9 @@ class SST_Install {
 
 		// Get existing rate, if any.
 		$rate_id  = get_option( 'wootax_rate_id', 0 );
-		$existing = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM $tax_rates_table WHERE tax_rate_id = %d;",
-				$rate_id
-			)
-		);
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tax_rates_table WHERE tax_rate_id = %d;",$rate_id));
 
 		// Add or update tax rate.
 		$_tax_rate = array(
