@@ -16,6 +16,7 @@
  * Tested up to:         6.8.0
  * WC requires at least: 6.9.0
  * WC tested up to:      9.3.1
+ * Requires PHP:         7.4
  *
  * @category             Plugin
  * @copyright            Copyright © 2024 The Federal Tax Authority, LLC
