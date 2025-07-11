@@ -1,5 +1,4 @@
 === TaxCloud for WooCommerce ===
-Contributors: taxcloud
 Tags: taxcloud, woocommerce, tax, sales tax, sales tax filing
 Requires at least: 4.5
 Tested up to: 6.8
