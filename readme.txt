@@ -11,19 +11,19 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Simplify sales tax calculations, reporting, and filing by connecting your WooCommerce store to TaxCloud.
 
 == Description ==
-# Simplify Sales Tax Compliance with TaxCloud for WooCommerce (formerly Simple Sales Tax)
-TaxCloud is the right-sized sales tax solution for growing eCommerce brands on WooCommerce. We take the complexity out of sales tax, automating calculation, nexus tracking, and filing across all 50 states and more than 13,000 tax jurisdictions.
+## Simplify Sales Tax Compliance with TaxCloud for WooCommerce (formerly Simple Sales Tax)
+[TaxCloud](http://www.taxcloud.com) is the right-sized sales tax solution for growing eCommerce brands on WooCommerce. We take the complexity out of sales tax, automating calculation, nexus tracking, and filing across all 50 states and more than 13,000 tax jurisdictions.
 
 ## Quick, Code-Free Setup
-Getting started takes just a few clicks. TaxCloud’s native WooCommerce plugin integrates in minutes. No custom development required. Simply assign product tax codes and connect your store to begin calculating sales tax accurately and in real time.
+Getting started takes just a few clicks. TaxCloud’s native WooCommerce plugin integrates in minutes. No custom development required. Simply assign [product tax codes](https://taxcloud.com/sales-tax-tic-codes/) and connect your store to begin calculating sales tax accurately and in real time.
 ## Automated, Accurate Sales Tax at Checkout
-Avoid manual errors with real-time sales tax calculations across all jurisdictions. TaxCloud ensures every transaction includes the correct rate, whether you’re selling in one state or across the country.
+Avoid manual errors with real-time [sales tax calculations](https://taxcloud.com/calculate-collect-sales-tax/) across all jurisdictions. TaxCloud ensures every transaction includes the correct rate, whether you’re selling in one state or across the country.
 ## Streamlined Filing and Remittance
-We make filing as simple as collecting. You can upload your Orders Report manually or opt into automatic syncing. We’ll register, file and remit your returns in each state. Benefit from filing savings through the Streamlined Sales Tax (SST) program where eligible.
+We make filing as simple as collecting. You can upload your Orders Report manually or opt into automatic syncing. We’ll register, file and remit your returns in each state. Benefit from filing savings through the [Streamlined Sales Tax (SST)](https://taxcloud.com/streamlined-sales-tax-csp-provider/) program where eligible.
 ## Nexus Monitoring and Audit-Ready Reporting
-We track your sales against each state’s economic nexus thresholds and alert you when you’re approaching compliance obligations. When you reach nexus, you’ll have the documentation, reports, and filing support you need to stay compliant and audit-ready.
+We track your sales against each state’s [economic nexus thresholds](https://taxcloud.com/economic-nexus-tracking/) and alert you when you’re approaching compliance obligations. When you reach nexus, you’ll have the documentation, reports, and filing support you need to stay compliant and audit-ready.
 ## Affordable, Transparent Pricing
-Our pricing is built for growing businesses. No hidden fees. Eligible merchants can save on filing in SST states. Switching from other providers? We’ll help you migrate and import historical orders with ease.
+[Our pricing is built for growing businesses](https://taxcloud.com/taxcloud-pricing/). No hidden fees. Eligible merchants can save on filing in SST states. Switching from other providers? We’ll help you migrate and import historical orders with ease.
 ## Reliable U.S.-Based Support
 Get expert support every step of the way. Our dedicated, U.S.-based team will set your account up right from day one and provide ongoing assistance whenever you need it.
 Why Businesses Choose TaxCloud for WooCommerce
