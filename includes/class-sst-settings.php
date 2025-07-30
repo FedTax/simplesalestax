@@ -248,7 +248,7 @@ class SST_Settings {
 				),
 				'default'     => self::get_default_shipping_tic(),
 				'description' => __(
-					'Enter TIC code on <a href="https://taxcloud.net/tic" target="_blank">TaxCloud website</a> for details.',
+					'Enter TIC code on <a href="https://support.taxcloud.com/article/109-taxability-information-codes" target="_blank">TaxCloud website</a> for details.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => __(
