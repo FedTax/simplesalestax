@@ -59,6 +59,12 @@ abstract class SST_Abstract_Cart {
 			return false;
 		}
 
+		// Real-time tax calculation is disabled?.
+		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+			SST_Logger::add( 'Real-time tax calculation is disabled in plugin settings. Skipping lookup.' );
+			return false;
+		}
+
 		// Perform tax lookup(s).
 		foreach ( $this->do_lookup() as $package ) {
 			$response = $package['response'];

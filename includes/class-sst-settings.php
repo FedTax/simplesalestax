@@ -278,6 +278,20 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
+			'disable_real_time_calc' => array(
+				'title'       => __( 'Disable Real-Time Tax Calculation', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'no'  => __( 'No', 'simple-sales-tax' ),
+					'yes' => __( 'Yes', 'simple-sales-tax' ),
+				),
+				'default'     => 'no',
+				'description' => __(
+					'If enabled, real-time sales tax calculations will be disabled during cart and checkout',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
 			'tax_based_on'                => array(
 				'title'       => __( 'Tax Based On', 'simple-sales-tax' ),
 				'type'        => 'select',
