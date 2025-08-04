@@ -47,8 +47,7 @@ jobs:
           echo "$HOME/.composer/vendor/bin" >> $GITHUB_PATH
 
       - name: Authenticate with QIT
-        run: |
-          echo "${{ secrets.QIT_APP_PASS }}" | qit connect --user="${{ secrets.QIT_USER }}" --application-password-stdin
+        run: qit partner:add --user='${{ secrets.QIT_USER }}' --application_password='${{ secrets.QIT_APP_PASS }}'
 
       - name: Create plugin zip
         run: |
