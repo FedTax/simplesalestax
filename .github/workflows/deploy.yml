@@ -3,6 +3,13 @@ name: Deploy
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      skip_deployment:
+        description: 'Skip WordPress.org deployment (for testing)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   qit-tests:
@@ -32,6 +39,7 @@ jobs:
 
       - name: Deploy to WP.org
         id: plugin-deploy
+        if: ${{ !inputs.skip_deployment }}
         uses: 10up/action-wordpress-plugin-deploy@2.3.0
         with:
           generate-zip: true
@@ -42,6 +50,7 @@ jobs:
           ASSETS_DIR: .wordpress
 
       - name: Upload release asset
+        if: ${{ github.event_name == 'release' && !inputs.skip_deployment }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -50,3 +59,18 @@ jobs:
           asset_path: ${{ steps.plugin-deploy.outputs.zip-path }}
           asset_name: ${{ github.event.repository.name }}.zip
           asset_content_type: application/zip
+
+      - name: Create test artifact (when skipping deployment)
+        if: ${{ inputs.skip_deployment }}
+        run: |
+          mkdir -p test-build
+          rsync -av --exclude-from=.distignore . ./test-build/
+          cd test-build
+          zip -r ../simple-sales-tax-test.zip . -x "*.git*" "node_modules/*" "cypress/*" "docker/*"
+
+      - name: Upload test artifact
+        if: ${{ inputs.skip_deployment }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-test-build
+          path: simple-sales-tax-test.zip
