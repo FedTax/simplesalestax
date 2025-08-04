@@ -5,9 +5,14 @@ on:
     types: [published]
 
 jobs:
+  qit-tests:
+    uses: ./.github/workflows/qit.yml
+    secrets: inherit
+
   deploy:
     name: Deploy
     runs-on: ubuntu-22.04
+    needs: qit-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v2.4.2

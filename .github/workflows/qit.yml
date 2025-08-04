@@ -1,0 +1,71 @@
+name: QIT Testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      plugin_version:
+        description: 'Plugin version to test (optional, defaults to current)'
+        required: false
+        type: string
+  release:
+    types: [created]
+
+jobs:
+  qit-tests:
+    name: Run QIT Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.0
+          extensions: zip
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build plugin
+        run: |
+          npm run build
+          mkdir -p qit-plugin
+          rsync -av --exclude-from=.distignore . ./qit-plugin/
+
+      - name: Install QIT CLI
+        run: |
+          composer global require woocommerce/qit-cli
+          echo "$HOME/.composer/vendor/bin" >> $GITHUB_PATH
+
+      - name: Authenticate with QIT
+        run: |
+          echo "${{ secrets.QIT_APP_PASS }}" | qit connect --user="${{ secrets.QIT_USER }}" --application-password-stdin
+
+      - name: Create plugin zip
+        run: |
+          cd qit-plugin
+          zip -r ../simple-sales-tax.zip . -x "*.git*" "node_modules/*" "cypress/*" "docker/*"
+
+      - name: Run QIT Activation Tests
+        run: qit run:activation simple-sales-tax --zip=simple-sales-tax.zip
+
+      - name: Run QIT Security Tests
+        run: qit run:security simple-sales-tax --zip=simple-sales-tax.zip
+
+      - name: Upload QIT Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qit-test-results
+          path: |
+            ~/.qit/results/
+            qit-plugin/
