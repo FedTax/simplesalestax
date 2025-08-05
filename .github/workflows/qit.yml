@@ -7,8 +7,6 @@ on:
         description: 'Plugin version to test (optional, defaults to current)'
         required: false
         type: string
-  release:
-    types: [created]
 
 jobs:
   qit-tests:

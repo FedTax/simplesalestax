@@ -35,8 +35,9 @@ Add the following secrets to the repository:
 - **Activation Tests**: Ensure the plugin activates without errors
 - **Security Tests**: Check for security vulnerabilities
 
-## Integration with Deploy Workflow
-The deploy workflow now depends on successful QIT tests. This ensures that:
-- QIT tests run automatically when a GitHub release is created
-- WordPress.org deployment only happens after QIT validation passes
-- Manual QIT testing can be performed before creating releases
+## Separate QIT Testing Workflow
+The QIT testing workflow is completely separate from the deploy process:
+- QIT tests are triggered manually when needed for testing
+- Deploy workflow runs independently without QIT dependency
+- Provides flexibility to test QIT validation before releases
+- No automatic QIT testing on releases (manual control only)
