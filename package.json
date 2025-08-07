@@ -1,53 +1,39 @@
 {
   "name": "simplesalestax",
-  "version": "8.2.5-beta.3",
+  "version": "8.3.1",
   "description": "A TaxCloud integration for WooCommerce.",
   "scripts": {
     "build": "npm run build:blocks && npm run build:makepot && grunt",
-    "build:makepot": "npx @wp-blocks/make-pot . ./languages --slug simple-sales-tax --domain plugin --exclude .git,build,cypress,docker,node_modules,vendor,*.config.js",
-    "archive": "cross-var wp dist-archive . releases/simple-sales-tax-$npm_package_version.zip --plugin-dirname=simple-sales-tax --format=zip",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run",
-    "build:blocks": "wp-scripts build --webpack-src-dir=./assets/js/blocks",
-    "format": "wp-scripts format ./assets/js/blocks",
-    "lint:css": "wp-scripts lint-style ./assets/js/blocks",
-    "lint:js": "wp-scripts lint-js ./assets/js/blocks",
+    "build:blocks": "wp-scripts build assets/js/blocks/tax-exemption/",
+    "build:makepot": "wp i18n make-pot . languages/simple-sales-tax.pot --domain=simple-sales-tax",
+    "dev": "npm run dev:blocks",
+    "dev:blocks": "wp-scripts start assets/js/blocks/tax-exemption/",
+    "format": "wp-scripts format",
+    "lint:css": "wp-scripts lint-style",
+    "lint:js": "wp-scripts lint-js",
+    "lint:md:docs": "markdownlint --fix docs/**/*.md",
+    "lint:php": "composer run-script phpcs",
     "packages-update": "wp-scripts packages-update",
-    "start": "wp-scripts start --webpack-src-dir=./assets/js/blocks"
+    "plugin-zip": "grunt",
+    "test:e2e": "start-server-and-test 'npm run wp-env start' http://localhost:8888 'cypress run'",
+    "test:e2e:dev": "start-server-and-test 'npm run wp-env start' http://localhost:8888 'cypress open'",
+    "wp-env": "wp-env"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bporcelli/simplesalestax.git"
-  },
-  "keywords": [
-    "wordpress",
-    "woocommerce",
-    "sales tax"
-  ],
-  "author": "Simple Sales Tax <support@simplesalestax.com>",
-  "license": "GPL-3.0+",
-  "bugs": {
-    "url": "https://github.com/bporcelli/simplesalestax/issues"
-  },
-  "homepage": "https://github.com/bporcelli/simplesalestax#readme",
   "devDependencies": {
-    "@automattic/color-studio": "^2.5.0",
-    "@testing-library/cypress": "^10.0.2",
-    "@woocommerce/block-library": "^2.3.0",
-    "@woocommerce/dependency-extraction-webpack-plugin": "^3.0.1",
-    "@woocommerce/woocommerce-rest-api": "^1.0.1",
-    "@wordpress/base-styles": "4.35.0",
-    "@wordpress/icons": "^9.41.0",
-    "@wordpress/scripts": "^27.1.0",
-    "@wp-blocks/make-pot": "^1.4.0",
-    "cross-var": "^1.1.0",
+    "@wordpress/scripts": "^26.19.0",
     "cypress": "^13.6.4",
     "grunt": "^1.6.1",
-    "grunt-contrib-cssmin": "^5.0.0",
-    "grunt-contrib-uglify": "^5.2.2",
-    "wordpress-components": "npm:@wordpress/components@28.3.0"
+    "grunt-contrib-clean": "^2.0.1",
+    "grunt-contrib-compress": "^2.0.0",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-watch": "^1.1.0",
+    "grunt-wp-deploy": "^2.1.2",
+    "markdownlint-cli": "^0.35.0",
+    "start-server-and-test": "^2.0.3",
+    "wp-env": "^9.4.0"
   },
   "dependencies": {
-    "npm": "^10.8.3"
+    "@testing-library/cypress": "^10.0.1",
+    "@woocommerce/woocommerce-rest-api": "^1.0.1"
   }
 }

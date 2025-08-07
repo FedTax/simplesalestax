@@ -82,11 +82,13 @@ class SST_Order_Controller {
 		try {
 			$result = $order->do_refund( $refund );
 
-			if ( ! $result ) {
-				$refund->delete( true );
-			}
+			// Avoid Deleting the refund - WooApi errors if the refund is deleted
+			// if ( ! $result ) {
+			// 	$refund->delete( true );
+			// }
 		} catch ( Exception $ex ) {
-			$refund->delete( true );
+			// Avoid Deleting the refund - WooApi errors if the refund is deleted
+			// $refund->delete( true );
 			throw $ex; /* Let Woo handle the exception */
 		}
 
@@ -168,6 +170,11 @@ class SST_Order_Controller {
 	public function calculate_order_tax( $and_taxes, $order ) {
 		// Note: sst_order_calculate_taxes sets `and_taxes` to false so
 		// the `and_taxes` check prevents infinite recursion
+
+		if ( ! $order instanceof WC_Order || $order instanceof WC_Order_Refund ) {
+			return;
+		}
+
 		$should_calculate = (
 			WC()->is_rest_api_request()
 			&& 'rest-api' === $order->get_created_via()

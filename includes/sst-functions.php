@@ -442,6 +442,7 @@ function sst_load_template( $path, $args = array() ) {
 		return;
 	}
 
+	// nosemgrep: audit.php.lang.security.file.inclusion-arg
 	require $full_path;
 }
 

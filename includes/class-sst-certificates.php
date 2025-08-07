@@ -110,7 +110,7 @@ class SST_Certificates {
 		$formatted = array(
 			'CertificateID'              => $certificate->getCertificateID(),
 			'PurchaserName'              => $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName(),
-			'CreatedDate'                => date( 'm/d/Y', strtotime( $detail->getCreatedDate() ) ),
+			'CreatedDate'                => gmdate( 'm/d/Y', strtotime( $detail->getCreatedDate() ) ),
 			'PurchaserAddress'           => $detail->getPurchaserAddress1(),
 			'PurchaserState'             => sst_prettify( $detail->getPurchaserState() ),
 			'PurchaserExemptionReason'   => sst_prettify( $detail->getPurchaserExemptionReason() ),
@@ -140,7 +140,7 @@ class SST_Certificates {
 		$state_abbr = $state->GetStateAbbr();
 		$id_type    = sst_prettify( $detail->getPurchaserTaxID()->getTaxType() );
 		$id_number  = $detail->getPurchaserTaxID()->getIDNumber();
-		$date       = date( 'm/d/Y', strtotime( $detail->getCreatedDate() ) );
+		$date       = gmdate( 'm/d/Y', strtotime( $detail->getCreatedDate() ) );
 
 		return sprintf(
 			/* translators: 1 - state issued, 2 - tax id, 3 - date created */

@@ -59,6 +59,12 @@ abstract class SST_Abstract_Cart {
 			return false;
 		}
 
+		// Real-time tax calculation is disabled?.
+		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+			SST_Logger::add( 'Real-time tax calculation is disabled in plugin settings. Skipping lookup.' );
+			return false;
+		}
+
 		// Perform tax lookup(s).
 		foreach ( $this->do_lookup() as $package ) {
 			$response = $package['response'];
@@ -373,7 +379,7 @@ abstract class SST_Abstract_Cart {
 			$package['origin'] = SST_Addresses::get_default_address();
 		} elseif ( ! ( $package['origin'] instanceof SST_Origin_Address ) ) {
 			SST_Logger::add(
-				__( 'Origin address for shipping package is invalid. Using default origin address from Simple Sales Tax settings.', 'simple-sales-tax' )
+				__( 'Origin address for shipping package is invalid. Using default origin address from TaxCloud for WooCommerce settings.', 'simple-sales-tax' )
 			);
 			$package['origin'] = SST_Addresses::get_default_address();
 		}

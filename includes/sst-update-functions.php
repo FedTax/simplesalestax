@@ -79,9 +79,8 @@ function sst_update_42_migrate_settings() {
 	);
 
 	// Get old options.
-	$existing = $wpdb->get_results(
-		"SELECT * FROM {$wpdb->options} WHERE option_name IN ( " . implode( ',', $options ) . ' );'
-	);
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$existing = $wpdb->get_results("SELECT * FROM {$wpdb->options} WHERE option_name IN ( " . implode( ',', $options ) . ' );');
 
 	// Migrate.
 	$new_options = get_option( 'woocommerce_wootax_settings', array() );
@@ -93,6 +92,7 @@ function sst_update_42_migrate_settings() {
 	update_option( 'woocommerce_wootax_settings', $new_options );
 
 	// Delete old options.
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name IN ( " . implode( ',', $options ) . ' );' );
 
 	return false;
@@ -128,19 +128,8 @@ function sst_update_42_migrate_order_data() {
 		'_wootax_cart_taxes',
 	);
 
-	$wpdb->query(
-		"
-        UPDATE {$wpdb->postmeta} wt, (
-            SELECT * FROM {$wpdb->postmeta}
-            WHERE meta_key = '_wootax_wc_order_id'
-            AND meta_key <> 0
-        ) wc
-        SET wt.post_id = wc.meta_value
-        WHERE wt.post_id = wc.post_id
-        AND wt.meta_key <> 0
-        AND wt.meta_key IN ( " . implode( ',', $meta_keys ) . ' );
-    '
-	);
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$wpdb->query( "UPDATE {$wpdb->postmeta} wt, (SELECT * FROM {$wpdb->postmeta} WHERE meta_key = '_wootax_wc_order_id' AND meta_key <> 0) wc SET wt.post_id = wc.meta_value WHERE wt.post_id = wc.post_id AND wt.meta_key <> 0 AND wt.meta_key IN (" . implode( ',', $meta_keys ) . ');' );
 
 	/**
 	 * Process WooCommerce orders. Add new order and item metadata introduced
@@ -570,7 +559,7 @@ function sst_update_50_order_data() {
 					foreach ( $items as $item_id => $item ) {
 						if ( 'fee' === $item['type'] ) {
 							$taxcloud_id = sanitize_title(
-								empty( $item['name'] ) ? __( 'Fee', 'woocommerce' ) : $item['name']
+								empty( $item['name'] ) ? __( 'Fee', 'simple-sales-tax' ) : $item['name']
 							);
 
 							$new_packages[0]['contents'][] = new TaxCloud\CartItem(
@@ -698,7 +687,7 @@ function sst_update_606_fix_duplicate_transactions() {
 						$api_key,
 						$package_order_id,
 						$cart_items,
-						date( 'c' )
+						gmdate( 'c' )
 					);
 
 					TaxCloud()->Returned( $request );
@@ -937,13 +926,10 @@ function _sst_update_620_get_address_mismatch_notice( $mismatched_addresses ) {
 
 	$address_list_html .= '</ul>';
 
+	// translators: %1$s is the dismiss link URL. %2$s is the HTML list of missing addresses.
 	return sprintf(
-		__(
-			'<strong>IMPORTANT: Your TaxCloud Locations are out of sync.</strong> One or more of the addresses from your Simple Sales Tax settings are not registered as Locations in your TaxCloud account. Please add all of the addresses listed below on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud, then click Dismiss to dismiss this notice. %2$s',
-			'simple-sales-tax'
-		),
-		add_query_arg( $dismiss_args, admin_url( 'admin.php' ) ),
-		$address_list_html
+		__( '<strong>IMPORTANT: Your TaxCloud Locations are out of sync.</strong> One or more of the addresses from your TaxCloud for WooCommerce settings are not registered as Locations in your TaxCloud account. Please add all of the addresses listed below on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in your TaxCloud account.', 'simple-sales-tax' ),
+		esc_url( 'https://app.taxcloud.com/go/locations' )
 	);
 }
 
