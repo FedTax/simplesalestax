@@ -80,6 +80,16 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return $total;
 		}
 
+		// Add session readiness check to prevent tax calculation failures
+		if ( ! WC()->session || ! WC()->session->get( 'sst_packages' ) ) {
+			// Session not ready or no packages, skip tax calculation this time
+			// This prevents the refresh requirement issue
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				SST_Logger::add( 'SST: Session not ready for tax calculation, skipping to prevent refresh requirement.' );
+			}
+			return $total;
+		}
+
 		$tax_total = 0;
 
 		$this->cart = new SST_Cart_Proxy( $cart );
@@ -145,6 +155,15 @@ class SST_Checkout extends SST_Abstract_Cart {
 			$this->update_taxes();
 
 			return true;
+		}
+
+		// Try to use cached packages first, create new ones if needed
+		if ( ! $this->get_packages() ) {
+			// No cached packages, create new ones to prevent tax calculation failures
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				SST_Logger::add( 'SST: No cached packages found, creating new packages to prevent tax calculation failures.' );
+			}
+			$this->create_packages();
 		}
 
 		return parent::calculate_taxes();
@@ -502,6 +521,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 				'sst_certificate_id',
 				$this->get_default_certificate_id()
 			);
+		}
+
+		// Ensure SST packages are initialized in session
+		if ( ! WC()->session->get( 'sst_packages' ) ) {
+			WC()->session->set( 'sst_packages', array() );
 		}
 	}
 
@@ -890,9 +914,15 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @return array|bool The saved package with the given hash, or false if no such package exists.
 	 */
 	protected function get_saved_package( $hash ) {
+		// Add session readiness check
+		if ( ! WC()->session ) {
+			return false;
+		}
+
 		$saved_packages = WC()->session->get( 'sst_package_cache', array() );
 
-		if ( isset( $saved_packages[ $hash ] ) ) {
+		// Validate package data integrity before returning
+		if ( isset( $saved_packages[ $hash ] ) && $this->is_package_valid( $saved_packages[ $hash ] ) ) {
 			return $saved_packages[ $hash ];
 		}
 
@@ -910,6 +940,35 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$saved_packages[ $hash ] = $package;
 
 		WC()->session->set( 'sst_package_cache', $saved_packages );
+	}
+
+	/**
+	 * Validates package data integrity to prevent using corrupted packages.
+	 *
+	 * @param array $package Package to validate.
+	 * @return bool True if package is valid, false otherwise.
+	 */
+	protected function is_package_valid( $package ) {
+		// Check if package has required keys
+		$required_keys = array( 'cart_items', 'customer_id' );
+		
+		foreach ( $required_keys as $key ) {
+			if ( ! isset( $package[ $key ] ) ) {
+				return false;
+			}
+		}
+
+		// Check if cart_items is an array and not empty
+		if ( ! is_array( $package['cart_items'] ) || empty( $package['cart_items'] ) ) {
+			return false;
+		}
+
+		// Check if customer_id is valid
+		if ( empty( $package['customer_id'] ) ) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
