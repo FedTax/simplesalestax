@@ -13,12 +13,10 @@ Cypress.Commands.add('visitAdminPage', (pagePath = '/wp-admin/') => {
     cy.visit(pagePath);
     cy.get('body').then(($body) => {
       if ($body.hasClass('login')) {
-        cy.findByRole('textbox', {name: 'Username or Email Address'})
-          .clear()
-          .type('admin');
-        cy.findByRole('button', {name: 'Show password'}).click();
-        cy.findByRole('textbox', {name: 'Password'}).type('password');
-        cy.findByRole('button', {name: 'Log In'}).click();
+        cy.get('#user_login').clear().type('admin');
+        cy.get('#user_pass').type('password');
+        cy.get('#wp-submit').click();
+        cy.url().should('not.include', 'wp-login.php');
       }
     });
   });
@@ -27,12 +25,10 @@ Cypress.Commands.add('visitAdminPage', (pagePath = '/wp-admin/') => {
 Cypress.Commands.add('loginAsAdmin', () => {
   cy.session('admin', () => {
     cy.visit('/wp-login.php');
-    cy.findByRole('textbox', {name: 'Username or Email Address'})
-      .clear()
-      .type('admin');
-    cy.findByRole('button', {name: 'Show password'}).click();
-    cy.findByRole('textbox', {name: 'Password'}).type('password');
-    cy.findByRole('button', {name: 'Log In'}).click();
+    cy.get('#user_login').clear().type('admin');
+    cy.get('#user_pass').type('password');
+    cy.get('#wp-submit').click();
+    cy.url().should('not.include', 'wp-login.php');
   }, {cacheAcrossSpecs: true});
 });
 

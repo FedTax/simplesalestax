@@ -38,6 +38,9 @@ class SST_Integration extends WC_Integration {
 		add_action( 'woocommerce_update_options_integration_' . $this->id, array( $this, 'refresh_origin_address_list' ), 15 );
 		add_action( 'admin_init', array( $this, 'maybe_download_debug_report' ) );
 		add_action( 'woocommerce_hide_sst_address_mismatch_notice', array( $this, 'maybe_dismiss_address_notice' ) );
+		
+		// Ensure settings are loaded
+		$this->init_settings();
 	}
 
 	/**
@@ -46,6 +49,10 @@ class SST_Integration extends WC_Integration {
 	 * @since 4.5
 	 */
 	public function init_form_fields() {
+		// Ensure settings are loaded
+		if ( ! class_exists( 'SST_Settings' ) ) {
+			require_once dirname( __DIR__ ) . '/class-sst-settings.php';
+		}
 		$this->form_fields = SST_Settings::get_form_fields();
 	}
 

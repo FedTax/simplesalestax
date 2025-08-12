@@ -53,6 +53,11 @@ class SST_Admin {
 			'wootax',
 			array( $this, 'output' )
 		);
+		
+		// Ensure integration is properly loaded
+		add_action( 'init', array( __CLASS__, 'ensure_integration_loaded' ) );
+		add_action( 'plugins_loaded', array( __CLASS__, 'ensure_integration_loaded' ) );
+		add_action( 'woocommerce_init', array( __CLASS__, 'ensure_integration_loaded' ) );
 	}
 
 	/**
@@ -76,6 +81,17 @@ class SST_Admin {
 		$integrations[] = 'SST_Integration';
 
 		return $integrations;
+	}
+
+	/**
+	 * Ensure the integration is properly loaded.
+	 *
+	 * @since 8.3.1
+	 */
+	public static function ensure_integration_loaded() {
+		if ( ! class_exists( 'SST_Integration' ) ) {
+			require_once __DIR__ . '/class-sst-integration.php';
+		}
 	}
 
 	/**

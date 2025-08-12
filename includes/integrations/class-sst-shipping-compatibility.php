@@ -338,5 +338,7 @@ class SST_Shipping_Compatibility {
 	}
 }
 
-// Initialize the integration
-SST_Shipping_Compatibility::instance(); 
+// Initialize the integration only if WooCommerce is loaded
+if ( class_exists( 'WooCommerce' ) ) {
+	SST_Shipping_Compatibility::instance();
+} 

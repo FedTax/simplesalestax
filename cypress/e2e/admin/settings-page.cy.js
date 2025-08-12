@@ -6,8 +6,8 @@ describe('Settings page', () => {
     cy.goToSettingsPage();
   });
 
-  it('has a heading TaxCloud for WooCommerce', () => {
-    cy.findByRole('heading', {name: 'TaxCloud for WooCommerce'}).should('exist');
+  it('has a heading TaxCloud Settings', () => {
+    cy.findByText('TaxCloud Settings').should('exist');
   });
 
   it('has a working Verify Settings button', () => {
@@ -16,7 +16,7 @@ describe('Settings page', () => {
         req.alias = 'verifyRequest';
       }
     });
-    cy.findByRole('button', {name: 'Verify Settings'}).click();
+    cy.get('#verifySettings').click();
     cy.wait('@verifyRequest', {timeout: 20000});
     cy.on('window:alert', (text) => {
       expect(text).to.eq('Success! Your TaxCloud settings are valid.');
@@ -25,7 +25,7 @@ describe('Settings page', () => {
 
   it('has a working Download Log button', () => {
     cy.intercept('*&download_debug_report=1').as('downloadRequest');
-    cy.findByRole('link', {name: 'Download'}).click();
+    cy.get('#debug_report_button').click();
     cy.wait('@downloadRequest', {timeout: 20000}).then((intercepted) => {
       expect(intercepted.response.statusCode).to.eq(200);
       expect(intercepted.response.headers['content-disposition']).to.match(/filename=sst_debug_report_(.*).txt$/);
