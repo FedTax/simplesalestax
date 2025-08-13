@@ -48,7 +48,7 @@ final class SimpleSalesTax {
 	private function __construct() {
 		$this->define_constants();
 
-		add_action( 'init', array( $this, 'init' ) );
+		add_action( 'plugins_loaded', array( $this, 'init' ) );
 		add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
 		add_action( 'before_woocommerce_init', array( $this, 'declare_cart_block_compatibility' ) );
 		add_filter( 'woocommerce_get_query_vars', array( $this, 'add_tax_exemptions_query_var' ) );
