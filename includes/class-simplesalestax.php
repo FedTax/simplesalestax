@@ -49,9 +49,10 @@ final class SimpleSalesTax {
 		$this->define_constants();
 
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
-		add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
-		add_action( 'before_woocommerce_init', array( $this, 'declare_cart_block_compatibility' ) );
 		add_filter( 'woocommerce_get_query_vars', array( $this, 'add_tax_exemptions_query_var' ) );
+		
+		// Ensure compatibility declarations happen at the right time
+		add_action( 'woocommerce_loaded', array( $this, 'ensure_compatibility_declarations' ) );
 	}
 
 	/**
@@ -376,24 +377,25 @@ final class SimpleSalesTax {
 		return plugin_dir_url( SST_FILE ) . $path;
 	}
 
+
+
 	/**
-	 * Declare compatibility with WooCommerce's High-Performance Order Storage.
+	 * Ensure compatibility declarations are made at the right time.
+	 * This method is called after WooCommerce is fully loaded to prevent timing issues.
 	 */
-	public function declare_hpos_compatibility() {
-		if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+	public function ensure_compatibility_declarations() {
+		// Only declare compatibility if WooCommerce is fully loaded and FeaturesUtil is available
+		if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) && 
+			 class_exists( 'WooCommerce' ) && 
+			 did_action( 'woocommerce_loaded' ) ) {
+			
+			// Re-declare compatibility to ensure it happens at the right time
 			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
 				'custom_order_tables',
 				SST_FILE,
 				true
 			);
-		}
-	}
-
-	/**
-	 * Declare compatibility with the Cart & Checkout blocks.
-	 */
-	public function declare_cart_block_compatibility() {
-		if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+			
 			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
 				'cart_checkout_blocks',
 				SST_FILE,
@@ -401,6 +403,8 @@ final class SimpleSalesTax {
 			);
 		}
 	}
+
+
 
 	/**
 	 * Adds a `exemption-certificates` query var/endpoint for WooCommerce.
