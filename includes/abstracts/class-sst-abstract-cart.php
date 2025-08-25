@@ -216,7 +216,7 @@ abstract class SST_Abstract_Cart {
 			}
 
 			/* Give devs a chance to change the taxable product price. */
-			$price = apply_filters( 'wootax_product_price', $price, $item['data'] );
+			$price = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
 
 			$cart_items[]     = new TaxCloud\CartItem(
 				count( $cart_items ),
