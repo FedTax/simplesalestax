@@ -23,7 +23,7 @@ jobs:
           extensions: zip
 
       - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader
+        run: composer install --optimize-autoloader
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
