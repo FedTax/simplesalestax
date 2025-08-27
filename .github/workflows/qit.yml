@@ -53,7 +53,7 @@ jobs:
           zip -r ../simple-sales-tax.zip . -x "*.git*" "node_modules/*" "cypress/*" "docker/*"
 
       - name: Run QIT Custom E2E Tests
-        run: qit run:e2e simple-sales-tax --zip=simple-sales-tax.zip --wait
+        run: qit run:e2e simple-sales-tax --source=simple-sales-tax.zip --wait
 
       - name: Upload QIT Results
         uses: actions/upload-artifact@v4
