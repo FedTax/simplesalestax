@@ -8,13 +8,15 @@
 Add the following secrets to the repository:
 
 - `QIT_USER`: Your WooCommerce.com username
-- `QIT_APP_PASS`: Your WooCommerce.com application password
+- `QIT_TOKEN`: Your WooCommerce.com QIT Token (not application password)
 
 ## Getting QIT Credentials
 1. Log in to your WooCommerce.com account
-2. Go to your account settings and generate an application password
-3. Add both your username and application password as GitHub Secrets
+2. Go to the QIT authorization page to generate a QIT Token
+3. Add both your username and QIT Token as GitHub Secrets
 4. The workflow will use `qit partner:add` to authenticate automatically
+
+**Note**: QIT Tokens have replaced application passwords. Regular application passwords will not work.
 
 ## Manual Testing
 
