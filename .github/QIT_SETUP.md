@@ -34,8 +34,8 @@ Add the following secrets to the repository:
 5. This will run QIT tests + build process but skip actual deployment
 
 ## QIT Tests Included
-- **Activation Tests**: Ensure the plugin activates without errors
-- **Security Tests**: Check for security vulnerabilities
+- **Custom E2E Tests**: Comprehensive end-to-end testing including activation, basic functionality, and compatibility checks
+- **Note**: Uses custom E2E tests instead of managed tests since the plugin is not registered in the WooCommerce Marketplace
 
 ## Separate QIT Testing Workflow
 The QIT testing workflow is completely separate from the deploy process:

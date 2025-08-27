@@ -52,11 +52,8 @@ jobs:
           cd qit-plugin
           zip -r ../simple-sales-tax.zip . -x "*.git*" "node_modules/*" "cypress/*" "docker/*"
 
-      - name: Run QIT Activation Tests
-        run: qit run:activation simple-sales-tax --zip=simple-sales-tax.zip
-
-      - name: Run QIT Security Tests
-        run: qit run:security simple-sales-tax --zip=simple-sales-tax.zip
+      - name: Run QIT Custom E2E Tests
+        run: qit run:e2e simple-sales-tax --zip=simple-sales-tax.zip --wait
 
       - name: Upload QIT Results
         uses: actions/upload-artifact@v4
