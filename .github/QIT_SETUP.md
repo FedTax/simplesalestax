@@ -8,13 +8,15 @@
 Add the following secrets to the repository:
 
 - `QIT_USER`: Your WooCommerce.com username
-- `QIT_APP_PASS`: Your WooCommerce.com application password
+- `QIT_TOKEN`: Your WooCommerce.com QIT Token (not application password)
 
 ## Getting QIT Credentials
 1. Log in to your WooCommerce.com account
-2. Go to your account settings and generate an application password
-3. Add both your username and application password as GitHub Secrets
+2. Go to the QIT authorization page to generate a QIT Token
+3. Add both your username and QIT Token as GitHub Secrets
 4. The workflow will use `qit partner:add` to authenticate automatically
+
+**Note**: QIT Tokens have replaced application passwords. Regular application passwords will not work.
 
 ## Manual Testing
 
@@ -32,8 +34,8 @@ Add the following secrets to the repository:
 5. This will run QIT tests + build process but skip actual deployment
 
 ## QIT Tests Included
-- **Activation Tests**: Ensure the plugin activates without errors
-- **Security Tests**: Check for security vulnerabilities
+- **Custom E2E Tests**: Comprehensive end-to-end testing including activation, basic functionality, and compatibility checks
+- **Note**: Uses custom E2E tests instead of managed tests since the plugin is not registered in the WooCommerce Marketplace
 
 ## Separate QIT Testing Workflow
 The QIT testing workflow is completely separate from the deploy process:

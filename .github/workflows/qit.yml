@@ -23,7 +23,7 @@ jobs:
           extensions: zip
 
       - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader
+        run: composer install --optimize-autoloader
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -45,18 +45,15 @@ jobs:
           echo "$HOME/.composer/vendor/bin" >> $GITHUB_PATH
 
       - name: Authenticate with QIT
-        run: qit partner:add --user='${{ secrets.QIT_USER }}' --application_password='${{ secrets.QIT_APP_PASS }}'
+        run: qit partner:add --user='${{ secrets.QIT_USER }}' --qit_token='${{ secrets.QIT_TOKEN }}'
 
       - name: Create plugin zip
         run: |
           cd qit-plugin
           zip -r ../simple-sales-tax.zip . -x "*.git*" "node_modules/*" "cypress/*" "docker/*"
 
-      - name: Run QIT Activation Tests
-        run: qit run:activation simple-sales-tax --zip=simple-sales-tax.zip
-
-      - name: Run QIT Security Tests
-        run: qit run:security simple-sales-tax --zip=simple-sales-tax.zip
+      - name: Run QIT Custom E2E Tests
+        run: qit run:e2e simple-sales-tax --source=simple-sales-tax.zip
 
       - name: Upload QIT Results
         uses: actions/upload-artifact@v4
