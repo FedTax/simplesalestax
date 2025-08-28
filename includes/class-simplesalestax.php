@@ -59,7 +59,6 @@ final class SimpleSalesTax {
 	 */
 	public function init() {
 		if ( $this->check_environment() ) {
-			$this->load_text_domain();
 			$this->includes();
 			$this->add_hooks();
 		}
@@ -216,9 +215,13 @@ final class SimpleSalesTax {
 
 	/**
 	 * Loads the plugin text domain.
+	 * 
+	 * @deprecated Since WordPress 4.6, translations are loaded automatically for WordPress.org plugins.
+	 * This method is kept for backward compatibility but is no longer needed.
 	 */
 	public function load_text_domain() {
-		load_plugin_textdomain( 'simple-sales-tax', false, basename( dirname( SST_FILE ) ) . '/languages' );
+		// WordPress 4.6+ automatically loads translations for plugins hosted on WordPress.org
+		// This method is kept for backward compatibility but does nothing
 	}
 
 	/**

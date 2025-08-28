@@ -1,0 +1,164 @@
+# Simple Sales Tax Plugin - Cursor AI Context
+
+## Project Overview
+This is the "Simple Sales Tax" (now rebranded as "TaxCloud for WooCommerce") WordPress plugin that provides automated sales tax calculation for WooCommerce stores using TaxCloud's API.
+
+## Key Technologies
+- **WordPress Plugin**: PHP-based plugin architecture
+- **WooCommerce Integration**: Deep integration with WooCommerce hooks and APIs
+- **TaxCloud API**: External tax calculation service
+- **JavaScript/Webpack**: Modern frontend build system with blocks
+- **Cypress**: E2E testing framework
+- **Composer**: PHP dependency management
+- **npm/Webpack**: JavaScript build system
+
+## QIT (Quality Insights Toolkit) Workflow
+
+### What is QIT?
+QIT is WooCommerce's validation testing suite for marketplace submissions, including:
+- **Security Tests**: Vulnerability scanning and security best practices
+- **Plugin Check**: WordPress.org compatibility and standards compliance
+- **Performance Tests**: Load testing and performance optimization
+- **Activation Tests**: Plugin activation and basic functionality
+- **Compatibility Tests**: WordPress/WooCommerce version compatibility
+
+### QIT Setup & Authentication
+```bash
+# Install QIT CLI globally
+composer global require "woocommerce/qit-cli:*"
+
+# Add to PATH
+export PATH="$HOME/.composer/vendor/bin:$PATH"
+
+# Authenticate with QIT
+qit connect
+# Requires QIT_USER and QIT_TOKEN from GitHub secrets
+```
+
+### Running QIT Tests
+```bash
+# Individual test types
+qit run:security simple-sales-tax --zip=releases/simple-sales-tax-8.3.1.zip
+qit run:plugin-check simple-sales-tax --zip=releases/simple-sales-tax-8.3.1.zip
+qit run:performance simple-sales-tax --zip=releases/simple-sales-tax-8.3.1.zip
+
+# With wait option for immediate results
+qit run:plugin-check simple-sales-tax --zip=releases/simple-sales-tax-8.3.1.zip --wait
+
+# Check test results
+qit get <TEST_RUN_ID>
+```
+
+### Current QIT Status
+- **Security Test**: ⚠️ WARNING (2 warnings, 0 errors)
+- **Plugin Check**: ❌ FAILED (3 errors, 105 warnings)
+- **Performance Test**: Not yet run
+
+### Known Issues & Fixes Applied
+✅ **Fixed Issues:**
+- Removed hidden files (`.distignore`, `.cursorrules`)
+- Removed deprecated `load_plugin_textdomain()` call (WordPress 4.6+)
+- Updated method documentation for deprecated functions
+
+❌ **Remaining Issues:**
+- Text Domain Loading Error: Complex architectural issue with translation calls in class properties
+- 105 warnings in plugin check (need detailed analysis)
+- 3 errors in plugin check (need detailed analysis)
+
+## Testing Suite
+
+### Cypress E2E Tests
+```bash
+# Run all tests
+npm run cypress:run
+
+# Run specific test file
+npm run cypress:run -- --spec "cypress/e2e/admin/settings-page.cy.js"
+
+# Open Cypress UI
+npm run cypress:open
+```
+
+### Build & Archive
+```bash
+# Build assets
+npm run build
+
+# Create distribution archive
+npm run archive
+
+# Build blocks only
+npm run build:blocks
+```
+
+### Test Results
+- **Cypress Tests**: ❌ FAILING due to text domain loading error
+- **Build Process**: ✅ WORKING
+- **Archive Creation**: ✅ WORKING
+
+## Development Workflow
+
+### Branch Strategy
+- **Main Branch**: `develop`
+- **QIT Fix Branch**: `devin/1756150674-fix-qit-workflow-composer`
+- **Current Focus**: Fixing QIT compliance issues
+
+### File Structure
+```
+simplesalestax/
+├── includes/class-simplesalestax.php  # Main plugin class
+├── includes/admin/                     # Admin functionality
+├── includes/frontend/                  # Frontend functionality
+├── includes/integrations/              # Third-party integrations
+├── assets/js/blocks/                   # Gutenberg blocks
+├── cypress/e2e/                        # E2E tests
+├── releases/                           # Distribution archives
+└── .github/workflows/                  # GitHub Actions
+```
+
+### Key Classes
+- `SimpleSalesTax`: Main plugin class
+- `SST_Admin`: Admin interface management
+- `SST_Settings`: Plugin settings and configuration
+- `SST_Checkout`: Checkout tax calculation
+- `SST_Certificates`: Tax exemption certificates
+
+## QIT Testing Best Practices
+
+### Before Running Tests
+1. **Build the plugin**: `npm run build`
+2. **Create archive**: `npm run archive`
+3. **Verify zip structure**: Check `releases/` directory
+4. **Clean environment**: Remove hidden files and deprecated code
+
+### Test Priority Order
+1. **Plugin Check**: Fix errors first, then warnings
+2. **Security Test**: Address security warnings
+3. **Performance Test**: Optimize performance issues
+4. **Activation Test**: Ensure basic functionality works
+
+### Common QIT Issues
+- **Hidden Files**: Remove `.distignore`, `.cursorrules`, etc.
+- **Deprecated Functions**: Update to modern WordPress standards
+- **Text Domain**: WordPress 4.6+ handles translations automatically
+- **File Permissions**: Ensure proper file access controls
+- **Code Standards**: Follow WordPress coding standards
+
+## Next Steps for QIT Compliance
+1. **Analyze remaining 3 errors** from plugin check results
+2. **Address 105 warnings** systematically
+3. **Fix text domain architectural issue** (requires refactoring)
+4. **Run comprehensive QIT test suite** after fixes
+5. **Validate all tests pass** before marketplace submission
+
+## GitHub Actions Integration
+- **QIT Workflow**: `.github/workflows/qit.yml`
+- **Deploy Workflow**: `.github/workflows/deploy.yml`
+- **Automated Testing**: Runs on pull requests and releases
+- **QIT Integration**: Automated QIT testing in CI/CD pipeline
+
+## Resources
+- **QIT Documentation**: https://qit.woo.com/docs/
+- **WordPress Plugin Guidelines**: https://developer.wordpress.org/plugins/wordpress-org/detailed-plugin-guidelines/
+- **WooCommerce Marketplace**: https://woocommerce.com/marketplace/
+- **Plugin Check Tool**: https://wordpress.org/plugins/developers/check-plugin/
