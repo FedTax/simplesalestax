@@ -81,7 +81,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		// Add session readiness check to prevent tax calculation failures
-		if ( ! WC()->session || ! WC()->session->get( 'sst_packages' ) ) {
+		if ( ! WC()->session ) {
 			// Session not ready or no packages, skip tax calculation this time
 			// This prevents the refresh requirement issue
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
