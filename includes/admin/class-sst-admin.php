@@ -45,14 +45,6 @@ class SST_Admin {
 		add_action( 'woocommerce_before_settings_tax', array( __CLASS__, 'tax_based_on_notice' ) );
 		add_action( 'edit_user_profile', array( __CLASS__, 'render_user_certificates' ), 11 );
 		add_action( 'show_user_profile', array( __CLASS__, 'render_user_certificates' ), 11 );
-		add_submenu_page(
-			'woocommerce',
-			__( 'TaxCloud for WooCommerce', 'simple-sales-tax' ),
-			__( 'TaxCloud for WooCommerce', 'simple-sales-tax' ),
-			'manage_woocommerce',
-			'wootax',
-			array( $this, 'output' )
-		);
 	}
 
 	/**
