@@ -73,8 +73,25 @@ class SST_Ajax {
 			wp_send_json_error();
 		} else {
 			try {
-				TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
-				wp_send_json_success();
+				$response = TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
+
+				// Expected Response
+				$response = array(
+					'status'  => 1, // We already get 1 from TaxCloud Ping
+					// Additional expected fields
+					'disable_real_time_calc' => 'yes', // boolean: based on marchant plan
+					// Optional fields
+					'marchant_plan' => 'starter',
+					'plan_expiration_date' => '2021-09-30 00:00:00',
+				);
+
+				// Update Real-time tax calculation setting
+				if ( 'no' === SST_Settings::get( 'disable_real_time_calc' ) && $response['disable_real_time_calc'] === 'yes' ) {
+					SST_Settings::set( 'disable_real_time_calc', 'yes' );
+					SST_Logger::add( 'SST: Real-time tax calculation is disabled by TaxCloud API.' );
+				}
+
+				wp_send_json_success( $response );
 			} catch ( Exception $ex ) {
 				wp_send_json_error( $ex->getMessage() );
 			}
