@@ -130,6 +130,7 @@ abstract class SST_Abstract_Cart {
 
 			if ( ! $this->is_destination_valid( $package ) ) {
 				// Wait for a complete destination address.
+				SST_Logger::add( __( 'Tax lookup failed: Shipping destination address is invalid.', 'simple-sales-tax' ) );
 				continue;
 			}
 
@@ -148,7 +149,7 @@ abstract class SST_Abstract_Cart {
 			$hash          = $this->get_package_hash( $package );
 			$saved_package = $this->get_saved_package( $hash );
 
-			if ( false === $saved_package ) {
+			if ( false === $saved_package ) { // TODO: Maybe add option to force a new lookup?
 				$saved_package = $this->compress_package_data(
 					$this->do_package_lookup( $package )
 				);
@@ -308,9 +309,10 @@ abstract class SST_Abstract_Cart {
 				$package['destination']['state'],
 				substr( $package['destination']['postcode'], 0, 5 )
 			);
-
+			// TODO: substr sometimes include trailing dash, e.g. 12345-
 			$package['destination'] = SST_Addresses::verify_address( $destination );
 		} catch ( Exception $ex ) {
+			SST_Logger::add( __( 'Shipping destination is not a verified address.', 'simple-sales-tax' ) );
 			return array();
 		}
 
