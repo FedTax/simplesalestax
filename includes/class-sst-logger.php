@@ -38,6 +38,10 @@ class SST_Logger {
 	 */
 	public static function init() {
 		if ( 'yes' === SST_Settings::get( 'log_requests' ) ) {
+			/**
+			 * Create a new log file every day.
+			 */
+			self::$handle = self::$handle . '-' . date( 'Y-m-d' );
 			self::$logger = function_exists( 'wc_get_logger' ) ? wc_get_logger() : new WC_Logger();
 		}
 	}
