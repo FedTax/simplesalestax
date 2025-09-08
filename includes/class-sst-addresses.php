@@ -113,14 +113,17 @@ class SST_Addresses {
 					$address
 				);
 				$address = TaxCloud()->VerifyAddress( $request );
+				
+				// Cache verified address.
+				$addresses[ $md5_hash ] = wp_json_encode( $address );
+
+				// Cache validated addresses for 3 days.
+				set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
 			} catch ( Exception $ex ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+				SST_Logger::add( 'Failed to verify address: ' . $ex->getMessage() );
 				// Leave address as-is.
 			}
 
-			$addresses[ $md5_hash ] = wp_json_encode( $address );
-
-			// Cache validated addresses for 3 days.
-			set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
 		}
 
 		return $address;
