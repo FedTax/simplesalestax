@@ -4,25 +4,26 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5f059051750d46275be802b23fd322f5",
+    "content-hash": "628946cfa22c43430fc5f85eb6e35786",
     "packages": [
         {
             "name": "bporcelli/php-taxcloud",
-            "version": "1.1.0",
+            "version": "dev-master",
             "source": {
                 "type": "git",
-                "url": "https://github.com/bporcelli/php-taxcloud.git",
+                "url": "https://github.com/FedTax/php-taxcloud.git",
                 "reference": "c4a6ec2511b9a444e306923f8dc23389b48a1a1a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/bporcelli/php-taxcloud/zipball/c4a6ec2511b9a444e306923f8dc23389b48a1a1a",
+                "url": "https://api.github.com/repos/FedTax/php-taxcloud/zipball/c4a6ec2511b9a444e306923f8dc23389b48a1a1a",
                 "reference": "c4a6ec2511b9a444e306923f8dc23389b48a1a1a",
                 "shasum": ""
             },
             "require": {
                 "php": ">=7.4"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-0": {
@@ -31,7 +32,6 @@
                     ]
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "proprietary"
             ],
@@ -59,7 +59,7 @@
             ],
             "support": {
                 "issues": "https://github.com/bporcelli/php-taxcloud/issues",
-                "source": "https://github.com/bporcelli/php-taxcloud/tree/1.1.0"
+                "source": "https://github.com/FedTax/php-taxcloud/tree/master"
             },
             "time": "2024-06-21T14:54:42+00:00"
         }
@@ -78,11 +78,12 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
+        "bporcelli/php-taxcloud": 20,
         "woocommerce/woocommerce": 20
     },
     "prefer-stable": false,
     "prefer-lowest": false,
-    "platform": [],
-    "platform-dev": [],
+    "platform": {},
+    "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }

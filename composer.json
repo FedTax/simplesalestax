@@ -10,7 +10,7 @@
   "description": "Sales tax compliance solution for WooCommerce.",
   "type": "project",
   "require": {
-    "bporcelli/php-taxcloud": "1.1.0"
+    "bporcelli/php-taxcloud": "dev-master"
   },
   "license": "GPL-3.0+",
   "authors": [
@@ -20,6 +20,10 @@
     }
   ],
   "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/FedTax/php-taxcloud.git"
+    },
     {
       "type": "package",
       "package": {
