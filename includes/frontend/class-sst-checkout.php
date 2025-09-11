@@ -176,7 +176,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function hide_zero_taxes() {
-		return 'true' !== SST_Settings::get( 'show_zero_tax' );
+		return 'true' !== SST_Settings::get( 'show_zero_tax', 'true' );
 	}
 
 	/**
