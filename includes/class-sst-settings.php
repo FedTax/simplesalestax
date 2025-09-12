@@ -267,6 +267,17 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
+			'force_tax_lookup'						=> array(
+				'title'       => __( 'Force Tax Lookup', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => ' ',
+				'default'     => '',
+				'description' => __(
+					'When selected, TaxCloud for WooCommerce will force a tax lookup for each order regardless of cached results.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
 			'capture_immediately'         => array(
 				'title'       => __( 'Capture Orders Immediately', 'simple-sales-tax' ),
 				'label'       => ' ',

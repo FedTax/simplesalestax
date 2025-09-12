@@ -130,7 +130,7 @@ abstract class SST_Abstract_Cart {
 
 			if ( ! $this->is_destination_valid( $package ) ) {
 				// Wait for a complete destination address.
-				SST_Logger::add( __( 'Tax lookup failed: Shipping destination address is invalid.', 'simple-sales-tax' ) );
+				SST_Logger::add( __( 'Tax lookup failed: Shipping destination address is invalid.', 'simple-sales-tax' ), $package['destination'] );
 				continue;
 			}
 
@@ -146,10 +146,11 @@ abstract class SST_Abstract_Cart {
 
 			$package['request'] = $this->get_lookup_for_package( $package );
 
-			$hash          = $this->get_package_hash( $package );
-			$saved_package = $this->get_saved_package( $hash );
+			$hash          		= $this->get_package_hash( $package );
+			$saved_package 		= $this->get_saved_package( $hash );
+			$force_tax_lookup	= SST_Settings::get( 'force_tax_lookup' );
 
-			if ( false === $saved_package ) { // TODO: Maybe add option to force a new lookup?
+			if ( 'yes' === $force_tax_lookup || false === $saved_package ) {
 				$saved_package = $this->compress_package_data(
 					$this->do_package_lookup( $package )
 				);
@@ -157,6 +158,8 @@ abstract class SST_Abstract_Cart {
 				if ( $saved_package ) {
 					$this->save_package( $hash, $saved_package );
 				}
+			} else {
+				SST_Logger::debug( __( 'Tax lookup skipped: Package already saved.', 'simple-sales-tax' ), $saved_package );
 			}
 
 			if ( $saved_package ) {
@@ -182,8 +185,11 @@ abstract class SST_Abstract_Cart {
 		try {
 			$package['response'] = TaxCloud()->Lookup( $package['request'] );
 			$package['cart_id']  = key( $package['response'] );
+			SST_Logger::debug( __( 'Tax lookup response:', 'simple-sales-tax' ), $package );
 		} catch ( Exception $ex ) {
 			$package['response'] = new WP_Error( 'lookup_error', $ex->getMessage() );
+			// Logging.
+			SST_Logger::debug( __( 'Tax lookup failed. Exception:', 'simple-sales-tax' ), $ex );
 		}
 
 		return $package;
@@ -309,10 +315,11 @@ abstract class SST_Abstract_Cart {
 				$package['destination']['state'],
 				substr( $package['destination']['postcode'], 0, 5 )
 			);
+			SST_Logger::add( __( 'Shipping destination verifying', 'simple-sales-tax' ), $destination );
 			// TODO: substr sometimes include trailing dash, e.g. 12345-
 			$package['destination'] = SST_Addresses::verify_address( $destination );
 		} catch ( Exception $ex ) {
-			SST_Logger::add( __( 'Shipping destination is not a verified address.', 'simple-sales-tax' ) );
+			SST_Logger::add( __( 'Shipping destination is not a verified address.', 'simple-sales-tax' ), $ex );
 			return array();
 		}
 
