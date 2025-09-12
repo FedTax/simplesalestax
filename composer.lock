@@ -4,64 +4,17 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "628946cfa22c43430fc5f85eb6e35786",
+    "content-hash": "f5a89fbb10f071d95b08aab4f251b8d9",
     "packages": [
         {
-            "name": "bporcelli/php-taxcloud",
+            "name": "fedtax/php-taxcloud",
             "version": "dev-master",
             "source": {
                 "type": "git",
                 "url": "https://github.com/FedTax/php-taxcloud.git",
-                "reference": "c4a6ec2511b9a444e306923f8dc23389b48a1a1a"
+                "reference": "dev-master"
             },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/FedTax/php-taxcloud/zipball/c4a6ec2511b9a444e306923f8dc23389b48a1a1a",
-                "reference": "c4a6ec2511b9a444e306923f8dc23389b48a1a1a",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=7.4"
-            },
-            "default-branch": true,
-            "type": "library",
-            "autoload": {
-                "psr-0": {
-                    "TaxCloud": [
-                        "lib/"
-                    ]
-                }
-            },
-            "license": [
-                "proprietary"
-            ],
-            "authors": [
-                {
-                    "name": "Brett Porcelli",
-                    "email": "brettporcelli@gmail.com"
-                },
-                {
-                    "name": "Brian Altenhofel",
-                    "email": "brian.altenhofel@vmdoh.com"
-                }
-            ],
-            "description": "TaxCloud PHP library",
-            "keywords": [
-                "ecommerce",
-                "sales",
-                "shop",
-                "store",
-                "tax",
-                "taxation",
-                "taxes",
-                "webshop",
-                "webstore"
-            ],
-            "support": {
-                "issues": "https://github.com/bporcelli/php-taxcloud/issues",
-                "source": "https://github.com/FedTax/php-taxcloud/tree/master"
-            },
-            "time": "2024-06-21T14:54:42+00:00"
+            "type": "library"
         }
     ],
     "packages-dev": [
@@ -78,7 +31,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "bporcelli/php-taxcloud": 20,
+        "fedtax/php-taxcloud": 20,
         "woocommerce/woocommerce": 20
     },
     "prefer-stable": false,
