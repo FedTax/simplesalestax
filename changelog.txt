@@ -9,8 +9,8 @@ Fixed:
 
 Added:
 - Option: Show Zero Tax on Order Page
-- Force Tax Lookup
-- Option: Cache verified address only
+- Option: Force Tax Lookup
+- Cache verified address only
 
 
 - [8.3.3] - 2025-09-01 =
