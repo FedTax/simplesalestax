@@ -202,7 +202,7 @@ class SST_Settings {
 				'description' => __( 'Control how taxes are displayed during checkout.', 'simple-sales-tax' ),
 			),
 			'show_zero_tax'               => array(
-				'title'       => __( 'Show Zero Tax?', 'simple-sales-tax' ),
+				'title'       => __( 'Show Zero Tax On Cart Page?', 'simple-sales-tax' ),
 				'type'        => 'select',
 				'options'     => array(
 					'true'  => __( 'Yes', 'simple-sales-tax' ),
