@@ -372,7 +372,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		// Debug Logging
 		if ( ! empty( $packages )  ) {
-			SST_Logger::add( __( 'Packages created successfully', 'simple-sales-tax' ) );
+			SST_Logger::add( __( 'Packages created successfully', 'simple-sales-tax' ), $packages );
 		} else {
 			SST_Logger::add( __( 'No packages created.', 'simple-sales-tax' ) );
 		}
