@@ -205,8 +205,8 @@ class SST_Settings {
 				'title'       => __( 'Show Zero Tax?', 'simple-sales-tax' ),
 				'type'        => 'select',
 				'options'     => array(
-					'false' => __( 'No', 'simple-sales-tax' ),
 					'true'  => __( 'Yes', 'simple-sales-tax' ),
+					'false' => __( 'No', 'simple-sales-tax' ),
 				),
 				'default'     => 'false',
 				'description' => __(
