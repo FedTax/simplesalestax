@@ -202,7 +202,7 @@ class SST_Settings {
 				'description' => __( 'Control how taxes are displayed during checkout.', 'simple-sales-tax' ),
 			),
 			'show_zero_tax'               => array(
-				'title'       => __( 'Show Zero Tax?', 'simple-sales-tax' ),
+				'title'       => __( 'Show Zero Tax On Cart Page?', 'simple-sales-tax' ),
 				'type'        => 'select',
 				'options'     => array(
 					'true'  => __( 'Yes', 'simple-sales-tax' ),
@@ -214,6 +214,20 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'disabled'    => $disable_show_zero_tax,
+				'desc_tip'    => true,
+			),
+			'order_show_zero_tax'					=> array(
+				'title'       => __( 'Show Zero Tax on Order Page?', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'false' => __( 'No', 'simple-sales-tax' ),
+					'true'  => __( 'Yes', 'simple-sales-tax' ),
+				),
+				'default'     => 'true',
+				'description' => __(
+					'When the sales tax due is zero, should the "Sales Tax" line be shown on the order page?',
+					'simple-sales-tax'
+				),
 				'desc_tip'    => true,
 			),
 			'advanced_settings'           => array(
@@ -263,6 +277,17 @@ class SST_Settings {
 				'default'     => 'yes',
 				'description' => __(
 					'When selected, TaxCloud for WooCommerce will log all requests sent to TaxCloud for debugging purposes.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
+			'force_tax_lookup'						=> array(
+				'title'       => __( 'Force Tax Lookup', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => ' ',
+				'default'     => '',
+				'description' => __(
+					'When selected, TaxCloud for WooCommerce will force a tax lookup for each order regardless of cached results.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
