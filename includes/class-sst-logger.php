@@ -80,7 +80,7 @@ class SST_Logger {
 	 * @param string $message Log message.
 	 * @param array  $context Log context.
 	 *
-	 * @since 8.3.3
+	 * @since 8.3.4
 	 */
 	public static function debug( $message, $context = array() ) {
 		if ( ! is_null( self::$logger ) ) {
