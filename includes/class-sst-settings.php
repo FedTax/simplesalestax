@@ -205,8 +205,8 @@ class SST_Settings {
 				'title'       => __( 'Show Zero Tax?', 'simple-sales-tax' ),
 				'type'        => 'select',
 				'options'     => array(
-					'true'  => __( 'Yes', 'simple-sales-tax' ),
 					'false' => __( 'No', 'simple-sales-tax' ),
+					'true'  => __( 'Yes', 'simple-sales-tax' ),
 				),
 				'default'     => 'false',
 				'description' => __(
@@ -214,6 +214,20 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'disabled'    => $disable_show_zero_tax,
+				'desc_tip'    => true,
+			),
+			'order_show_zero_tax'					=> array(
+				'title'       => __( 'Show Zero Tax on Order Page?', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'false' => __( 'No', 'simple-sales-tax' ),
+					'true'  => __( 'Yes', 'simple-sales-tax' ),
+				),
+				'default'     => 'true',
+				'description' => __(
+					'When the sales tax due is zero, should the "Sales Tax" line be shown on the order page?',
+					'simple-sales-tax'
+				),
 				'desc_tip'    => true,
 			),
 			'advanced_settings'           => array(
