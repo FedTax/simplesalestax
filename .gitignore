@@ -11,3 +11,4 @@ build
 *.min.js
 *.min.css
 !jquery.hideseek.min.js
+.DS_Store

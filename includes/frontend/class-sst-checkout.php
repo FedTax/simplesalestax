@@ -176,7 +176,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function hide_zero_taxes() {
-		return 'true' !== SST_Settings::get( 'show_zero_tax' );
+		return 'true' !== SST_Settings::get( 'show_zero_tax', 'true' );
 	}
 
 	/**
@@ -259,12 +259,22 @@ class SST_Checkout extends SST_Abstract_Cart {
 	protected function get_base_packages() {
 		$packages = WC()->shipping->get_packages();
 
+		// Debug Logging
+		if ( empty( $packages ) ) {
+			SST_Logger::add( __( 'Missing shipping packages', 'simple-sales-tax' ) );
+		} 
+
 		/*
 		 * After WooCommerce 3.0, items that do not need shipping are excluded
 		 * from shipping packages. To ensure that these products are taxed, we
 		 * create a special package for them.
 		 */
 		$virtual_package = $this->create_virtual_package();
+
+		// Debug Logging
+		if ( empty( $virtual_package ) ) {
+			SST_Logger::add( __( 'Missing virtual packages', 'simple-sales-tax' ) );
+		} 
 
 		if ( $virtual_package ) {
 			$packages[] = $virtual_package;
@@ -358,6 +368,13 @@ class SST_Checkout extends SST_Abstract_Cart {
 		// Add fees to first package.
 		if ( ! empty( $packages ) && apply_filters( 'wootax_add_fees', true ) ) {
 			$packages[ key( $packages ) ]['fees'] = $this->cart->get_fees();
+		}
+
+		// Debug Logging
+		if ( ! empty( $packages )  ) {
+			SST_Logger::add( __( 'Packages created successfully', 'simple-sales-tax' ), $packages );
+		} else {
+			SST_Logger::add( __( 'No packages created.', 'simple-sales-tax' ) );
 		}
 
 		return apply_filters( 'wootax_cart_packages', $packages, $this->cart );

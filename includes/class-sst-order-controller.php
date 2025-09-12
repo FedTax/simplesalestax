@@ -243,7 +243,7 @@ class SST_Order_Controller {
 	 * @return bool
 	 */
 	public function filter_hide_zero_taxes() {
-		return 'true' !== SST_Settings::get( 'show_zero_tax' );
+		return 'true' !== SST_Settings::get( 'order_show_zero_tax', 'true' );
 	}
 
 }
