@@ -4,10 +4,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This p
 - [8.3.4] - 2025-09-13 =
 
 Fixed:
-- Added: Option to Show Zero Tax on Order Page
-- Added: Better logging
-- Cache verified address only
-- Added: PHP 8.2x support
+- PHP 8.2x support
+- Logging
+
+Added:
+- Option: Show Zero Tax on Order Page
+- Force Tax Lookup
+- Option: Cache verified address only
 
 
 - [8.3.3] - 2025-09-01 =
