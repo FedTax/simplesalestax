@@ -292,6 +292,17 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
+			'capture_orders_in_taxcloud'         => array(
+				'title'       => __( 'Capture Orders in TaxCloud', 'simple-sales-tax' ),
+				'label'       => ' ',
+				'type'        => 'checkbox',
+				'default'     => 'yes',
+				'description' => __(
+					'When enabled, orders are submitted to TaxCloud for reporting and filing. Orders are captured only if the integration connection is set to Live in TaxCloud.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
 			'capture_immediately'         => array(
 				'title'       => __( 'Capture Orders Immediately', 'simple-sales-tax' ),
 				'label'       => ' ',
