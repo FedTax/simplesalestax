@@ -38,15 +38,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</div>
 </div>
 
-<div>
-	<h3>
-		<?php esc_html_e( 'Order Debug', 'simple-sales-tax' ); ?>
-		<?php sst_tip( esc_html__( 'Debug information for the order.', 'simple-sales-tax' ) ); ?>
-	</h3>
-	<a target="_blank" rel="noopener noreferrer" class="button button-secondary sst-debug-order" href="<?php echo esc_url( admin_url( 'admin.php?page=wc-status&tab=logs&source=wootax-order-' . $args['order_id'] ) ); ?>">
-		<?php esc_html_e( '↗ View Debug Log', 'simple-sales-tax' ); ?>
-	</a>
-</div>
+<?php if ( 'yes' === SST_Settings::get( 'log_requests' ) ) : ?>
+	<div>
+		<h3>
+			<?php esc_html_e( 'Order Debug', 'simple-sales-tax' ); ?>
+			<?php sst_tip( esc_html__( 'Debug information for the order.', 'simple-sales-tax' ) ); ?>
+		</h3>
+		<a target="_blank" rel="noopener noreferrer" class="button button-secondary sst-debug-order" href="<?php echo esc_url( admin_url( 'admin.php?page=wc-status&tab=logs&source=wootax-order-' . $args['order_id'] ) ); ?>">
+			<?php esc_html_e( '↗ View Debug Log', 'simple-sales-tax' ); ?>
+		</a>
+	</div>
+<?php endif; ?>
 
 <script type="text/html" id="tmpl-exempt-cert-select">
 	<# if (data.loading) { #>
