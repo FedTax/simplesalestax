@@ -660,6 +660,20 @@ class SST_Order extends SST_Abstract_Cart {
 		// Logging
 		SST_Logger::order_log( __( 'Capturing order.', 'simplesalestax' ), $order->get_id() );
 
+		// Capture Order In TaxCloud is disabled.
+		if ( 'no' === SST_Settings::get( 'capture_orders_in_taxcloud' ) ) {
+			// Logging
+			SST_Logger::order_log( __( 'Capture Order In TaxCloud is disabled in plugin settings.', 'simplesalestax' ), $order->get_id() );
+			
+			SST_Logger::add(
+				sprintf(
+					'Capture Order In TaxCloud is disabled in plugin settings. Skipping Capture process for Order ID: %d',
+					$order->get_id()
+				)
+			);
+			return false;
+		}
+
 		// Let devs control whether the order is captured in TaxCloud.
 		if ( ! apply_filters( 'sst_should_capture_order', true, $order, $this ) ) {
 			// Note: This is considered a success for consistency with do_refund.
