@@ -2,12 +2,12 @@
 
 /**
  * Plugin Name:          TaxCloud for WooCommerce (formerly Simple Sales Tax)
- * Plugin Slug:          simple-sales-tax-test
+ * Plugin Slug:          simple-sales-tax
  * Description:          Harness the power of TaxCloud to accurately calculate sales tax for your WooCommerce store.
  * Author:               TaxCloud
  * Author URI:           https://taxcloud.com
  * GitHub Plugin URI:    https://github.com/bporcelli/simplesalestax
- * Version:              8.3.1
+ * Version:              8.3.4
  * Text Domain:          simple-sales-tax
  * Domain Path:          /languages/
  * License:              GPLv2 or later

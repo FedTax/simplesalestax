@@ -39,7 +39,7 @@ describe('Settings page', () => {
     });
 
     it('should disable Show Zero Tax dropdown', () => {
-      cy.findByRole('combobox', {name: /Show Zero Tax/i }).should('be.disabled');
+      cy.findByRole('combobox', {name: /Show Zero Tax On Cart Page/i }).should('be.disabled');
     });
   });
 });
