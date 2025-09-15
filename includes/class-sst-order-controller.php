@@ -60,6 +60,9 @@ class SST_Order_Controller {
 	public function capture_order( $_order_id, $order ) {
 		$sst_order = new SST_Order( $order );
 
+		// Logging
+		SST_Logger::order_log( __( 'order_status_completed: Capturing order.', 'simple-sales-tax' ), $order->get_id() );
+
 		return $sst_order->do_capture();
 	}
 
@@ -78,6 +81,9 @@ class SST_Order_Controller {
 		$order  = new SST_Order( $args['order_id'] );
 		$refund = wc_get_order( $refund_id );
 		$result = false;
+
+		// Logging
+		SST_Logger::order_log( __( 'refund_created: Refunding order.', 'simple-sales-tax' ), $order->get_id() );
 
 		try {
 			$result = $order->do_refund( $refund );
@@ -107,6 +113,9 @@ class SST_Order_Controller {
 	public function maybe_capture_order( $order_id ) {
 		if ( 'yes' === SST_Settings::get( 'capture_immediately' ) ) {
 			$order = new SST_Order( $order_id );
+
+			// Logging
+			SST_Logger::order_log( __( 'payment_complete: Capturing order.', 'simple-sales-tax' ), $order->get_id() );
 
 			$order->do_capture();
 		}
@@ -180,6 +189,9 @@ class SST_Order_Controller {
 			&& 'rest-api' === $order->get_created_via()
 			&& $and_taxes
 		);
+
+		// Logging
+		SST_Logger::order_log( __( 'Calculating order tax.', 'simple-sales-tax' ), $order->get_id(), $should_calculate );
 
 		if ( $should_calculate ) {
 			sst_order_calculate_taxes( $order );

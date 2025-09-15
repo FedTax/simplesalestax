@@ -92,6 +92,24 @@ class SST_Logger {
 		}
 	}
 
+	/**
+	 * Log an order message.
+	 *
+	 * @param string $message Log message.
+	 * @param array  $context Log context.
+	 *
+	 * @since 8.3.4
+	 */
+	public static function order_log( $message, $order_id, $context = array() ) {
+		if ( ! is_null( self::$logger ) ) {
+			self::$logger->debug( $message, array( 
+				'source' => 'wootax-order-' . $order_id, 
+				'_context' => (array) $context 
+				) 
+			);
+		}
+	}
+
 
 }
 
