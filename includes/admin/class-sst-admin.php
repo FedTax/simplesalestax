@@ -378,7 +378,7 @@ class SST_Admin {
     if ( ! wc_tax_enabled() ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput
 			self::render_admin_notice( array(
-				'message' => __( 'Taxes are not enabled in WooCommerce. TaxCloud for WooCommerce will not calculate taxes for any orders.', 'simple-sales-tax' )
+				'message' => __( 'Taxes are not enabled in WooCommerce. TaxCloud for WooCommerce will not calculate taxes for any orders. Please enable taxes from WooCommerce > Settings > General.', 'simple-sales-tax' )
 			));
     }
 

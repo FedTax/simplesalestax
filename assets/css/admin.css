@@ -213,11 +213,12 @@ p[class*="variable_tax_class"] {
     padding-left: 1.5rem;
 }
 
+/* Admin Notice */
 .taxcloud-notice {
     display: flex;
     align-items: center;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
 }
 
 .txc-notice-icon {
@@ -225,7 +226,6 @@ p[class*="variable_tax_class"] {
     height: 50px;
 }
 
-.txc-notice-message {
-    overflow: hidden;
-    margin-bottom: 8px;
+.txc-notice-message p{
+    margin-top: 0;
 }
