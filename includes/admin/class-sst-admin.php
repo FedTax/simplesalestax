@@ -347,7 +347,6 @@ class SST_Admin {
 	 * Render the admin notices.
 	 * 
 	 * @since 8.3.5
-	 * 
 	 */
 	public static function render_admin_notice( $args ) {
 		$args = wp_parse_args( $args, array(
@@ -367,7 +366,6 @@ class SST_Admin {
 		</div>
 		<?php
 	}
-	
 
 	/**
 	 * Admin Notices.
