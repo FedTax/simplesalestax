@@ -41,7 +41,7 @@ class SST_Logger {
 			/**
 			 * Create a new log file every day.
 			 */
-			self::$handle = self::$handle . '-' . date( 'Y-m-d' );
+			self::$handle = self::$handle . '-' . gmdate( 'Y-m-d' );
 			self::$logger = function_exists( 'wc_get_logger' ) ? wc_get_logger() : new WC_Logger();
 		}
 	}
