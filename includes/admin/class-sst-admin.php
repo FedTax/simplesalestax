@@ -356,6 +356,7 @@ class SST_Admin {
 		))
 		?>
 		<div class="taxcloud-notice notice notice-<?php echo esc_attr( $args['type'] ); ?> is-dismissible">
+			<?php // phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent ?>
 			<img class="txc-notice-icon" srcset="https://ps.w.org/simple-sales-tax/assets/icon-128x128.png?rev=3326417, https://ps.w.org/simple-sales-tax/assets/icon-256x256.png?rev=3326417 2x" src="https://ps.w.org/simple-sales-tax/assets/icon-256x256.png?rev=3326417" alt="<?php esc_attr_e( 'TaxCloud for WooCommerce', 'simple-sales-tax' ); ?>">
 			<div class="txc-notice-message">
 				<p><?php echo esc_html( $args['message'] ); ?></p>
