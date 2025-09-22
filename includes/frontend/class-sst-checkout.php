@@ -99,7 +99,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 			is_checkout() ||
 			doing_action( 'wc_ajax_square_digital_wallet_recalculate_totals' ) ||
 			$this->is_store_api_request() ||
-			$this->is_edit_subscription_request()
+			$this->is_edit_subscription_request() ||
+			$this->is_stripe_express_checkout_request()
 		);
 
 		if ( apply_filters( 'sst_calculate_tax_totals', $should_calculate ) ) {
@@ -131,18 +132,31 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$rest_route = $wp->query_vars['rest_route'] ?? '';
 		return 0 === strpos( $rest_route, '/wc/store/' );
 	}
-    /**
-     * Check come from edit-subscription
-     * @return bool
-     */
-    protected function is_edit_subscription_request() {
-        global $wp;
-        $subscriptionId = $wp->query_vars['edit-subscription'] ?? '';
-        if(!$subscriptionId){
-            $subscriptionId = $wp->query_vars['view-subscription'] ?? '';
-        }
-        return $subscriptionId > 0;
-    }
+
+	/**
+	 * Check come from edit-subscription
+	 * @return bool
+	 */
+	protected function is_edit_subscription_request() {
+		global $wp;
+		$subscriptionId = $wp->query_vars['edit-subscription'] ?? '';
+		if( !$subscriptionId ){
+			$subscriptionId = $wp->query_vars['view-subscription'] ?? '';
+		}
+		return $subscriptionId > 0;
+	}
+
+	/**
+	 * Check if is request to the Stripe Express Checkout.
+	 *
+	 * @return bool
+	 * @since 8.3.5
+	 */
+	protected function is_stripe_express_checkout_request() {
+		global $wp_query;
+		return defined( 'WC_DOING_AJAX' ) && 'wc_stripe_get_shipping_options' === $wp_query->get( 'wc-ajax' );
+	}
+
 	/**
 	 * Calculates the tax due for the cart.
 	 */
