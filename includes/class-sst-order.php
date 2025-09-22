@@ -613,12 +613,12 @@ class SST_Order extends SST_Abstract_Cart {
 			);
 
 			// Logging
-			SST_Logger::order_log( __( 'Verifying destination address.', 'simplesalestax' ), $this->order->get_id(), $address );
+			SST_Logger::order_log( __( 'Verifying destination address.', 'simple-sales-tax' ), $this->order->get_id(), $address );
 
 			return SST_Addresses::verify_address( $address );
 		} catch ( Exception $ex ) {
 			// Logging
-			SST_Logger::order_log( __( 'Destination address is invalid.', 'simplesalestax' ), $this->order->get_id(), $ex->getMessage() );
+			SST_Logger::order_log( __( 'Destination address is invalid.', 'simple-sales-tax' ), $this->order->get_id(), $ex->getMessage() );
 			return null;
 		}
 	}
@@ -658,12 +658,12 @@ class SST_Order extends SST_Abstract_Cart {
 		$order = $this->order;
 
 		// Logging
-		SST_Logger::order_log( __( 'Capturing order.', 'simplesalestax' ), $order->get_id() );
+		SST_Logger::order_log( __( 'Capturing order.', 'simple-sales-tax' ), $order->get_id() );
 
 		// Capture Order In TaxCloud is disabled.
 		if ( 'no' === SST_Settings::get( 'capture_orders_in_taxcloud' ) ) {
 			// Logging
-			SST_Logger::order_log( __( 'Capture Order In TaxCloud is disabled in plugin settings.', 'simplesalestax' ), $order->get_id() );
+			SST_Logger::order_log( __( 'Capture Order In TaxCloud is disabled in plugin settings.', 'simple-sales-tax' ), $order->get_id() );
 			
 			SST_Logger::add(
 				sprintf(
@@ -687,7 +687,7 @@ class SST_Order extends SST_Abstract_Cart {
 		// Handle error cases.
 		if ( 'captured' === $taxcloud_status ) {
 			// Logging
-			SST_Logger::order_log( __( 'Order already captured.', 'simplesalestax' ), $order->get_id() );
+			SST_Logger::order_log( __( 'Order already captured.', 'simple-sales-tax' ), $order->get_id() );
 
 			if ( 'no' === SST_Settings::get( 'capture_immediately' ) ) {
 				$this->handle_error(
@@ -703,7 +703,7 @@ class SST_Order extends SST_Abstract_Cart {
 		} else {
 			if ( 'refunded' === $taxcloud_status ) {
 				// Logging
-				SST_Logger::order_log( __( 'Order already refunded.', 'simplesalestax' ), $order->get_id() );
+				SST_Logger::order_log( __( 'Order already refunded.', 'simple-sales-tax' ), $order->get_id() );
 
 				$this->handle_error(
 					sprintf(
@@ -718,7 +718,7 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		// Logging
-		SST_Logger::order_log( __( 'Capturing order packages:', 'simplesalestax' ), $order->get_id(), $packages );
+		SST_Logger::order_log( __( 'Capturing order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
 
 		// Send AuthorizedWithCapture for all packages.
 		foreach ( $packages as $key => $package ) {
@@ -737,15 +737,15 @@ class SST_Order extends SST_Abstract_Cart {
 				);
 
 				// Logging
-				SST_Logger::order_log( __( 'Sending AuthorizedWithCapture request.', 'simplesalestax' ), $order->get_id(), $request );
+				SST_Logger::order_log( __( 'Sending AuthorizedWithCapture request.', 'simple-sales-tax' ), $order->get_id(), $request );
 
 				TaxCloud()->AuthorizedWithCapture( $request );
 
 				// Logging
-				SST_Logger::order_log( __( 'AuthorizedWithCapture request successfully sent.', 'simplesalestax' ), $order->get_id(), $request );
+				SST_Logger::order_log( __( 'AuthorizedWithCapture request successfully sent.', 'simple-sales-tax' ), $order->get_id(), $request );
 			} catch ( Exception $ex ) {
 				// Logging
-				SST_Logger::order_log( __( 'Failed to capture order.', 'simplesalestax' ), $order->get_id(), $ex->getMessage() );
+				SST_Logger::order_log( __( 'Failed to capture order.', 'simple-sales-tax' ), $order->get_id(), $ex->getMessage() );
 
 				$this->handle_error(
 					sprintf(
@@ -763,7 +763,7 @@ class SST_Order extends SST_Abstract_Cart {
 		$this->update_meta( 'status', 'captured' );
 
 		// Logging
-		SST_Logger::order_log( __( 'Order status updated to captured.', 'simplesalestax' ), $order->get_id() );
+		SST_Logger::order_log( __( 'Order status updated to captured.', 'simple-sales-tax' ), $order->get_id() );
 
 		$order->save();
 
@@ -785,7 +785,7 @@ class SST_Order extends SST_Abstract_Cart {
 		$order = $this->order;
 
 		// Logging
-		SST_Logger::order_log( __( 'Sending Refund request.', 'simplesalestax' ), $order->get_id() );
+		SST_Logger::order_log( __( 'Sending Refund request.', 'simple-sales-tax' ), $order->get_id() );
 
 		// Let devs control whether the order is refunded in TaxCloud.
 		if ( ! apply_filters( 'sst_should_refund_order', true, $order, $this ) ) {
@@ -798,7 +798,7 @@ class SST_Order extends SST_Abstract_Cart {
 
 		if ( 'captured' !== $this->get_taxcloud_status() ) {
 			// Logging
-			SST_Logger::order_log( __( 'Order must be captured first.', 'simplesalestax' ), $order->get_id() );
+			SST_Logger::order_log( __( 'Order must be captured first.', 'simple-sales-tax' ), $order->get_id() );
 
 			$this->handle_error(
 				sprintf(
