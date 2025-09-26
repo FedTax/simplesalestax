@@ -8,7 +8,7 @@ For more information, please check our [plugin page](https://wordpress.org/plugi
 
 - WordPress 4.5+
 - WooCommerce 6.9+
-- [TaxCloud account](https://app.taxcloud.com/register)
+- [TaxCloud account](https://app.taxcloud.com/register?utm_campaign=22917502-woocommerce-marketplace&utm_source=readme.md)
 
 ## Getting Started
 
