@@ -83,9 +83,6 @@ jobs:
           - wc_version: ${{needs.prepare.outputs.max_woo}}
             php_version: 8.4
             run_block_tests: 1
-          - wc_version: ${{needs.prepare.outputs.max_woo}}
-            php_version: 9.0
-            run_block_tests: 1
     env:
       PHP_VERSION: ${{ matrix.php_version }}
       WOO_VERSION: ${{ matrix.wc_version }}
