@@ -27,6 +27,7 @@ class SST_Ajax {
 		'sst_add_certificate'         => false,
 		'woocommerce_calc_line_taxes' => false,
 		'sst_get_certificates'        => false,
+		'sst_dismiss_taxcloud_notice'	=> false,
 	);
 
 	/**
@@ -280,6 +281,22 @@ class SST_Ajax {
 				sprintf( 'Failed to set %s address for order #%d: %s', $type, $order->get_id(), $ex->getMessage() )
 			);
 		}
+	}
+
+	/**
+	 * Dismiss a TaxCloud admin notice.
+	 *
+	 * @since 8.3.6
+	 */
+	public static function dismiss_taxcloud_notice() {
+		check_ajax_referer( 'dismiss_taxcloud_notice', 'nonce' );
+		$id = sanitize_text_field( wp_unslash( $_POST['notice_id'] ) );
+		$dismissed_notices = SST_Settings::get( 'dismissed_notices', [] );
+		if ( ! in_array( $id, $dismissed_notices, true ) ) {
+			$dismissed_notices[] = $id;
+			SST_Settings::set( 'dismissed_notices', $dismissed_notices );
+		}
+		wp_send_json_success( SST_Settings::get( 'dismissed_notices', [] ) );
 	}
 
 }
