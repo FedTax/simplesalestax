@@ -350,12 +350,13 @@ class SST_Admin {
 	 */
 	public static function render_admin_notice( $args ) {
 		$args = wp_parse_args( $args, array(
+			'id'      => '',
 			'message' => '',
 			'type'    => 'warning',
 			'button'  => '',
 		))
 		?>
-		<div class="taxcloud-notice notice notice-<?php echo esc_attr( $args['type'] ); ?> is-dismissible">
+		<div class="taxcloud-notice notice notice-<?php echo esc_attr( $args['type'] ); ?> is-dismissible" data-id="<?php echo esc_attr( $args['id'] ); ?>">
 			<?php // phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent ?>
 			<img class="txc-notice-icon" srcset="https://ps.w.org/simple-sales-tax/assets/icon-128x128.png?rev=3326417, https://ps.w.org/simple-sales-tax/assets/icon-256x256.png?rev=3326417 2x" src="https://ps.w.org/simple-sales-tax/assets/icon-256x256.png?rev=3326417" alt="<?php esc_attr_e( 'TaxCloud for WooCommerce', 'simple-sales-tax' ); ?>">
 			<div class="txc-notice-message">
@@ -378,7 +379,9 @@ class SST_Admin {
     if ( ! wc_tax_enabled() ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput
 			self::render_admin_notice( array(
-				'message' => __( 'Taxes are not enabled in WooCommerce. TaxCloud for WooCommerce will not calculate taxes for any orders. Please enable taxes from WooCommerce > Settings > General.', 'simple-sales-tax' )
+				'id'      => 'taxes-not-enabled',
+				'message' => __( 'Taxes are not enabled in WooCommerce. TaxCloud for WooCommerce will not calculate taxes for any orders. Please enable taxes from WooCommerce > Settings > General.', 'simple-sales-tax' ),
+				'type'    => 'error'
 			));
     }
 
@@ -387,7 +390,8 @@ class SST_Admin {
     if ( 0 === $method_count ) {
 				// phpcs:ignore WordPress.Security.EscapeOutput
 				self::render_admin_notice( array(
-					'message' => __( 'No shipping method is set in WooCommerce. TaxCloud for WooCommerce will not calculate taxes for any orders.', 'simple-sales-tax' ),
+					'id'      => 'no-shipping-methods',
+					'message' => __( 'No shipping methods are configured in WooCommerce. TaxCloud will not calculate taxes for orders that require shipping.', 'simple-sales-tax' ),
 					'button'  => '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=shipping' ) ) . '">' . __( 'Add a shipping method', 'simple-sales-tax' ) . '</a>',
 				));
     }
