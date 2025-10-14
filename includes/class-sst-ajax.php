@@ -63,6 +63,9 @@ class SST_Ajax {
 		$taxcloud_id  = '';
 		$taxcloud_key = '';
 
+		// Verify nonce.
+		check_ajax_referer( 'sst_verify_taxcloud_nonce' );
+
 		if ( isset( $_POST['wootax_tc_id'] ) ) {
 			$taxcloud_id = sanitize_text_field( wp_unslash( $_POST['wootax_tc_id'] ) ); // phpcs:ignore WordPress.CSRF.NonceVerification
 		}
