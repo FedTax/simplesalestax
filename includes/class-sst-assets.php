@@ -108,6 +108,7 @@ class SST_Assets {
 								'verify_failed'    => __( 'Connection to TaxCloud failed.', 'simple-sales-tax' ),
 								'verify_btn'       => __( 'Verify Settings', 'simple-sales-tax' ),
 								'verifying'        => __( 'Verifying...', 'simple-sales-tax' ),
+								'went_wrong'      => __( 'Something went wrong.', 'simple-sales-tax' ),
 							),
 						),
 					),
