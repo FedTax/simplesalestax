@@ -57,6 +57,9 @@
       var nonce = jQuery(this).data('nonce');
       var redirect = jQuery(this).data('redirect');
 
+      // Disable button while fetching log
+      var $btn = jQuery(this).prop('disabled', true);
+
       // Fetch log via AJAX
       jQuery.post(ajaxurl, {
         action: 'sst_get_order_log',
@@ -72,8 +75,11 @@
         .fail(function (xhr, status, error) {
           console.error('AJAX POST failed:', xhr, status, error);
           alert(data.strings.went_wrong);
+        })
+        .always(function () {
+          // Re-enable button after request
+          $btn.prop('disabled', false);
         });
     });
-
   });
 })(SST);
