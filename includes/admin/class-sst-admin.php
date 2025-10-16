@@ -127,6 +127,9 @@ class SST_Admin {
 			: $post_or_order->get_id();
 		$order    = new SST_Order( $order_id );
 
+		// JS Enqueue.
+		wp_enqueue_script( 'sst-admin-js' );
+
 		do_action( 'sst_output_tax_meta_box', $order );
 	}
 
