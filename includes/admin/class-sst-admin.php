@@ -365,9 +365,19 @@ class SST_Admin {
 			return;
 		}
 
+		// Current screen
+		$screen = get_current_screen();
+		$section = isset( $_GET['section'] ) ? sanitize_text_field( wp_unslash( $_GET['section'] ) ) : ''; // phpcs:ignore WordPress.CSRF.NonceVerification
+		$force_display = false;
+
+		// Display tax disabled notice on settings page
+		if ( 'woocommerce_page_wc-settings' === $screen->id && $section === 'wootax' && $args['id'] == 'taxes-not-enabled' ) {
+			$force_display = true;
+		}
+
 		// Check if notice has been dismissed
 		$dismissed_notices = SST_Settings::get( 'dismissed_notices', [] );
-		if ( in_array( $args['id'], $dismissed_notices, true ) ) {
+		if ( in_array( $args['id'], $dismissed_notices, true ) && ! $force_display ) {
 			return;
 		}
 
