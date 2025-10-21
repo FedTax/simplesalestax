@@ -109,7 +109,7 @@ class SST_Origin_Address extends Address {
 	 * @param string $Zip4 4 digit component of ZIP code.
 	 */
 	public function setZip4( $Zip4 ) {
-		$this->Zip4 = substr( $Zip4, 0, 4 );
+		$this->Zip4 = substr( (string) $Zip4, 0, 4 );
 	}
 
 }
