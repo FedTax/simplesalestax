@@ -302,4 +302,26 @@ abstract class SST_Marketplace_Integration {
      */
     abstract public function get_seller_address( $seller_id );
 
+    /**
+     * Validates whether the given address has the required fields
+     * to be used as an origin address.
+     *
+     * @param array $address Address components.
+     *
+     * @return bool
+     */
+    public function is_valid_origin( $address ) {
+        
+        /**
+         * TODO: 
+         * - Check for US country since TaxCloud only supports US addresses.
+         * - Should we validate using TaxCloud Address validation API?
+         */
+
+        return ! empty( $address['address'] ) &&
+               ! empty( $address['city'] ) &&
+               ! empty( $address['state'] ) &&
+               ! empty( $address['postcode'] );
+    }
+
 }
