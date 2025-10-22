@@ -139,7 +139,8 @@ abstract class SST_Abstract_Cart {
 					__(
 						'Failed to calculate sales tax: Shipping origin address is invalid.',
 						'simple-sales-tax'
-					)
+					),
+					$package
 				);
 				continue;
 			}
@@ -465,6 +466,20 @@ abstract class SST_Abstract_Cart {
 	 * @since 7.0.2
 	 */
 	protected function is_origin_valid( $package ) {
+		// Debug: Check if valid origin
+		SST_Logger::add(
+			__(
+				'Checking package origin address validity',
+				'simple-sales-tax'
+			),
+			array(
+				'isset' => isset( $package['origin'] ),
+				'type'  => is_a( $package['origin'], 'TaxCloud\Address' ),
+				'instanceof' => isset( $package['origin'] ) && $package['origin'] instanceof TaxCloud\Address,
+			)
+		);
+
+		// Return
 		return (
 			isset( $package['origin'] ) &&
 			$package['origin'] instanceof TaxCloud\Address

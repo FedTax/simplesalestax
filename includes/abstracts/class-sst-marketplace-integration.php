@@ -302,4 +302,20 @@ abstract class SST_Marketplace_Integration {
      */
     abstract public function get_seller_address( $seller_id );
 
+    /**
+     * Validates whether the given address has the required fields
+     * to be used as an origin address.
+     *
+     * @param array $address Address components.
+     *
+     * @return bool
+     * @see https://github.com/FedTax/simplesalestax/pull/388
+     */
+    public function is_valid_origin( $address ) {
+        return ! empty( $address['address'] ) &&
+               ! empty( $address['city'] ) &&
+               ! empty( $address['state'] ) &&
+               ! empty( $address['postcode'] );
+    }
+
 }

@@ -398,6 +398,21 @@ class SST_Admin {
         });
 			});
 		</script>
+		<style>
+			.taxcloud-notice {
+				display: flex;
+				align-items: center;
+				padding-top: 10px !important;
+				padding-bottom: 10px !important;
+			}
+			.txc-notice-icon {
+				margin-right: 10px;
+				height: 50px;
+			}
+			.txc-notice-message p{
+				margin-top: 0;
+			}
+		</style>
 		<?php
 	}
 
