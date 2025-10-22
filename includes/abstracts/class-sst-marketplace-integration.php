@@ -311,10 +311,10 @@ abstract class SST_Marketplace_Integration {
      * @return bool
      */
     public function is_valid_origin( $address ) {
-        
         /**
          * TODO: 
          * - Check for US country since TaxCloud only supports US addresses.
+         * - If country is not US, should we consider it invalid?
          * - Should we validate using TaxCloud Address validation API?
          */
 
