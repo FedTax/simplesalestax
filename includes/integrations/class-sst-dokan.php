@@ -259,7 +259,7 @@ class SST_Dokan extends SST_Marketplace_Integration {
 			);
 		} catch ( Exception $ex ) {
 			// Log the error with debug context.
-			SST_Logger::add( sprintf( __( 'Failed to get origin address for seller %d: %s.', 'simple-sales-tax' ), $seller_id, $ex->getMessage() ), array(
+			SST_Logger::add( sprintf( __( 'Failed to get origin address for seller %d: %s. Falling back to default store origin.', 'simple-sales-tax' ), $seller_id, $ex->getMessage() ), array(
 				'source' => 'dokan',
 				'seller_address' => $address,
 				'seller_id' => $seller_id

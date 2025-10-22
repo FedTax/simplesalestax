@@ -309,16 +309,9 @@ abstract class SST_Marketplace_Integration {
      * @param array $address Address components.
      *
      * @return bool
+     * @see https://github.com/FedTax/simplesalestax/pull/388
      */
     public function is_valid_origin( $address ) {
-        /**
-         * TODO: 
-         * - Check for US country since TaxCloud only supports US addresses.
-         * - If country is not US, should we consider it invalid?
-         * - Should we validate using TaxCloud Address validation API?
-         * - Should we notify the seller/admin if the address is invalid?
-         */
-
         return ! empty( $address['address'] ) &&
                ! empty( $address['city'] ) &&
                ! empty( $address['state'] ) &&
