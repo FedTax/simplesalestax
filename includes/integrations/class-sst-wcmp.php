@@ -205,11 +205,6 @@ class SST_WCMP extends SST_Marketplace_Integration {
 		);
 
 		try {
-			// Validate the address.
-			if ( !$this->is_valid_origin( $address ) ) {
-				throw new Exception( __( 'Incomplete origin address.', 'simple-sales-tax' ) );	
-			}
-			
 			return new SST_Origin_Address(
 				"S-{$seller_id}",
 				false,
@@ -220,12 +215,7 @@ class SST_WCMP extends SST_Marketplace_Integration {
 				$address['postcode']
 			);
 		} catch ( Exception $ex ) {
-			// Log the error with debug context.
-			SST_Logger::add( sprintf( __( 'Failed to get origin address for seller %d: %s. Falling back to default store origin.', 'simple-sales-tax' ), $seller_id, $ex->getMessage() ), array(
-				'source' => 'wcmp',
-				'seller_address' => $address,
-				'seller_id' => $seller_id
-			) );
+			SST_Logger::add( "Error encountered while constructing origin address for seller {$seller_id}: {$ex->getMessage()}. Falling back to default store origin." );
 
 			return SST_Addresses::get_default_address();
 		}
