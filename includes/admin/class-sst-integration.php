@@ -85,7 +85,7 @@ class SST_Integration extends WC_Integration {
 					<legend class="screen-reader-text">
 						<span><?php echo wp_kses_post( $data['title'] ); ?></span>
 					</legend>
-					<button class="wp-core-ui button button-secondary" type="button" id="<?php echo esc_attr( $data['id'] ); ?>">
+					<button class="wp-core-ui button button-secondary" type="button" id="<?php echo esc_attr( $data['id'] ); ?>" <?php if( $key == 'verify_settings' ): ?>data-nonce="<?php echo esc_attr( wp_create_nonce( 'sst_verify_taxcloud_nonce' ) ); ?>"<?php endif; ?>>
 						<?php echo wp_kses_post( $data['label'] ); ?>
 					</button>
 					<?php echo wp_kses_post( $this->get_description_html( $data ) ); ?>

@@ -1,7 +1,7 @@
 /**
  * TaxCloud for WooCommerce - admin CSS 
  *
- * @version 8.3.4
+ * @version 8.3.7
  */
 .toplevel .form-error {
     border-color: #be0636 !important;
@@ -211,21 +211,4 @@ p[class*="variable_tax_class"] {
 .woocommerce-message ul.sst-address-list {
     list-style: disc;
     padding-left: 1.5rem;
-}
-
-/* Admin Notice */
-.taxcloud-notice {
-    display: flex;
-    align-items: center;
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
-}
-
-.txc-notice-icon {
-    margin-right: 10px;
-    height: 50px;
-}
-
-.txc-notice-message p{
-    margin-top: 0;
 }
