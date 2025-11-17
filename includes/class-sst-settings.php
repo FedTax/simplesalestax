@@ -259,6 +259,10 @@ class SST_Settings {
 						'simple-sales-tax'
 					),
 					'11098' => __( '11098 - Colorado Retail Delivery Fees', 'simple-sales-tax' ),
+					'11013' => __(
+						'11013 - Transportation, shipping, postage, and similar charges where the charge is marked up.',
+						'simple-sales-tax'
+					),
 				),
 				'default'     => self::get_default_shipping_tic(),
 				'description' => __(
