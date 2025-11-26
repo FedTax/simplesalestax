@@ -123,6 +123,16 @@ class SST_Settings {
 				'desc_tip'    => true,
 				'id'          => 'verifySettings',
 			),
+			'integration_mode'            => array(
+				'title'       => __( 'Integration Mode', 'simple-sales-tax' ),
+				'type'        => 'integration_mode',
+				'default'     => '',
+				'desc_tip'    => false,
+				'custom_attributes' => array(
+					'readonly' => 'readonly',
+					'disabled' => 'disabled',
+				),
+			),
 			'address_settings'            => array(
 				'title'       => __( 'Address Settings', 'simple-sales-tax' ),
 				'type'        => 'title',

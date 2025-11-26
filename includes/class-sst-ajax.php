@@ -79,6 +79,10 @@ class SST_Ajax {
 		} else {
 			try {
 				TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
+
+				// Ping successful, update data mover settings
+				$data_mover_settings = SST_TaxCloud_V3::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
+
 				wp_send_json_success();
 			} catch ( Exception $ex ) {
 				wp_send_json_error( $ex->getMessage() );

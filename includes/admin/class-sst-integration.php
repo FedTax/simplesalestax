@@ -411,4 +411,54 @@ class SST_Integration extends WC_Integration {
 		$updater->save()->dispatch();
 	}
 
+	public function generate_integration_mode_html( $key, $data ) {
+		$field            = "{$this->plugin_id}{$this->id}_{$key}";
+		$api_id           = SST_Settings::get( 'tc_id' );
+		$api_key          = SST_Settings::get( 'tc_key' );
+		$data_mover       = SST_Settings::get( 'data_mover', false );
+
+		$integration_mode = $data_mover == false ? __( 'Premium', 'simple-sales-tax' ) : __( 'Basic', 'simple-sales-tax' );
+
+		ob_start();
+		?>
+		<tr valign="top">
+			<th scope="row" class="titledesc">
+				<label for="<?php echo esc_attr( $field ); ?>">
+					<?php echo wp_kses_post( $data['title'] ); ?><?php echo wp_kses_post( $this->get_tooltip_html( $data ) ); ?>
+				</label>
+			</th>
+			<td class="forminp">
+				<fieldset>
+					<legend class="screen-reader-text">
+						<span><?php echo wp_kses_post( $data['title'] ); ?></span>
+					</legend>
+					<?php if ( ! empty( $api_id ) && ! empty( $api_key ) ): ?>
+						<input type="text"
+							value="<?php echo esc_attr( $integration_mode ); ?>"
+							readonly="readonly"
+							disabled="disabled">						
+					<?php else: ?>
+						<div class="notice notice-info inline sst-settings-notice">
+							<p>
+								<?php
+								echo wp_kses_post(
+									__(
+										'Enter your TaxCloud API credentials and click <strong>Save changes</strong> to display the Integration Mode.',
+										'simple-sales-tax'
+									)
+								);
+								?>
+							</p>
+						</div>
+					<?php endif; ?>
+					<?php echo wp_kses_post( $this->get_description_html( $data ) ); ?>
+				</fieldset>
+			</td>
+		</tr>
+		<?php
+
+		return ob_get_clean();
+	}
+	
+
 }

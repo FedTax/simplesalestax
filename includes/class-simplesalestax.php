@@ -138,6 +138,7 @@ final class SimpleSalesTax {
 		require_once __DIR__ . '/class-sst-assets.php';
 		require_once __DIR__ . '/class-sst-marketplaces.php';
 		require_once __DIR__ . '/class-sst-blocks.php';
+		require_once __DIR__ . '/class-sst-taxcloud-v3.php';
 
 		/**
 		 * Third party integrations.
