@@ -452,7 +452,7 @@ class SST_Integration extends WC_Integration {
 								value="<?php echo esc_attr( $integration_mode ); ?>"
 								readonly="readonly"
 								disabled="disabled">
-								<button type="button" class="components-button is-secondary sst-update-data-mover">
+								<button type="button" class="components-button is-secondary sst-update-data-mover" data-nonce="<?php echo wp_create_nonce( 'sst-update-data-mover-nonce' ); ?>">
 									<span class="dashicons dashicons-update"></span>
 									<?php echo wp_kses_post( __( 'Refresh', 'simple-sales-tax' ) ); ?>
 								</button>

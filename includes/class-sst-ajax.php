@@ -29,6 +29,7 @@ class SST_Ajax {
 		'sst_get_certificates'        => false,
 		'sst_dismiss_taxcloud_notice'	=> false,
 		'sst_get_order_log'						=> false,
+		'sst_update_data_mover'				=> false,
 	);
 
 	/**
@@ -356,6 +357,25 @@ class SST_Ajax {
 		wp_send_json_success();
 	}
 
+	/**
+	 * Update Data Mover settings.
+	 *
+	 * @since 8.3.5
+	 */
+	public static function update_data_mover() {
+		// Verify nonce.
+		check_ajax_referer( 'sst-update-data-mover-nonce' );
+
+		// Update data mover settings
+		SST_TaxCloud_V3::update_data_mover_settings();
+
+		// Get data mover settings
+		$data_mover = SST_Settings::get( 'data_mover', false );
+		$integration_mode = $data_mover == false ? __( 'Premium', 'simple-sales-tax' ) : __( 'Basic', 'simple-sales-tax' );
+
+		// Response
+		wp_send_json_success( [ 'integration_mode' => $integration_mode, 'data_mover' => $data_mover ] );
+	}
 
 }
 
