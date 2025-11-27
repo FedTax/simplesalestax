@@ -436,7 +436,7 @@ class SST_Settings {
 			self::$settings[ $key ] = $empty_value;
 		}
 
-		return self::$settings[ $key ];
+		return apply_filters( 'sst_get_option', self::$settings[ $key ], $key );
 	}
 
 	/**
