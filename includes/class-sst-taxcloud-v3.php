@@ -153,18 +153,23 @@ class SST_TaxCloud_V3 {
 	 * @param string $api_key      TaxCloud API Key.
 	 * @return array|WP_Error Settings array on success, WP_Error on failure.
 	 */
-	public static function update_data_mover_settings( $api_login_id, $api_key ) {
-			// Check v3 settings
-			$v3_settings = self::get_settings_with_v1_creds( $api_login_id, $api_key );
+	public static function update_data_mover_settings( $api_login_id = null, $api_key = null ) {
+		if ( ! $api_login_id || ! $api_key ) {
+			$api_login_id	= SST_Settings::get( 'tc_id' );
+			$api_key			= SST_Settings::get( 'tc_key' );
+		}
 
-			error_log( print_r( $v3_settings, true ) );
+		// Check v3 settings
+		$v3_settings = self::get_settings_with_v1_creds( $api_login_id, $api_key );
 
-			if ( ! is_wp_error( $v3_settings ) ) {
-				$data_mover = (bool) isset( $v3_settings['options']['data_mover']['flag'] ) && $v3_settings['options']['data_mover']['flag'];
-				SST_Settings::set( 'data_mover', $data_mover );
-			} else {
-				// Log error but don't fail verification if v3 fails (optional, depending on strictness)
-				SST_Logger::add( 'Failed to fetch v3 settings: ' . $v3_settings->get_error_message() );
-			}
+		error_log( print_r( $v3_settings, true ) );
+
+		if ( ! is_wp_error( $v3_settings ) ) {
+			$data_mover = (bool) isset( $v3_settings['options']['data_mover']['flag'] ) && $v3_settings['options']['data_mover']['flag'];
+			SST_Settings::set( 'data_mover', $data_mover );
+		} else {
+			// Log error but don't fail verification if v3 fails (optional, depending on strictness)
+			SST_Logger::add( 'Failed to fetch v3 settings: ' . $v3_settings->get_error_message() );
+		}
 	}
 }

@@ -127,7 +127,11 @@ class SST_Settings {
 				'title'       => __( 'Integration Mode', 'simple-sales-tax' ),
 				'type'        => 'integration_mode',
 				'default'     => '',
-				'desc_tip'    => false,
+				'desc_tip'    => true,
+				'description' => __(
+					'Click the refresh button to check TaxCloud for the current mode setting.',
+					'simple-sales-tax'
+				),
 				'custom_attributes' => array(
 					'readonly' => 'readonly',
 					'disabled' => 'disabled',
