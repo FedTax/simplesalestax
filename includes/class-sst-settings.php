@@ -83,8 +83,6 @@ class SST_Settings {
 			self::is_using_checkout_block()
 		);
 
-		$disable_realtime_calc = self::get( 'data_mover', false );
-
 		$fields = array(
 			'taxcloud_settings'           => array(
 				'title'       => __( 'TaxCloud Settings', 'simple-sales-tax' ),
@@ -347,7 +345,6 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
-				'disabled'    => $disable_realtime_calc,
 			),
 			'tax_based_on'                => array(
 				'title'       => __( 'Tax Based On', 'simple-sales-tax' ),
