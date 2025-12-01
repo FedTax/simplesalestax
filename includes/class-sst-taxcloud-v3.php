@@ -86,8 +86,6 @@ class SST_TaxCloud_V3 {
 			return new WP_Error( 'sst_v3_auth_error', 'No access token received from TaxCloud v3 API.' );
 		}
 
-		// error_log( print_r( $data, true ) );
-
 		return $data['access_token'];
 	}
 
