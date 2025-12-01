@@ -159,10 +159,19 @@ class SST_TaxCloud_V3 {
 			$api_key			= SST_Settings::get( 'tc_key' );
 		}
 
+		// Return if empty
+		if ( empty( $api_login_id ) || empty( $api_key ) ) {
+			SST_Logger::add( 'Failed to update data mover settings: API Login ID or API Key is empty' );
+			return;
+		}
+
+		// Add to cronjob to check daily
+		if ( ! wp_next_scheduled( 'sst_update_data_mover_settings' ) ) {
+			wp_schedule_event( time(), 'daily', 'sst_update_data_mover_settings' );
+		}
+
 		// Check v3 settings
 		$v3_settings = self::get_settings_with_v1_creds( $api_login_id, $api_key );
-
-		error_log( print_r( $v3_settings, true ) );
 
 		if ( ! is_wp_error( $v3_settings ) ) {
 			$data_mover = (bool) isset( $v3_settings['options']['data_mover']['flag'] ) && $v3_settings['options']['data_mover']['flag'];
