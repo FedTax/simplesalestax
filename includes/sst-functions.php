@@ -600,3 +600,8 @@ function disable_real_time_calc_option( $fields ) {
 	return $fields;
 }
 add_filter( 'sst_settings_form_fields', 'disable_real_time_calc_option' );
+
+/**
+ * Update data mover settings.
+ */
+add_action( 'sst_update_data_mover_settings', array( 'SST_TaxCloud_V3', 'update_data_mover_settings' ) );
