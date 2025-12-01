@@ -467,7 +467,7 @@ class SST_Integration extends WC_Integration {
 									)
 								);
 								?>
-								<a href="https://taxcloud.com/go/configure" target="_blank">
+								<a href="https://app.taxcloud.com/go/integrations" target="_blank">
 									<?php echo wp_kses_post( __( 'Configure in TaxCloud', 'simple-sales-tax' ) ); ?>
 								</a>
 							</p>
