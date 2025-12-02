@@ -571,37 +571,3 @@ function sst_get_rate_label() {
 function sst_get_rate_code() {
 	return apply_filters( 'wootax_rate_code', 'SALES-TAX' );
 }
-
-/**
- * Update the disable_real_time_calc option if data mover is true.
- */
-function sst_update_realtime_calc_option( $value, $key ) {
-	if( 'disable_real_time_calc' === $key ) {
-		$data_mover = SST_Settings::get( 'data_mover', false );
-		if( $data_mover ) {
-			return 'yes';
-		}
-	}
-	return $value;
-}
-add_filter( 'sst_get_option', 'sst_update_realtime_calc_option', 10, 2 );
-
-/**
- * Disable the disable_real_time_calc option if data mover is true.
- */
-function disable_real_time_calc_option( $fields ) {
-	$data_mover = SST_Settings::get( 'data_mover', false );
-	if( $data_mover ) {
-		$fields['disable_real_time_calc']['disabled'] =  $data_mover;
-		$fields['disable_real_time_calc']['options'] = array(
-			'yes' => __( 'Yes', 'simple-sales-tax' ),
-		);
-	}
-	return $fields;
-}
-add_filter( 'sst_settings_form_fields', 'disable_real_time_calc_option' );
-
-/**
- * Update data mover settings.
- */
-add_action( 'sst_update_data_mover_settings', array( 'SST_TaxCloud_V3', 'update_data_mover_settings' ) );
