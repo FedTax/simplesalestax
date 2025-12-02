@@ -82,7 +82,7 @@ class SST_Ajax {
 				TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
 
 				// Ping successful, update data mover settings
-				$data_mover_settings = SST_TaxCloud_V3::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
+				$data_mover_settings = SST_TaxCloud_V3_API::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
 
 				wp_send_json_success();
 			} catch ( Exception $ex ) {
@@ -367,7 +367,7 @@ class SST_Ajax {
 		check_ajax_referer( 'sst-update-data-mover-nonce' );
 
 		// Update data mover settings
-		SST_TaxCloud_V3::update_data_mover_settings();
+		SST_TaxCloud_V3_API::update_data_mover_settings();
 
 		// Get data mover settings
 		$data_mover = SST_Settings::get( 'data_mover', false );

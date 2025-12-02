@@ -498,8 +498,7 @@ class SST_Integration extends WC_Integration {
 	 * Updates the data mover settings.
 	 */
 	public function update_data_mover_settings() {
-		SST_TaxCloud_V3::update_data_mover_settings();
+		SST_TaxCloud_V3_API::update_data_mover_settings();
 	}
-	
 
 }

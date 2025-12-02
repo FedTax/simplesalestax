@@ -5,9 +5,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * TaxCloud v3 API Client.
+ * TaxCloud v3 Client.
  *
- * Handles authentication and settings retrieval from TaxCloud v3 API.
+ * Handles the data v3 settings.
  *
  * @author  Simple Sales Tax
  * @package SST
@@ -16,167 +16,72 @@ if ( ! defined( 'ABSPATH' ) ) {
 class SST_TaxCloud_V3 {
 
 	/**
-	 * API Base URLs.
+	 * Singleton instance.
+	 *
+	 * @var SST_TaxCloud_V3
 	 */
-	const STAGING_AUTH_URL = 'https://staging-taxcloudapi.azurewebsites.net/api/v3/auth/token';
-	const PROD_AUTH_URL    = 'https://taxcloudapi-appservice-core-prod.azurewebsites.net/api/v3/auth/token';
-	const STAGING_MGMT_URL = 'https://api.v3.taxcloud.net/mgmt';
-	const PROD_MGMT_URL    = 'https://api.v3.taxcloud.com/mgmt';
+	protected static $_instance = null;
 
 	/**
-	 * Get the appropriate Auth URL based on environment.
+	 * Singleton instance accessor.
+	 *
+	 * @return SST_TaxCloud_V3
+	 */
+	public static function instance() {
+		if ( is_null( self::$_instance ) ) {
+			self::$_instance = new self();
+		}
+
+		return self::$_instance;
+	}
+
+	/**
+	 * SST_TaxCloud_V3 constructor.
+	 */
+	protected function __construct() {
+		add_action( 'sst_update_data_mover_settings', array( 'SST_TaxCloud_V3_API', 'update_data_mover_settings' ) );
+		add_filter( 'sst_get_option', array( $this, 'sst_update_realtime_calc_option' ), 10, 2 );
+		add_filter( 'sst_settings_form_fields', array( $this, 'disable_real_time_calc_option' ) );
+	}
+
+	/**
+	 * Disable the disable_real_time_calc option if data mover is true.
+	 *
+	 * @param array $fields Array of settings fields.
+	 *
+	 * @return array
+	 */
+	function disable_real_time_calc_option( $fields ) {
+		$data_mover = SST_Settings::get( 'data_mover', false );
+		if( $data_mover ) {
+			$fields['disable_real_time_calc']['disabled'] =  $data_mover;
+			$fields['disable_real_time_calc']['options'] = array(
+				'yes' => __( 'Yes', 'simple-sales-tax' ),
+			);
+		}
+		return $fields;
+	}
+
+
+	/**
+	 * Update the disable_real_time_calc option if data mover is true.
+	 *
+	 * @param string $value Value of the option.
+	 * @param string $key   Key of the option.
 	 *
 	 * @return string
 	 */
-	private static function get_auth_url() {
-		// For now, we'll default to PROD unless a constant is defined for staging.
-		// In the future, this could be a setting.
-		if ( defined( 'SST_TAXCLOUD_STAGING' ) && SST_TAXCLOUD_STAGING ) {
-			return self::STAGING_AUTH_URL;
+	function sst_update_realtime_calc_option( $value, $key ) {
+		if( 'disable_real_time_calc' === $key ) {
+			$data_mover = SST_Settings::get( 'data_mover', false );
+			if( $data_mover ) {
+				return 'yes';
+			}
 		}
-		return self::PROD_AUTH_URL;
+		return $value;
 	}
 
-	/**
-	 * Get the appropriate Management URL based on environment.
-	 *
-	 * @return string
-	 */
-	private static function get_mgmt_url() {
-		if ( defined( 'SST_TAXCLOUD_STAGING' ) && SST_TAXCLOUD_STAGING ) {
-			return self::STAGING_MGMT_URL;
-		}
-		return self::PROD_MGMT_URL;
-	}
-
-	/**
-	 * Exchange v1 credentials for v3 Bearer token.
-	 *
-	 * @param string $api_login_id TaxCloud API Login ID.
-	 * @param string $api_key      TaxCloud API Key.
-	 * @return string|WP_Error Access token on success, WP_Error on failure.
-	 */
-	public static function get_auth_token( $api_login_id, $api_key ) {
-		$url = self::get_auth_url();
-
-		$response = wp_remote_post( $url, array(
-			'headers' => array(
-				'Content-Type' => 'application/json',
-			),
-			'body'    => json_encode( array(
-				'apiLoginID' => $api_login_id,
-				'apiKey'     => $api_key,
-			) ),
-			'timeout' => 30,
-		) );
-
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
-
-		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_auth_error', 'Failed to authenticate with TaxCloud v3 API: ' . ( isset( $data['message'] ) ? $data['message'] : $body ) );
-		}
-
-		if ( empty( $data['access_token'] ) ) {
-			return new WP_Error( 'sst_v3_auth_error', 'No access token received from TaxCloud v3 API.' );
-		}
-
-		return $data['access_token'];
-	}
-
-	/**
-	 * Get connection settings using Bearer token.
-	 *
-	 * @param string $api_key      TaxCloud API Key (used as connection ID).
-	 * @param string $access_token Bearer token.
-	 * @return array|WP_Error Settings array on success, WP_Error on failure.
-	 */
-	public static function get_connection_settings( $api_key, $access_token ) {
-		$url = self::get_mgmt_url() . '/connections/' . $api_key;
-
-		$response = wp_remote_get( $url, array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $access_token,
-				'Content-Type'  => 'application/json',
-			),
-			'timeout' => 30,
-		) );
-
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-
-		if ( $code === 404 ) {
-			// Connection settings don't exist yet, which is normal for new connections.
-			// Return empty settings.
-			return array();
-		}
-
-		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_settings_error', 'Failed to retrieve connection settings: ' . $body );
-		}
-
-		return json_decode( $body, true );
-	}
-
-	/**
-	 * Get settings using v1 credentials.
-	 *
-	 * @param string $api_login_id TaxCloud API Login ID.
-	 * @param string $api_key      TaxCloud API Key.
-	 * @return array|WP_Error Settings array on success, WP_Error on failure.
-	 */
-	public static function get_settings_with_v1_creds( $api_login_id, $api_key ) {
-		$token = self::get_auth_token( $api_login_id, $api_key );
-
-		if ( is_wp_error( $token ) ) {
-			return $token;
-		}
-
-		return self::get_connection_settings( $api_key, $token );
-	}
-
-	/**
-	 * Update data mover settings using v1 credentials.
-	 *
-	 * @param string $api_login_id TaxCloud API Login ID.
-	 * @param string $api_key      TaxCloud API Key.
-	 * @return array|WP_Error Settings array on success, WP_Error on failure.
-	 */
-	public static function update_data_mover_settings( $api_login_id = null, $api_key = null ) {
-		if ( ! $api_login_id || ! $api_key ) {
-			$api_login_id	= SST_Settings::get( 'tc_id' );
-			$api_key			= SST_Settings::get( 'tc_key' );
-		}
-
-		// Return if empty
-		if ( empty( $api_login_id ) || empty( $api_key ) ) {
-			SST_Logger::add( 'Failed to update data mover settings: API Login ID or API Key is empty' );
-			return;
-		}
-
-		// Add to cronjob to check daily
-		if ( ! wp_next_scheduled( 'sst_update_data_mover_settings' ) ) {
-			wp_schedule_event( time(), 'daily', 'sst_update_data_mover_settings' );
-		}
-
-		// Check v3 settings
-		$v3_settings = self::get_settings_with_v1_creds( $api_login_id, $api_key );
-
-		if ( ! is_wp_error( $v3_settings ) ) {
-			$data_mover = (bool) isset( $v3_settings['options']['data_mover']['flag'] ) && $v3_settings['options']['data_mover']['flag'];
-			SST_Settings::set( 'data_mover', $data_mover );
-		} else {
-			// Log error but don't fail verification if v3 fails (optional, depending on strictness)
-			SST_Logger::add( 'Failed to fetch v3 settings: ' . $v3_settings->get_error_message() );
-		}
-	}
 }
+
+// Initialize the instance.
+SST_TaxCloud_V3::instance();
