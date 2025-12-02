@@ -586,20 +586,20 @@ function sst_update_realtime_calc_option( $value, $key ) {
 }
 add_filter( 'sst_get_option', 'sst_update_realtime_calc_option', 10, 2 );
 
-/**
- * Disable the disable_real_time_calc option if data mover is true.
- */
-function disable_real_time_calc_option( $fields ) {
-	$data_mover = SST_Settings::get( 'data_mover', false );
-	if( $data_mover ) {
-		$fields['disable_real_time_calc']['disabled'] =  $data_mover;
-		$fields['disable_real_time_calc']['options'] = array(
-			'yes' => __( 'Yes', 'simple-sales-tax' ),
-		);
-	}
-	return $fields;
-}
-add_filter( 'sst_settings_form_fields', 'disable_real_time_calc_option' );
+// /**
+//  * Disable the disable_real_time_calc option if data mover is true.
+//  */
+// function disable_real_time_calc_option( $fields ) {
+// 	$data_mover = SST_Settings::get( 'data_mover', false );
+// 	if( $data_mover ) {
+// 		$fields['disable_real_time_calc']['disabled'] =  $data_mover;
+// 		$fields['disable_real_time_calc']['options'] = array(
+// 			'yes' => __( 'Yes', 'simple-sales-tax' ),
+// 		);
+// 	}
+// 	return $fields;
+// }
+// add_filter( 'sst_settings_form_fields', 'disable_real_time_calc_option' );
 
 /**
  * Update data mover settings.
