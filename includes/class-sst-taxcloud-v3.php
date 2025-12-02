@@ -40,7 +40,7 @@ class SST_TaxCloud_V3 {
 	 */
 	protected function __construct() {
 		add_action( 'sst_update_data_mover_settings', array( 'SST_TaxCloud_V3_API', 'update_data_mover_settings' ) );
-		add_filter( 'sst_get_option', array( $this, 'sst_update_realtime_calc_option' ), 10, 2 );
+		add_filter( 'sst_get_option', array( $this, 'update_realtime_calc_option' ), 10, 2 );
 		add_filter( 'sst_settings_form_fields', array( $this, 'disable_real_time_calc_option' ) );
 	}
 
@@ -51,8 +51,8 @@ class SST_TaxCloud_V3 {
 	 *
 	 * @return array
 	 */
-	function disable_real_time_calc_option( $fields ) {
-		$data_mover = SST_Settings::get( 'data_mover', false );
+	public function disable_real_time_calc_option( $fields ) {
+		$data_mover = SST_Settings::get( 'data_mover' );
 		if( $data_mover ) {
 			$fields['disable_real_time_calc']['disabled'] =  $data_mover;
 			$fields['disable_real_time_calc']['options'] = array(
@@ -71,7 +71,7 @@ class SST_TaxCloud_V3 {
 	 *
 	 * @return string
 	 */
-	function sst_update_realtime_calc_option( $value, $key ) {
+	public function update_realtime_calc_option( $value, $key ) {
 		if( 'disable_real_time_calc' === $key ) {
 			$data_mover = SST_Settings::get( 'data_mover', false );
 			if( $data_mover ) {
