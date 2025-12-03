@@ -123,6 +123,20 @@ class SST_Settings {
 				'desc_tip'    => true,
 				'id'          => 'verifySettings',
 			),
+			'integration_mode'            => array(
+				'title'       => __( 'Integration Mode', 'simple-sales-tax' ),
+				'type'        => 'integration_mode',
+				'default'     => '',
+				'desc_tip'    => true,
+				'description' => __(
+					'Click the refresh button to check TaxCloud for the current mode setting.',
+					'simple-sales-tax'
+				),
+				'custom_attributes' => array(
+					'readonly' => 'readonly',
+					'disabled' => 'disabled',
+				),
+			),
 			'address_settings'            => array(
 				'title'       => __( 'Address Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
@@ -371,7 +385,7 @@ class SST_Settings {
 			),
 		);
 
-		return apply_filters( 'sst_settings_form_fields', $fields );
+		return apply_filters( 'sst_settings_form_fields', $fields, self::get_settings() );
 	}
 
 	/**
@@ -419,7 +433,7 @@ class SST_Settings {
 			self::$settings[ $key ] = $empty_value;
 		}
 
-		return self::$settings[ $key ];
+		return apply_filters( 'sst_get_option', self::$settings[ $key ], $key );
 	}
 
 	/**
@@ -451,6 +465,19 @@ class SST_Settings {
 		}
 
 		return $wp_roles->get_names();
+	}
+
+	/**
+	 * Get SST settings
+	 *
+	 * @return array
+	 */
+	public static function get_settings() {
+		if ( empty( self::$settings ) ) {
+			self::load_settings();
+		}
+
+		return self::$settings;
 	}
 
 }

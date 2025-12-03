@@ -82,6 +82,7 @@ class SST_Install {
 	 */
 	public static function deactivate() {
 		self::remove_notices();
+		self::remove_cron();
 	}
 
 	/**
@@ -380,6 +381,13 @@ class SST_Install {
 		if ( sst_wcms_active() ) {
 			remove_filter( 'woocommerce_order_get_items', array( $GLOBALS['wcms']->order, 'order_item_taxes' ), 30 );
 		}
+	}
+
+	/**
+	 * Remove cron job.
+	 */
+	public static function remove_cron() {
+		wp_clear_scheduled_hook( 'sst_update_data_mover_settings' );
 	}
 }
 

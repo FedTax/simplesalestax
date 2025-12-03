@@ -212,3 +212,8 @@ p[class*="variable_tax_class"] {
     list-style: disc;
     padding-left: 1.5rem;
 }
+
+.d-flex {
+    display: flex;
+    gap: 10px;
+}

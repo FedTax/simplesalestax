@@ -81,5 +81,35 @@
           $btn.prop('disabled', false);
         });
     });
+
+    // Refresh integration mode
+    jQuery(document).on('click', '.sst-update-data-mover', function (e) {
+      e.preventDefault();
+      var $btn = jQuery(this).prop('disabled', true).addClass('is-busy');
+      var nonce = jQuery(this).data('nonce');
+
+      jQuery.post(ajaxurl, {
+        action: 'sst_update_data_mover',
+        _wpnonce: nonce,
+      })
+        .done(function (resp) {
+          if (resp.success) {
+            var integrationMode = resp.data.integration_mode;
+            jQuery('#woocommerce_wootax_integration_mode').val(integrationMode);
+            alert(data.strings.mode_refreshed + integrationMode);
+          } else {
+            alert(data.strings.went_wrong);
+          }
+        })
+        .fail(function (xhr, status, error) {
+          console.error('AJAX POST failed:', xhr, status, error);
+          alert(data.strings.went_wrong);
+        })
+        .always(function () {
+          // Re-enable button after request
+          $btn.prop('disabled', false).removeClass('is-busy');
+        });
+    });
+
   });
 })(SST);
