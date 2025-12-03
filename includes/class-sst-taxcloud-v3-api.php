@@ -152,7 +152,7 @@ class SST_TaxCloud_V3_API {
 	 * @return array|WP_Error Settings array on success, WP_Error on failure.
 	 */
 	public static function update_data_mover_settings( $api_login_id = null, $api_key = null ) {
-		if ( ! $api_login_id || ! $api_key ) {
+		if ( !$api_login_id || !$api_key ) {
 			$api_login_id	= SST_Settings::get( 'tc_id' );
 			$api_key			= SST_Settings::get( 'tc_key' );
 		}
