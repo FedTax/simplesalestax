@@ -65,7 +65,7 @@ class SST_Marketplaces {
 			// Hide the origin address dropdown. We always use the vendor's
 			// address as the origin address in the marketplace setting.
 			add_filter( 'sst_show_origin_address_dropdown', '__return_false' );
-			add_filter( 'sst_settings_form_fields', array( $this, 'change_origin_addresses_description' ) );
+			add_filter( 'sst_settings_form_fields', array( $this, 'change_origin_addresses_description' ), 10, 2 );
 		}
 	}
 
@@ -110,7 +110,7 @@ class SST_Marketplaces {
 	 *
 	 * @return array
 	 */
-	public function change_origin_addresses_description( $fields ) {
+	public function change_origin_addresses_description( $fields, $settings ) {
 		if ( ! isset( $fields['default_origin_addresses'] ) ) {
 			return $fields;
 		}

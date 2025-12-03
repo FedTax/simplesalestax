@@ -385,7 +385,7 @@ class SST_Settings {
 			),
 		);
 
-		return apply_filters( 'sst_settings_form_fields', $fields );
+		return apply_filters( 'sst_settings_form_fields', $fields, self::get_settings() );
 	}
 
 	/**
@@ -465,6 +465,19 @@ class SST_Settings {
 		}
 
 		return $wp_roles->get_names();
+	}
+
+	/**
+	 * Get SST settings
+	 *
+	 * @return array
+	 */
+	public static function get_settings() {
+		if ( empty( self::$settings ) ) {
+			self::load_settings();
+		}
+
+		return self::$settings;
 	}
 
 }
