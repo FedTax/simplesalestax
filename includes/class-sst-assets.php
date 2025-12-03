@@ -109,6 +109,7 @@ class SST_Assets {
 								'verify_btn'       => __( 'Verify Settings', 'simple-sales-tax' ),
 								'verifying'        => __( 'Verifying...', 'simple-sales-tax' ),
 								'went_wrong'      => __( 'Something went wrong.', 'simple-sales-tax' ),
+								'mode_refreshed'   => __( 'Success! Your integration mode is now ', 'simple-sales-tax' ),
 							),
 						),
 					),
