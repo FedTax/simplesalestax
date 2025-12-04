@@ -242,7 +242,7 @@ class SST_Integration extends WC_Integration {
 	 * @since 7.0
 	 */
 	public function maybe_download_debug_report() {
-		if ( ! isset( $_GET['download_debug_report'] ) || ! wp_verify_nonce( $_GET['nonce'], 'sst_debug_report' ) || ! current_user_can( 'manage_options' ) ) {
+		if ( ! isset( $_GET['download_debug_report'] ) || ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( $_GET['nonce'], 'sst_debug_report' ) || ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 

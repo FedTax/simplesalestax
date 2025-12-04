@@ -24,7 +24,7 @@ describe('Settings page', () => {
   });
 
   it('has a working Download Log button', () => {
-    cy.intercept('*&download_debug_report=1').as('downloadRequest');
+    cy.intercept('*download_debug_report=1*').as('downloadRequest');
     cy.findByRole('link', {name: 'Download'}).click();
     cy.wait('@downloadRequest', {timeout: 20000}).then((intercepted) => {
       expect(intercepted.response.statusCode).to.eq(200);
