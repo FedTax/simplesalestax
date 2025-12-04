@@ -375,7 +375,7 @@ class SST_Settings {
 				'title'       => __( 'Debug Report', 'simple-sales-tax' ),
 				'label'       => __( 'Download', 'simple-sales-tax' ),
 				'type'        => 'anchor',
-				'url'         => add_query_arg( 'download_debug_report', true ),
+				'url'         => add_query_arg( array( 'download_debug_report' => true, 'nonce' => wp_create_nonce( 'sst_debug_report' ) ) ),
 				'id'          => 'debug_report_button',
 				'description' => __(
 					'Send a copy of this report to TaxCloud support to help with debugging TaxCloud for WooCommerce issues.',

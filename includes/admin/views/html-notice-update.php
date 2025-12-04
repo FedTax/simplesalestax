@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	?>
 </p>
 <p class="submit">
-	<a href="<?php echo esc_url( admin_url( '?do_sst_update=true' ) ); ?>" class="wc-update-now button-primary">
+	<a href="<?php echo esc_url( admin_url( '?do_sst_update=true&nonce=' . wp_create_nonce( 'sst_update' ) ) ); ?>" class="wc-update-now button-primary">
 		<?php esc_html_e( 'Run the updater', 'simple-sales-tax' ); ?>
 	</a>
 </p>

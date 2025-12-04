@@ -155,8 +155,9 @@ class SST_Install {
 
 		// Prompt user to remove rates if any are present.
 		if ( 'yes' !== get_option( 'wootax_keep_rates' ) && self::has_other_rates() ) {
-			$keep_url   = esc_url( admin_url( '?sst_keep_rates=yes' ) );
-			$delete_url = esc_url( admin_url( '?sst_keep_rates=no' ) );
+			$nonce      = wp_create_nonce( 'sst_keep_rates' );
+			$keep_url   = esc_url( admin_url( '?sst_keep_rates=yes&nonce=' . $nonce ) );
+			$delete_url = esc_url( admin_url( '?sst_keep_rates=no&nonce=' . $nonce ) );
 			$notice     = sprintf(
 				/* translators: 1 - URL to keep found rates, 2 - URL to delete found rates */
 				__(
@@ -177,7 +178,7 @@ class SST_Install {
 	 * Start update when a user clicks the "Update" button in the dashboard.
 	 */
 	public static function trigger_update() {
-		if ( ! empty( $_GET['do_sst_update'] ) ) { // phpcs:ignore WordPress.CSRF.NonceVerification
+		if ( ! empty( $_GET['do_sst_update'] ) && wp_verify_nonce( $_GET['nonce'], 'sst_update' ) && current_user_can( 'manage_options' ) ) {
 			self::update();
 
 			// Update notice content.
@@ -190,11 +191,10 @@ class SST_Install {
 	 * Remove rates when user clicks 'keep the rates' or 'delete them.'
 	 */
 	public static function trigger_rate_removal() {
-		global $wpdb;
-
 		$keep_rates = ! empty( $_GET['sst_keep_rates'] ) ? sanitize_text_field( wp_unslash( $_GET['sst_keep_rates'] ) ) : ''; // phpcs:ignore WordPress.CSRF.NonceVerification
 
-		if ( ! empty( $keep_rates ) ) {
+		if ( ! empty( $keep_rates ) && wp_verify_nonce( $_GET['nonce'], 'sst_keep_rates' ) && current_user_can( 'manage_options' ) ) {
+			global $wpdb;
 			if ( 'no' === $keep_rates ) {
 				$wpdb->query(
 					$wpdb->prepare(
