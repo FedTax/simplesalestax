@@ -371,7 +371,7 @@ class SST_Ajax {
 
 		// Get data mover settings
 		$data_mover = SST_Settings::get( 'data_mover', false );
-		$integration_mode = $data_mover == false ? __( 'Premium', 'simple-sales-tax' ) : __( 'Basic', 'simple-sales-tax' );
+		$integration_mode = $data_mover == false ? __( 'Real Time', 'simple-sales-tax' ) : __( 'Data Import', 'simple-sales-tax' );
 
 		// Response
 		wp_send_json_success( [ 'integration_mode' => $integration_mode, 'data_mover' => $data_mover ] );
