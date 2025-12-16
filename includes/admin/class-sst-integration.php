@@ -426,7 +426,7 @@ class SST_Integration extends WC_Integration {
 		$api_key          = SST_Settings::get( 'tc_key' );
 		$data_mover       = SST_Settings::get( 'data_mover', false );
 
-		$integration_mode = $data_mover == false ? __( 'Premium', 'simple-sales-tax' ) : __( 'Basic', 'simple-sales-tax' );
+		$integration_mode = $data_mover == false ? __( 'Real Time', 'simple-sales-tax' ) : __( 'Data Import', 'simple-sales-tax' );
 
 		ob_start();
 		?>
@@ -459,14 +459,6 @@ class SST_Integration extends WC_Integration {
 						</div>
 						<div class="description">
 							<p>
-								<?php
-								echo wp_kses_post(
-									__(
-										'Premium users can calculate tax in real-time while Basic users can only do data import to TaxCloud.',
-										'simple-sales-tax'
-									)
-								);
-								?>
 								<a href="https://app.taxcloud.com/go/integrations" target="_blank">
 									<?php echo wp_kses_post( __( 'Configure in TaxCloud', 'simple-sales-tax' ) ); ?>
 								</a>
