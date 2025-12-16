@@ -23,24 +23,6 @@ a.delete_refund {
     max-width: 771px;
 }
 
-/**
- * Hide Tax Status/Tax Class fields
- */
-.form-field._tax_status_field,
-.form-field._tax_class_field {
-    display: none !important;
-}
-
-#woocommerce-fields-bulk>label:nth-of-type(2),
-#woocommerce-fields-bulk>label:nth-of-type(3) {
-    display: none !important;
-}
-
-.woocommerce_variable_attributes .data>div:nth-of-type(5) p:nth-of-type(2),
-p[class*="variable_tax_class"] {
-    display: none !important;
-}
-
 
 /**
  * Shipping origin select
