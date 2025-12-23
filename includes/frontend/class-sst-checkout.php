@@ -90,11 +90,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return $total;
 		}
 
-		// Real-time tax calculation is disabled?.
-		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
-			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping tax calculation.', 'simple-sales-tax' ) );
-			return $total;
-		}
+
 
 		$tax_total = 0;
 
@@ -111,6 +107,12 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		if ( apply_filters( 'sst_calculate_tax_totals', $should_calculate ) ) {
 			$this->calculate_taxes();
+
+			// Skip tax calculation if real-time tax calculation is disabled. [Data Import Mode]
+			if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+				SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping tax calculation.', 'simple-sales-tax' ) );
+				return $total;
+			}
 
 			/**
 			 * Woo won't include the taxes calculated by SST in the total so

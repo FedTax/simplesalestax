@@ -189,11 +189,11 @@ abstract class SST_Abstract_Cart {
 	 * @return array Updated package.
 	 */
 	protected function do_package_lookup( $package ) {
-		// Skip lookup if real-time tax calculation is disabled.
-		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
-			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping lookup.', 'simple-sales-tax' ) );
-			return $package;
-		}
+		// Skip lookup if real-time tax calculation is disabled. [Data Import Mode]
+		// if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+		// 	SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping lookup.', 'simple-sales-tax' ) );
+		// 	return $package;
+		// }
 
 		try {
 			$package['response'] = TaxCloud()->Lookup( $package['request'] );
