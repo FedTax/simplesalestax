@@ -54,20 +54,26 @@ abstract class SST_Abstract_Cart {
 
 		// No API Login ID or API Key? Bail.
 		if ( empty( $this->api_id ) || empty( $this->api_key ) ) {
-			SST_Logger::add( 'API Login ID or API Key is empty. Skipping lookup.' );
-
-			return false;
-		}
-
-		// Real-time tax calculation is disabled?.
-		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
-			SST_Logger::add( 'Real-time tax calculation is disabled in plugin settings. Skipping lookup.' );
+			SST_Logger::add( __( 'API Login ID or API Key is empty. Skipping lookup.', 'simple-sales-tax' ) );
 			return false;
 		}
 
 		// Perform tax lookup(s).
 		foreach ( $this->do_lookup() as $package ) {
-			$response = $package['response'];
+
+			// Real-time tax calculation is disabled?.
+			if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+				SST_Logger::add( __( 'Real-time tax calculation is disabled. Calculating tax from saved packages.', 'simple-sales-tax' ), $package );
+				continue;
+			}
+
+			$response = isset( $package['response'] ) && !empty( $package['response'] ) ? $package['response'] : false;
+
+			// No response? Bail.
+			if ( ! $response ) {
+				SST_Logger::add( __( 'No response from TaxCloud. Skipping lookup.', 'simple-sales-tax' ) );
+				continue;
+			}
 
 			if ( ! is_wp_error( $response ) ) {
 				$tax_totals = current( $package['response'] );
@@ -183,6 +189,12 @@ abstract class SST_Abstract_Cart {
 	 * @return array Updated package.
 	 */
 	protected function do_package_lookup( $package ) {
+		// Skip lookup if real-time tax calculation is disabled.
+		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping lookup.', 'simple-sales-tax' ) );
+			return $package;
+		}
+
 		try {
 			$package['response'] = TaxCloud()->Lookup( $package['request'] );
 			$package['cart_id']  = key( $package['response'] );

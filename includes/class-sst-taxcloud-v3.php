@@ -77,6 +77,16 @@ class SST_TaxCloud_V3 {
 			if( $data_mover ) {
 				return 'yes';
 			}
+		} elseif ( 'show_zero_tax' === $key ) {
+			$disable_real_time_calc = SST_Settings::get( 'disable_real_time_calc', 'no' );
+			if( 'yes' === $disable_real_time_calc ) {
+				return 'no';
+			}
+		} elseif ( 'order_show_zero_tax' === $key ) {
+			$disable_real_time_calc = SST_Settings::get( 'disable_real_time_calc', 'no' );
+			if( 'yes' === $disable_real_time_calc ) {
+				return 'no';
+			}
 		}
 		return $value;
 	}

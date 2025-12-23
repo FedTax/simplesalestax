@@ -72,6 +72,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function calculate_tax_totals( $total, $cart ) {
+		return $total;
 		// The Tax Exemption for WooCommerce (PRO) plugin sets the
 		// is_tax_exempt session variable, and we need to respect that so we
 		// can allow customers that aren't logged in to show no tax when
@@ -85,7 +86,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 			// Session not ready or no packages, skip tax calculation this time
 			// This prevents the refresh requirement issue
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				SST_Logger::add( 'SST: Session not ready for tax calculation, skipping to prevent refresh requirement.' );
+				SST_Logger::add( __( 'SST: Session not ready for tax calculation, skipping to prevent refresh requirement.', 'simple-sales-tax' ) );
 			}
 			return $total;
 		}
@@ -104,7 +105,14 @@ class SST_Checkout extends SST_Abstract_Cart {
 		);
 
 		if ( apply_filters( 'sst_calculate_tax_totals', $should_calculate ) ) {
+						// Real-time tax calculation is disabled?.
+			if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+				SST_Logger::add( __( 'Real-time tax calculation is disabled in plugin settings. Skipping calc.', 'simple-sales-tax' ) );
+				return $total;
+			}
 			$this->calculate_taxes();
+
+
 
 			/**
 			 * Woo won't include the taxes calculated by SST in the total so
