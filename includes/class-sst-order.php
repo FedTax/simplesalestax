@@ -725,6 +725,9 @@ class SST_Order extends SST_Abstract_Cart {
 			$now      = gmdate( 'c' );
 			$order_id = $this->get_package_order_id( $key, $package );
 
+			error_log( print_r( $package, true ) );
+			error_log( print_r( $order_id, true ) );
+
 			try {
 				$request = new TaxCloud\Request\AuthorizedWithCapture(
 					$this->api_id,

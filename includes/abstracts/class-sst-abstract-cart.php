@@ -128,6 +128,7 @@ abstract class SST_Abstract_Cart {
 	 */
 	protected function do_lookup() {
 		$packages = array();
+		$data_mover = SST_Settings::get( 'data_mover' );
 
 		foreach ( $this->create_packages() as $package ) {
 			if ( ! $this->should_do_lookup( $package ) ) {
@@ -190,10 +191,10 @@ abstract class SST_Abstract_Cart {
 	 */
 	protected function do_package_lookup( $package ) {
 		// Skip lookup if real-time tax calculation is disabled. [Data Import Mode]
-		// if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
-		// 	SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping lookup.', 'simple-sales-tax' ) );
-		// 	return $package;
-		// }
+		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping lookup.', 'simple-sales-tax' ) );
+			return $package;
+		}
 
 		try {
 			$package['response'] = TaxCloud()->Lookup( $package['request'] );
@@ -219,6 +220,9 @@ abstract class SST_Abstract_Cart {
 	protected function get_lookup_for_package( &$package ) {
 		$cart_items = array();
 		$based_on   = SST_Settings::get( 'tax_based_on' );
+		// V3: Data Mover Mode.
+		$data_mover = SST_Settings::get( 'data_mover', false );
+		$v3_data    = array();
 
 		/* Add products */
 		foreach ( $package['contents'] as $cart_id => $item ) {
@@ -245,10 +249,30 @@ abstract class SST_Abstract_Cart {
 				$price,
 				$quantity
 			);
+
+			// V3: Data Mover Mode.
+			if( $data_mover ) {
+				// Calculate tax rate
+				$tax_rate = $item['line_tax'] / $price;
+
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index' => count( $cart_items ),
+					'itemId' => $item['variation_id'] ? $item['variation_id'] : $item['product_id'],
+					'price' => $price,
+					'quantity' => $quantity,
+					'tax' => array(
+						'amount' => $item['line_tax'],
+						'rate' => $tax_rate
+					),
+					'tic' => SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
+				) );
+			}
+
 			$package['map'][] = array(
 				'type'    => 'line_item',
 				'id'      => $item['data']->get_id(),
 				'cart_id' => isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'],
+				'v3_data' => $v3_data
 			);
 		}
 
@@ -261,10 +285,27 @@ abstract class SST_Abstract_Cart {
 				apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
 				1
 			);
+
+			// V3: Data Mover Mode.
+			if( $data_mover ) {
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index' => count( $cart_items ),
+					'itemId' => $fee->id,
+					'price' => apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
+					'quantity' => 1,
+					'tax' => array(
+						'amount' => 0,
+						'rate' => 0
+					),
+					'tic' => apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC ),
+				) );
+			}
+
 			$package['map'][] = array(
 				'type'    => 'fee',
 				'id'      => $fee->id,
 				'cart_id' => $cart_id,
+				'v3_data' => $v3_data
 			);
 		}
 
@@ -282,25 +323,53 @@ abstract class SST_Abstract_Cart {
 				apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
 				1
 			);
+
+			// V3: Data Mover Mode.
+			if( $data_mover ) {
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index' => count( $cart_items ),
+					'itemId' => SST_SHIPPING_ITEM,
+					'price' => apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
+					'quantity' => 1,
+					'tax' => array(
+						'amount' => 0,
+						'rate' => 0
+					),
+					'tic' => sst_get_shipping_tic( $shipping_rate->method_id ),
+				) );
+			}
+
 			$package['map'][] = array(
 				'type'    => 'shipping',
 				'id'      => SST_SHIPPING_ITEM,
 				'cart_id' => $shipping_rate->id,
+				'v3_data' => $v3_data
 			);
 		}
 
 		/* Build Lookup */
-		$request = new TaxCloud\Request\Lookup(
-			$this->api_id,
-			$this->api_key,
-			$package['user']['ID'],
-			null,
-			$cart_items,
-			$package['origin'],
-			$package['destination'],
-			$local_delivery,
-			$package['certificate']
-		);
+		if( $data_mover ) {
+			$request = array(
+				'customerId' => $package['user']['ID'],
+				'cartItems' => $cart_items,
+				'origin' => $package['origin'],
+				'destination' => $package['destination'],
+				'localDelivery' => $local_delivery,
+				'certificate' => $package['certificate']
+			);
+		} else {
+			$request = new TaxCloud\Request\Lookup(
+					$this->api_id,
+					$this->api_key,
+					$package['user']['ID'],
+					null,
+					$cart_items,
+					$package['origin'],
+					$package['destination'],
+					$local_delivery,
+					$package['certificate']
+			);
+		}
 
 		return $request;
 	}
@@ -559,6 +628,12 @@ abstract class SST_Abstract_Cart {
 	 * @return array Compressed package data.
 	 */
 	public function compress_package_data( $package ) {
+		// V3: Data Mover Mode.
+		$data_mover = SST_Settings::get( 'data_mover', false );
+		if ( $data_mover ) {
+			return ( new TaxCloud_V3\Model\CompressedPackage( $package ) )->get_package();
+		}
+
 		$already_compressed = isset( $package['cart_items'] );
 
 		if ( $already_compressed ) {
