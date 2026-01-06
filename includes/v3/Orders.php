@@ -3,6 +3,10 @@ namespace TaxCloud_V3;
 
 use SST_Settings;
 use WP_Error;
+use TaxCloud_V3\Model\Address;
+use TaxCloud_V3\Model\CartItem;
+use TaxCloud_V3\Model\Currency;
+use TaxCloud_V3\Model\Exemption;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -28,52 +32,6 @@ class Orders extends RequestBase {
 		return self::API_BASE_URL . '/tax/connections/' . $this->connection_id . '/orders' . ( $item_id ? '/' . $item_id : '' );
 	}
 
-
-// 	// Create Order (POST /tax/connections/:connectionId/orders)
-// const response = await fetch("https://api.v3.taxcloud.com/tax/connections/e7d93275-45fd-4dc0-8cae-8767c552ee1d/orders?addressAutocomplete=none", {
-//   method: "POST",
-//   headers: {
-//     "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJUYXhDbG91ZCB2MyBKV1QiLCJqdGkiOiIwZjY0MjE0MS1iNTY2LTQ5ZTYtYjgwNi1hMjk1ZTZiZDcxZGQiLCJtZXJjaGFudGlkIjoiNjQxOTQiLCJjb250YWN0aWQiOiI2NjcxNiIsImFwaV92ZXJzaW9uIjoidjMiLCJ2M19hcGlfaW50ZWdyYXRpb24iOiJ0cnVlIiwicGVybWlzc2lvbnMiOiJ2M19hcGlfYWNjZXNzIiwiZXhwIjoxNzY3NDcwOTQ5LCJpc3MiOiJUYXhDbG91ZC5TZWN1cml0eS5CZWFyZXIiLCJhdWQiOiJUYXhDbG91ZC5TZWN1cml0eS5CZWFyZXIifQ.FqYqWAfQqgupEKQvUWNPnSfIybhoxS2mCx8MU4TMRIc",
-//     "Content-Type": "application/json"
-//   },
-//   body: JSON.stringify({
-//     "completedDate": "2026-01-01T09:30:00Z",
-//     "customerId": "customer-453",
-//     "destination": {
-//       "city": "Minneapolis",
-//       "line1": "323 Washington Ave N",
-//       "state": "MN",
-//       "zip": "55401-2427"
-//     },
-//     "lineItems": [
-//       {
-//         "index": 0,
-//         "itemId": "item-1",
-//         "price": 10.8,
-//         "quantity": 1.5,
-//         "tax": {
-//           "amount": 1.31,
-//           "rate": 0.0813
-//         }
-//       }
-//     ],
-//     "orderId": "my-order-2",
-//     "origin": {
-//       "city": "Minneapolis",
-//       "line1": "323 Washington Ave N",
-//       "state": "MN",
-//       "zip": "55401-2427"
-//     },
-//     "transactionDate": "2026-01-01T09:30:00Z",
-//     "currency": {
-//       "currencyCode": "USD"
-//     }
-//   }),
-// });
-
-// const body = await response.json();
-// console.log(body);
-
 	/**
 	 * Create an order in TaxCloud v3 API.	
 	 */
@@ -84,10 +42,6 @@ class Orders extends RequestBase {
 		if ( is_wp_error( $order ) ) {
 			return $order;
 		}
-
-		error_log( 'Order: ' . print_r( $order, true ) );
-		exit;
-
 
 		if ( is_wp_error( $this->get_auth_token() ) ) {
 			return $this->get_auth_token();
@@ -116,9 +70,64 @@ class Orders extends RequestBase {
 		return json_decode( $body, true );
 	}
 	
-	// prepare_item_for_request
-	protected function prepare_item_for_request( $args ) {
-		return $args;
+	/**
+	 * Prepare item for request.
+	 *
+	 * @param array $args Request arguments.
+	 * @return array|WP_Error Prepared item on success, WP_Error on failure.
+	 */
+	public function prepare_item_for_request( $args ) {
+
+		$request_args = array(
+			'channel' => 'woocommerce',
+			'completedDate' => $args['completedDate'],
+			'customerId' => $args['customerId'],
+			'orderId' => $args['orderId'],
+			'transactionDate' => $args['transactionDate'],
+		);
+
+		// Prepare line items
+		$lineItems = array();
+		if ( isset( $args['lineItems'] ) && ! empty( $args['lineItems'] ) ) {
+			foreach ( $args['lineItems'] as $lineItem ) {
+				$lineItems[] = new CartItem( $lineItem );
+			}
+			$request_args['lineItems'] = $lineItems;
+		}
+		
+		// Prepare currency
+		if ( isset( $args['currencyCode'] ) ) {
+			$request_args['currency'] = new Currency( $args['currencyCode'] );
+		}
+		
+		// Prepare exemption
+		if ( isset( $args['exemption'] ) ) {
+			$request_args['exemption'] = new Exemption( $args['exemption'] );
+		}
+
+		// Prepare destination
+		if ( isset( $args['destination'] ) && ! empty( $args['destination'] ) ) {
+			$destination = $args['destination'];
+			$request_args['destination'] = new Address(array(
+				'city' => $destination['city'],
+				'line1' => $destination['line1'],
+				'state' => $destination['state'],
+				'zip' => $destination['zip'],
+			));
+		}
+
+		// Prepare origin
+		if ( isset( $args['origin'] ) && ! empty( $args['origin'] ) ) {
+			$origin = $args['origin'];
+			$request_args['origin'] = new Address(array(
+				'city' => $origin['city'],
+				'line1' => $origin['line1'],
+				'state' => $origin['state'],
+				'zip' => $origin['zip'],
+			));
+		}
+		
+		return $request_args;
 	}
 
 

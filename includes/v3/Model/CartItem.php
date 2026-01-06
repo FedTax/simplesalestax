@@ -39,11 +39,36 @@ class CartItem extends Serializable
 				if ( 'tax' === $key && is_array( $value ) ) {
 					$this->tax = new Tax( $value['amount'], $value['rate'] );
 				} else {
-					$this->$key = $value;
+          $method = "set_" . $key;
+          if ( method_exists( $this, $method ) ) {
+            $this->$method( $value );
+          } else {
+            $this->$key = $value;
+          }
 				}
 			}
 		}
 	}
+
+  public function set_itemId( $value ) {
+    $this->itemId = (string) $value;
+  }
+
+  public function set_price( $value ) {
+    $this->price = (float) $value;
+  }
+
+  public function set_quantity( $value ) {
+    $this->quantity = (float) $value;
+  }
+
+  public function set_tax( $value ) {
+    $this->tax = new Tax( $value['amount'], $value['rate'] );
+  }
+
+  public function set_tic( $value ) {
+    $this->tic = (int) $value;
+  }
 
   public function get_item() {
     return array(

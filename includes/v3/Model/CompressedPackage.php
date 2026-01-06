@@ -32,8 +32,6 @@ class CompressedPackage {
 		$package['cart_items']          = $this->get_package_items_from_v1( $package );
 		$package['shipping_method']     = '';
 		$package['shipping_cost']       = 0;
-		$package['origin_address']      = '';
-		$package['destination_address'] = '';
 		$package['certificate_id']      = '';
 
 		if ( ! empty( $package['shipping'] ) ) {
@@ -42,15 +40,23 @@ class CompressedPackage {
 		}
 
 		if ( is_a( $package['origin'], 'TaxCloud\Address' ) ) {
-			$package['origin_address'] = SST_Addresses::format(
-				$package['origin']
-			);
+      $address = $package['origin'];
+			$package['origin'] = array(
+        'city' => $address->getCity(),
+        'line1' => $address->getAddress1(),
+        'state' => $address->getState(),
+        'zip' => $this->trim_dashes( $address->getZip() ),
+      );
 		}
 
 		if ( is_a( $package['destination'], 'TaxCloud\Address' ) ) {
-			$package['destination_address'] = SST_Addresses::format(
-				$package['destination']
-			);
+      $address = $package['destination'];
+			$package['destination'] = array(
+        'city' => $address->getCity(),
+        'line1' => $address->getAddress1(),
+        'state' => $address->getState(),
+        'zip' => $this->trim_dashes( $address->getZip() ),
+      );
 		}
 
 		$certificate = $package['certificate'];
@@ -74,8 +80,6 @@ class CompressedPackage {
 			'map',
 			'user',
 			'request',
-			'origin',
-			'destination',
 			'certificate',
 		);
 
@@ -83,6 +87,18 @@ class CompressedPackage {
 
 		$this->package = $package;
 	}
+
+  /**
+   * Remove trailing dashes from a zip code.
+   *
+   * @param string $zip Zip code.
+   *
+   * @return string Zip code without trailing dashes.
+   * @since 8.4.0
+   */
+  public function trim_dashes( $zip ) {
+    return trim($zip, '-'); 
+  }
 
 	/**
 	 * Get the cart items for a given package.
@@ -98,8 +114,14 @@ class CompressedPackage {
 
 		foreach ( $package['request']['cartItems'] as $key => $item ) {
 			$map_entry    = $package['map'][ $key ];
+      // Move v3_data to cart_items
+      $v3_data = isset( $map_entry['v3_data'] ) ? $map_entry['v3_data']->get_item() : array();
+      if( $v3_data ) {
+        unset( $map_entry['v3_data'] );
+      }
 			$cart_items[] = array_merge(
-				$map_entry,
+				$v3_data,
+        $map_entry,
 				array(
 					'qty'   => $item->getQty(),
 					'tic'   => $item->getTIC(),

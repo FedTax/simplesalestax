@@ -57,46 +57,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		add_action( 'woocommerce_checkout_create_order_shipping_item', array( $this, 'add_shipping_meta' ), 10, 3 );
 
-
 		parent::__construct();
-
-
-		// add_action( 'init', function(){
-		// 	$order = new TaxCloud_V3\Orders();
-		// 	print_r( $order->create_order([
-		// 		'completedDate' => '2026-01-01T09:30:00Z',
-		// 		'customerId' => 'customer-453',
-		// 		'destination' => [
-		// 			'city' => 'Minneapolis',
-		// 			'line1' => '323 Washington Ave N',
-		// 			'state' => 'MN',
-		// 			'zip' => '55401-2427'
-		// 		],
-		// 		'lineItems' => [
-		// 			[
-		// 				'index' => 0,
-		// 				'itemId' => 'item-1',
-		// 				'price' => 10.8,
-		// 				'quantity' => 1.5,
-		// 				'tax' => [
-		// 					'amount' => 1.31,
-		// 					'rate' => 0.0813
-		// 				]
-		// 			]
-		// 		],
-		// 		'orderId' => 'my-order' . time(),
-		// 		'origin' => [
-		// 			'city' => 'Minneapolis',
-		// 			'line1' => '323 Washington Ave N',
-		// 			'state' => 'MN',
-		// 			'zip' => '55401-2427'
-		// 		],
-		// 		'transactionDate' => '2026-01-01T09:30:00Z',
-		// 		'currency' => [
-		// 			'currencyCode' => 'USD'
-		// 		]
-		// 	]) );
-		// } );
 
 	}
 
