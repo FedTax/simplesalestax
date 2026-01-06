@@ -18,8 +18,8 @@ class Tax extends Serializable
 	 * @param float $rate   Tax rate.
 	 */
 	public function __construct( $amount, $rate ) {
-		$this->amount = (float) $amount;
-		$this->rate   = (float) $rate;
+		$this->amount = $amount;
+		$this->rate   = $rate;
 	}
 
 }

@@ -90,6 +90,11 @@ class Orders extends RequestBase {
 		$lineItems = array();
 		if ( isset( $args['lineItems'] ) && ! empty( $args['lineItems'] ) ) {
 			foreach ( $args['lineItems'] as $lineItem ) {
+				// Round the tax amount to 2 decimal places
+				$lineItem['tax']['amount'] = round( $lineItem['tax']['amount'], 2 );
+				// Round the tax rate to 2 decimal places
+				$lineItem['tax']['rate'] = round( $lineItem['tax']['rate'], 2 );
+				
 				$lineItems[] = new CartItem( $lineItem );
 			}
 			$request_args['lineItems'] = $lineItems;
@@ -126,10 +131,9 @@ class Orders extends RequestBase {
 				'zip' => $origin['zip'],
 			));
 		}
-		
+
 		return $request_args;
 	}
-
 
 	/**
 	 * Get order from TaxCloud v3 API.

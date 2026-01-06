@@ -261,8 +261,8 @@ abstract class SST_Abstract_Cart {
 					'price' => $price,
 					'quantity' => $quantity,
 					'tax' => array(
-						'amount' => $item['line_tax'],
-						'rate' => $tax_rate
+						'amount' => number_format( $item['line_tax'], 2 ),
+						'rate' => number_format( $tax_rate, 2 )
 					),
 					'tic' => SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
 				) );

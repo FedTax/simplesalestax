@@ -734,9 +734,6 @@ class SST_Order extends SST_Abstract_Cart {
 			$now      = gmdate( 'c' );
 			$order_id = $this->get_package_order_id( $key, $package );
 
-			error_log( print_r( $package, true ) );
-			error_log( print_r( $order_id, true ) );
-
 			try {
 				$request = new TaxCloud\Request\AuthorizedWithCapture(
 					$this->api_id,
@@ -1083,6 +1080,14 @@ class SST_Order extends SST_Abstract_Cart {
 		// No op.
 	}
 
+	/**
+	 * Create order in TaxCloud.
+	 *
+	 * @param array $packages Packages.
+	 * @param WC_Order $order Order.
+	 *
+	 * @return void
+	 */
 	protected function create_order_in_taxcloud( $packages, $order ) {
 		// No packages found.
 		if ( empty( $packages ) ) {
@@ -1120,7 +1125,7 @@ class SST_Order extends SST_Abstract_Cart {
 				$order->save();
 			} else {
 				// Logging
-				SST_Logger::order_log( __( 'Failed to capture order.', 'simple-sales-tax' ), $order->get_id(), $order_response->get_error_message() );
+				SST_Logger::order_log( __( 'Failed to create order in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $order_response->get_error_message() );
 				return false;
 			}
 		}

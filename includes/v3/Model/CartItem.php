@@ -36,17 +36,13 @@ class CartItem extends Serializable
 	public function __construct( $data = array() ) {
 		foreach ( $data as $key => $value ) {
 			if ( property_exists( $this, $key ) ) {
-				if ( 'tax' === $key && is_array( $value ) ) {
-					$this->tax = new Tax( $value['amount'], $value['rate'] );
-				} else {
-          $method = "set_" . $key;
-          if ( method_exists( $this, $method ) ) {
-            $this->$method( $value );
-          } else {
-            $this->$key = $value;
-          }
-				}
-			}
+        $method = "set_" . $key;
+        if ( method_exists( $this, $method ) ) {
+          $this->$method( $value );
+        } else {
+          $this->$key = $value;
+        }
+    }
 		}
 	}
 
