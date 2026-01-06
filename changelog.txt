@@ -2,8 +2,17 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-- [8.4.1] - 2025-12-04 =
+- [8.4.1] - 2026-01-07 =
 
+Changed:
+- Bump tested WC version to 10.4.3
+
+Fixed:
+- DEV-6508 - Adjust Integration Mode display to match terminology in the TaxCloud 
+- DEV-6506 - Make sure native tax features aren't blocked in Data Import mode 
+
+Added:
+- DEV-6506 - Woo Tax plugin functions when the integration is in Data Import mode 
 
 - [8.4.0] - 2025-12-04 =
 
