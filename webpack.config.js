@@ -36,7 +36,12 @@ module.exports = {
 						options: {
 							sassOptions: {
 								includePaths: [
-									'includes/vendor/woocommerce/woocommerce/plugins/woocommerce-blocks/assets/css/abstracts'
+									path.resolve( __dirname, 'includes/vendor/woocommerce/woocommerce/plugins/woocommerce-blocks/assets/css/abstracts' ),
+									path.resolve( __dirname )
+								],
+								loadPaths: [
+									path.resolve( __dirname, 'includes/vendor/woocommerce/woocommerce/plugins/woocommerce-blocks/assets/css/abstracts' ),
+									path.resolve( __dirname )
 								],
 							},
 							additionalData: ( content, loaderContext ) => {
@@ -47,26 +52,33 @@ module.exports = {
 									resourcePath
 								);
 
+								const abstractsPath = path.resolve(
+									__dirname,
+									'includes/vendor/woocommerce/woocommerce/plugins/woocommerce-blocks/assets/css/abstracts'
+								).replace( /\\/g, '/' );
+
 								if (
 									relativePath.startsWith(
 										'assets/css/abstracts/'
 									) ||
 									relativePath.startsWith(
 										'assets\\css\\abstracts\\'
-									)
+									) ||
+									resourcePath.includes( 'assets/css/abstracts/' ) ||
+									resourcePath.includes( 'assets\\css\\abstracts\\' )
 								) {
 									return content;
 								}
 
 								return (
-									'@use "sass:math";' +
-									'@use "sass:string";' +
-									'@use "sass:color";' +
-									'@use "sass:map";' +
-									'@import "_colors"; ' +
-									'@import "_variables"; ' +
-									'@import "_breakpoints"; ' +
-									'@import "_mixins"; ' +
+									`@use "sass:math";` +
+									`@use "sass:string";` +
+									`@use "sass:color";` +
+									`@use "sass:map";` +
+									`@import "${ abstractsPath }/_colors.scss";` +
+									`@import "${ abstractsPath }/_variables.scss";` +
+									`@import "${ abstractsPath }/_breakpoints.scss";` +
+									`@import "${ abstractsPath }/_mixins.scss";` +
 									content
 								);
 							},

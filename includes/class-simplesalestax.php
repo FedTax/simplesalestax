@@ -117,6 +117,7 @@ final class SimpleSalesTax {
 		 * Abstract classes.
 		 */
 		require_once __DIR__ . '/abstracts/class-sst-abstract-cart.php';
+		// require_once __DIR__ . '/v3/class-sst-taxcloud-v3-api-request.php';
 
 		/**
 		 * Core classes.
@@ -138,6 +139,11 @@ final class SimpleSalesTax {
 		require_once __DIR__ . '/class-sst-assets.php';
 		require_once __DIR__ . '/class-sst-marketplaces.php';
 		require_once __DIR__ . '/class-sst-blocks.php';
+
+		/**
+		 * TaxCloud v3 API.
+		 * @since 8.4.1
+		 */
 		require_once __DIR__ . '/class-sst-taxcloud-v3-api.php';
 		require_once __DIR__ . '/class-sst-taxcloud-v3.php';
 

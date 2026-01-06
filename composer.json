@@ -55,6 +55,10 @@
   "autoload": {
     "psr-0": {
       "TaxCloud": "includes/vendor/fedtax/php-taxcloud/lib/"
+    },
+    "psr-4": {
+      "TaxCloud_V3\\": "includes/v3/"
     }
+
   }
 }

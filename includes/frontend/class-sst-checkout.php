@@ -58,6 +58,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		add_action( 'woocommerce_checkout_create_order_shipping_item', array( $this, 'add_shipping_meta' ), 10, 3 );
 
 		parent::__construct();
+
 	}
 
 	/**
@@ -85,10 +86,12 @@ class SST_Checkout extends SST_Abstract_Cart {
 			// Session not ready or no packages, skip tax calculation this time
 			// This prevents the refresh requirement issue
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				SST_Logger::add( 'SST: Session not ready for tax calculation, skipping to prevent refresh requirement.' );
+				SST_Logger::add( __( 'SST: Session not ready for tax calculation, skipping to prevent refresh requirement.', 'simple-sales-tax' ) );
 			}
 			return $total;
 		}
+
+
 
 		$tax_total = 0;
 
@@ -105,6 +108,15 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		if ( apply_filters( 'sst_calculate_tax_totals', $should_calculate ) ) {
 			$this->calculate_taxes();
+
+			/**
+			 * Skip tax calculation if real-time tax calculation is disabled. [Data Import Mode]
+			 * @since 8.4.1
+			 */
+			if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+				SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping tax calculation.', 'simple-sales-tax' ) );
+				return $total;
+			}
 
 			/**
 			 * Woo won't include the taxes calculated by SST in the total so
