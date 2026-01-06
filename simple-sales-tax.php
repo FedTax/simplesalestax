@@ -15,7 +15,7 @@
  * Requires at least:    4.5.0
  * Tested up to:         6.9
  * WC requires at least: 6.9.0
- * WC tested up to:      10.4.2
+ * WC tested up to:      10.4.3
  * Requires PHP:         7.4
  *
  * @category             Plugin
