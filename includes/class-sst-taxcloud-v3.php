@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @author  Simple Sales Tax
  * @package SST
- * @since   8.4.0
+ * @since   8.4.1
  */
 class SST_TaxCloud_V3 {
 
@@ -19,13 +19,15 @@ class SST_TaxCloud_V3 {
 	 * Singleton instance.
 	 *
 	 * @var SST_TaxCloud_V3
+	 * @since 8.4.1
 	 */
 	protected static $_instance = null;
 
 	/**
 	 * Singleton instance accessor.
 	 *
-	 * @return SST_TaxCloud_V3
+	 * @return SST_TaxCloud_V3 Singleton instance.
+	 * @since 8.4.1
 	 */
 	public static function instance() {
 		if ( is_null( self::$_instance ) ) {
@@ -36,7 +38,9 @@ class SST_TaxCloud_V3 {
 	}
 
 	/**
-	 * SST_TaxCloud_V3 constructor.
+	 * Constructor.
+	 *
+	 * @since 8.4.1
 	 */
 	protected function __construct() {
 		add_action( 'sst_update_data_mover_settings', array( 'SST_TaxCloud_V3_API', 'update_data_mover_settings' ) );
@@ -47,9 +51,11 @@ class SST_TaxCloud_V3 {
 	/**
 	 * Disable the disable_real_time_calc option if data mover is true.
 	 *
-	 * @param array $fields Array of settings fields.
+	 * @param array $fields   Array of settings fields.
+	 * @param array $settings Current settings.
 	 *
-	 * @return array
+	 * @return array Updated settings fields.
+	 * @since 8.4.1
 	 */
 	public function disable_real_time_calc_option( $fields, $settings ) {
 		$data_mover = isset( $settings['data_mover'] ) ? (bool) $settings['data_mover'] : false;
@@ -69,13 +75,24 @@ class SST_TaxCloud_V3 {
 	 * @param string $value Value of the option.
 	 * @param string $key   Key of the option.
 	 *
-	 * @return string
+	 * @return string Updated value.
+	 * @since 8.4.1
 	 */
 	public function update_realtime_calc_option( $value, $key ) {
 		if( 'disable_real_time_calc' === $key ) {
 			$data_mover = SST_Settings::get( 'data_mover', false );
 			if( $data_mover ) {
 				return 'yes';
+			}
+		} elseif ( 'show_zero_tax' === $key ) {
+			$disable_real_time_calc = SST_Settings::get( 'disable_real_time_calc', 'no' );
+			if( 'yes' === $disable_real_time_calc ) {
+				return 'no';
+			}
+		} elseif ( 'order_show_zero_tax' === $key ) {
+			$disable_real_time_calc = SST_Settings::get( 'disable_real_time_calc', 'no' );
+			if( 'yes' === $disable_real_time_calc ) {
+				return 'no';
 			}
 		}
 		return $value;

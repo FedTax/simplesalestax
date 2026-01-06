@@ -716,6 +716,15 @@ class SST_Order extends SST_Abstract_Cart {
 				return false;
 			}
 		}
+		
+		// V3: Data Mover Mode.
+		$data_mover = SST_Settings::get( 'data_mover' );
+		if ( $data_mover ) {
+			// Logging
+			SST_Logger::order_log( __( 'Data Mover Mode enabled. Creating order in TaxCloud.', 'simple-sales-tax' ), $order->get_id() );
+			$created_order = $this->create_order_in_taxcloud( $packages, $order );
+			return true;
+		}
 
 		// Logging
 		SST_Logger::order_log( __( 'Capturing order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
@@ -1069,6 +1078,58 @@ class SST_Order extends SST_Abstract_Cart {
 	 */
 	protected function save_package( $hash, $package ) {
 		// No op.
+	}
+
+	/**
+	 * Create order in TaxCloud.
+	 *
+	 * @param array    $packages Packages.
+	 * @param WC_Order $order    Order.
+	 *
+	 * @return bool True on success, false on failure.
+	 * @since 8.4.1
+	 */
+	protected function create_order_in_taxcloud( $packages, $order ) {
+		// No packages found.
+		if ( empty( $packages ) ) {
+			return;
+		}
+
+		// Order object.
+		$txc_order = new TaxCloud_V3\Orders();
+
+		// Send order for all packages.
+		foreach ( $packages as $key => $package ) {
+			$now      = gmdate( 'c' );
+			$order_id = $this->get_package_order_id( $key, $package );
+
+			// Create order in TaxCloud.
+			$order_response = $txc_order->create_order([
+				'completedDate' => $now,
+				'customerId' => 'customer-' . $package['customer_id'],
+				'destination' => $package['destination'],
+				'lineItems' => $package['cart_items'],
+				'orderId' => $order_id,
+				'origin' => $package['origin'],
+				'transactionDate' => $now,
+				'currencyCode' => $order->get_currency(),
+			]);
+
+			// Check error.
+			if( !is_wp_error( $order_response ) ) {
+				// Update order meta
+				$this->update_meta( 'status', 'captured' );
+
+				// Logging
+				SST_Logger::order_log( __( 'Order status updated to captured.', 'simple-sales-tax' ), $order->get_id() );
+
+				$order->save();
+			} else {
+				// Logging
+				SST_Logger::order_log( __( 'Failed to create order in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $order_response->get_error_message() );
+				return false;
+			}
+		}
 	}
 
 }

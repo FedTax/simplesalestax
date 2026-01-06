@@ -184,6 +184,15 @@ class SST_Order_Controller {
 			return;
 		}
 
+		/**
+		 * Real-time tax calculation is disabled?
+		 * @since 8.4.1
+		 */
+		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping order tax calculation.', 'simple-sales-tax' ) );
+			return;
+		}
+
 		$should_calculate = (
 			WC()->is_rest_api_request()
 			&& 'rest-api' === $order->get_created_via()
