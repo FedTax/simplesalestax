@@ -14,18 +14,24 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @author  Simple Sales Tax
  * @package SST
- * @since   8.4.0
+ * @since   8.4.1
  */
 abstract class RequestBase {
 
 	/**
 	 * The base of this controller's route.
 	 *
-	 * @since 8.4.0
 	 * @var string
+	 * @since 8.4.1
 	 */
 	protected $rest_base;
 
+	/**
+	 * The connection ID.
+	 *
+	 * @var string
+	 * @since 8.4.1
+	 */
 	protected $connection_id;
 
 	/**
@@ -40,7 +46,8 @@ abstract class RequestBase {
 	/**
 	 * Get the appropriate Auth URL based on environment.
 	 *
-	 * @return string
+	 * @return string Auth URL.
+	 * @since 8.4.1
 	 */
 	private static function get_auth_url() {
 		// For now, we'll default to PROD unless a constant is defined for staging.
@@ -54,7 +61,8 @@ abstract class RequestBase {
 	/**
 	 * Get the appropriate Management URL based on environment.
 	 *
-	 * @return string
+	 * @return string Management URL.
+	 * @since 8.4.1
 	 */
 	private static function get_mgmt_url() {
 		if ( defined( 'SST_TAXCLOUD_STAGING' ) && SST_TAXCLOUD_STAGING ) {
@@ -66,9 +74,11 @@ abstract class RequestBase {
 	/**
 	 * Exchange v1 credentials for v3 Bearer token.
 	 *
-	 * @param string $api_login_id TaxCloud API Login ID.
-	 * @param string $api_key      TaxCloud API Key.
+	 * @param string|null $api_login_id TaxCloud API Login ID.
+	 * @param string|null $api_key      TaxCloud API Key.
+	 *
 	 * @return string|WP_Error Access token on success, WP_Error on failure.
+	 * @since 8.4.1
 	 */
 	public function get_auth_token( $api_login_id = null, $api_key = null ) {
 
@@ -114,7 +124,9 @@ abstract class RequestBase {
 	 *
 	 * @param string $api_key      TaxCloud API Key (used as connection ID).
 	 * @param string $access_token Bearer token.
+	 *
 	 * @return array|WP_Error Settings array on success, WP_Error on failure.
+	 * @since 8.4.1
 	 */
 	public static function get_connection_settings( $api_key, $access_token ) {
 		$url = self::get_mgmt_url() . '/connections/' . $api_key;
@@ -150,10 +162,10 @@ abstract class RequestBase {
 	/**
 	 * Prepares the item for the API request.
 	 *
-	 * @since 8.4.0
-	 *
 	 * @param array $args Request arguments.
+	 *
 	 * @return array|WP_Error Response object on success, or WP_Error object on failure.
+	 * @since 8.4.1
 	 */
 	public function prepare_item_for_request( $args ) {
 		return $args;

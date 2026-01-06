@@ -9,14 +9,20 @@ use TaxCloud_V3\Serializable;
  *
  * @author  Simple Sales Tax
  * @package SST
- * @since   8.4.0
+ * @since   8.4.1
  */
 class Exemption extends Serializable {
 
-	/** @var string|null */
+	/**
+	 * @var string|null Exemption ID.
+	 * @since 8.4.1
+	 */
 	public $exemptionId;
 
-	/** @var bool|null */
+	/**
+	 * @var bool|null Is exempt.
+	 * @since 8.4.1
+	 */
 	public $isExempt;
 
 	/**
@@ -24,6 +30,7 @@ class Exemption extends Serializable {
 	 *
 	 * @param string|null $exemptionId Exemption ID.
 	 * @param bool|null   $isExempt    Is exempt.
+	 * @since 8.4.1
 	 */
 	public function __construct( $exemptionId = null, $isExempt = null ) {
 		$this->exemptionId = $exemptionId;

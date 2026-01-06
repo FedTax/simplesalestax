@@ -17,23 +17,39 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @author  Simple Sales Tax
  * @package SST
- * @since   8.4.0
+ * @since   8.4.1
  */
 class Orders extends RequestBase {
+
 	/**
-	 * Initialize the class
+	 * Initialize the class.
+	 *
+	 * @since 8.4.1
 	 */
 	function __construct() {
 		$this->connection_id = SST_Settings::get( 'tc_key' );
 		$this->rest_base = 'contacts';
 	}
 
+	/**
+	 * Get API URL for orders.
+	 *
+	 * @param string|null $item_id Optional order ID.
+	 *
+	 * @return string API URL.
+	 * @since 8.4.1
+	 */
 	public function get_api_url( $item_id = null ) {
 		return self::API_BASE_URL . '/tax/connections/' . $this->connection_id . '/orders' . ( $item_id ? '/' . $item_id : '' );
 	}
 
 	/**
 	 * Create an order in TaxCloud v3 API.	
+	 *
+	 * @param array $args Request arguments.
+	 *
+	 * @return array|WP_Error Order response on success, WP_Error on failure.
+	 * @since 8.4.1
 	 */
 	public function create_order( $args ) {
 	
@@ -74,7 +90,9 @@ class Orders extends RequestBase {
 	 * Prepare item for request.
 	 *
 	 * @param array $args Request arguments.
+	 *
 	 * @return array|WP_Error Prepared item on success, WP_Error on failure.
+	 * @since 8.4.1
 	 */
 	public function prepare_item_for_request( $args ) {
 
@@ -139,7 +157,9 @@ class Orders extends RequestBase {
 	 * Get order from TaxCloud v3 API.
 	 *
 	 * @param string $order_id Order ID.
+	 *
 	 * @return array|WP_Error Order array on success, WP_Error on failure.
+	 * @since 8.4.1
 	 */
 	public function get_order( $order_id ) {
 		$token = self::get_auth_token();

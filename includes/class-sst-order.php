@@ -1083,10 +1083,11 @@ class SST_Order extends SST_Abstract_Cart {
 	/**
 	 * Create order in TaxCloud.
 	 *
-	 * @param array $packages Packages.
-	 * @param WC_Order $order Order.
+	 * @param array    $packages Packages.
+	 * @param WC_Order $order    Order.
 	 *
-	 * @return void
+	 * @return bool True on success, false on failure.
+	 * @since 8.4.1
 	 */
 	protected function create_order_in_taxcloud( $packages, $order ) {
 		// No packages found.

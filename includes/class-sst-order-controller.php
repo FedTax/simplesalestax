@@ -184,7 +184,10 @@ class SST_Order_Controller {
 			return;
 		}
 
-		// Real-time tax calculation is disabled?.
+		/**
+		 * Real-time tax calculation is disabled?
+		 * @since 8.4.1
+		 */
 		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
 			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping order tax calculation.', 'simple-sales-tax' ) );
 			return;

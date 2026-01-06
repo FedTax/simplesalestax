@@ -349,6 +349,10 @@ abstract class SST_Abstract_Cart {
 
 		/* Build Lookup */
 		if( $data_mover ) {
+			/**
+			 * V3: Data Mover Mode - Prepare request as array.
+			 * @since 8.4.1
+			 */
 			$request = array(
 				'customerId' => $package['user']['ID'],
 				'cartItems' => $cart_items,

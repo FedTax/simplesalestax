@@ -8,15 +8,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-
+/**
+ * TaxCloud v3 Serializable Class.
+ *
+ * @author  Simple Sales Tax
+ * @package SST
+ * @since   8.4.1
+ */
 class Serializable implements \JsonSerializable {
 	/**
 	 * Return JSON-serializable representation of an array.
 	 *
-	 * @since 0.2.0
+	 * @param  array $array Array to serialize.
 	 *
-	 * @param  array $array
-	 * @return array
+	 * @return array Serialized array.
+	 * @since 8.4.1
 	 */
 	private function serializeArray(&$array) {
 		foreach ($array as $key => $val) {
@@ -35,9 +41,8 @@ class Serializable implements \JsonSerializable {
 	/**
 	 * Return JSON-serializable representation of request.
 	 *
-	 * @since 0.2.0
-	 *
-	 * @return mixed
+	 * @return mixed Serialized representation.
+	 * @since 8.4.1
 	 */
 	#[\ReturnTypeWillChange]
 	public function jsonSerialize()

@@ -6,18 +6,47 @@ use TaxCloud\ExemptionCertificateBase;
 use TaxCloud\ExemptionCertificate;
 use SST_Addresses;
 
+/**
+ * TaxCloud Compressed Package Model.
+ *
+ * @author  Simple Sales Tax
+ * @package SST
+ * @since   8.4.1
+ */
 class CompressedPackage {
 
+	/**
+	 * @var array Package data.
+	 * @since 8.4.1
+	 */
 	private $package;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param array $package Package data.
+	 * @since 8.4.1
+	 */
 	public function __construct( $package ) {
 		$this->set_package( $package );
 	}
 
+	/**
+	 * Get package data.
+	 *
+	 * @return array Package data.
+	 * @since 8.4.1
+	 */
 	public function get_package() {
 		return $this->package;
 	}
 
+	/**
+	 * Set package data.
+	 *
+	 * @param array $package Package data.
+	 * @since 8.4.1
+	 */
 	public function set_package( $package ) {
 		
 		$already_compressed = isset( $package['cart_items'] );
@@ -94,7 +123,7 @@ class CompressedPackage {
    * @param string $zip Zip code.
    *
    * @return string Zip code without trailing dashes.
-   * @since 8.4.0
+   * @since 8.4.1
    */
   public function trim_dashes( $zip ) {
     return trim($zip, '-'); 
@@ -106,7 +135,7 @@ class CompressedPackage {
 	 * @param array $package Package data.
 	 *
 	 * @return array Cart items.
-	 * @since 7.0.0
+	 * @since 8.4.1
 	 */
 	protected function get_package_items_from_v1( $package ) {
 		$map        = $package['map'];
