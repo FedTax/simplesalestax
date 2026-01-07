@@ -360,6 +360,76 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
+			'rate_limit_settings'         => array(
+				'title'       => __( 'Rate Limit Settings', 'simple-sales-tax' ),
+				'type'        => 'title',
+				'description' => __(
+					'Configure rate limiting for TaxCloud tax lookup requests to prevent excessive API calls.',
+					'simple-sales-tax'
+				),
+			),
+			'enable_taxcloud_rate_limit'  => array(
+				'title'       => __( 'Enable TaxCloud Rate Limiting', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Enable rate limiting for TaxCloud tax lookup requests', 'simple-sales-tax' ),
+				'default'     => 'no',
+				'description' => __(
+					'Limit how many TaxCloud tax lookup requests can be made within a defined time window.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
+			'taxcloud_rate_limit_requests' => array(
+				'title'       => __( 'Number of Requests', 'simple-sales-tax' ),
+				'type'        => 'number',
+				'default'     => '',
+				'description' => __(
+					'Maximum number of TaxCloud tax lookup requests allowed within the configured time window. Leave empty to disable.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+				'custom_attributes' => array(
+					'min' => 1,
+				),
+			),
+			'taxcloud_rate_limit_scope'   => array(
+				'title'       => __( 'Rate Limit Identifier Priority', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'default'     => 'customer',
+				'description' => __(
+					'Choose how rate limits are applied.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+				'options'     => array(
+					'customer' => __( 'Customer / Visitor (per user or session)', 'simple-sales-tax' ),
+					'global'   => __( 'Global (shared across all users)', 'simple-sales-tax' ),
+				),
+			),
+			'taxcloud_rate_limit_window'  => array(
+				'title'       => __( 'Request Limit Per', 'simple-sales-tax' ),
+				'type'        => 'number',
+				'default'     => 60,
+				'description' => __(
+					'Time window (in minutes) for rate limiting. Requests reset after this duration.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+				'custom_attributes' => array(
+					'min' => 1,
+				),
+			),
+			'show_rate_limit_notice'      => array(
+				'title'       => __( 'Show Customer Notice on Rate Limit', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Display a notice to customers when tax lookup is skipped', 'simple-sales-tax' ),
+				'default'     => 'no',
+				'description' => __(
+					'If enabled, customers will see a non-blocking message when TaxCloud tax calculation is temporarily unavailable.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
 			'remove_all_data'             => array(
 				'title'       => __( 'Remove All Data', 'simple-sales-tax' ),
 				'label'       => ' ',
