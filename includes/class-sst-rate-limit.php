@@ -148,17 +148,14 @@ class SST_Rate_Limit {
 	 * Log a message when the limit is reached.
 	 */
 	public function log_limit_reached() {
-		$limit = SST_Settings::get( 'taxcloud_rate_limit_requests' );
-
 		$message = sprintf(
-			'TaxCloud lookup rate limit reached for customer/session. ID: %s, Limit: %s, Timestamp: %s, URI: %s',
+			__( 'TaxCloud lookup rate limit reached for customer/session. ID: %s.', 'simple-sales-tax' ),
 			$this->identifier,
-			$limit,
-			current_time( 'mysql' ),
-			isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : 'N/A'
 		);
 
-		SST_Logger::add( $message );
+		SST_Logger::error( $message, array(
+			'uri' => isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : 'N/A',
+		) );
 	}
 
 }

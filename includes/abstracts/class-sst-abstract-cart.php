@@ -200,17 +200,6 @@ abstract class SST_Abstract_Cart {
 		$rate_limit = new SST_Rate_Limit();
 		if ( $rate_limit->limit_reached() ) {
 			$rate_limit->log_limit_reached();
-
-			// Add a notice for the customer if at checkout.
-			if ( 'yes' === SST_Settings::get( 'show_rate_limit_notice', 'no' ) ) {
-				if ( ! is_admin() && ( is_checkout() || is_cart() || ( defined( 'WC_DOING_AJAX' ) && WC_DOING_AJAX ) ) ) {
-					$message = __( 'Tax calculation is temporarily unavailable. Your order will continue without live tax estimation.', 'simple-sales-tax' );
-					if ( function_exists( 'wc_add_notice' ) && ! wc_has_notice( $message, 'notice' ) ) {
-						wc_add_notice( $message, 'notice' );
-					}
-				}
-			}
-
 			return $package;
 		}
 
