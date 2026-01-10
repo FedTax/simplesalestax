@@ -377,7 +377,7 @@ class SST_Settings {
 					'Limit how many TaxCloud tax lookup requests can be made within a defined time window.',
 					'simple-sales-tax'
 				),
-				'desc_tip'    => true,
+				'desc_tip'    => false,
 			),
 			'taxcloud_rate_limit_requests' => array(
 				'title'       => __( 'Number of Requests', 'simple-sales-tax' ),
@@ -387,7 +387,7 @@ class SST_Settings {
 					'Maximum number of TaxCloud tax lookup requests allowed within the configured time window. Leave empty to disable.',
 					'simple-sales-tax'
 				),
-				'desc_tip'    => true,
+				'desc_tip'    => false,
 				'custom_attributes' => array(
 					'min' => 1,
 				),
@@ -400,7 +400,7 @@ class SST_Settings {
 					'Choose how rate limits are applied.',
 					'simple-sales-tax'
 				),
-				'desc_tip'    => true,
+				'desc_tip'    => false,
 				'options'     => array(
 					'customer' => __( 'Customer / Visitor (per user or session)', 'simple-sales-tax' ),
 					'global'   => __( 'Global (shared across all users)', 'simple-sales-tax' ),
@@ -414,7 +414,7 @@ class SST_Settings {
 					'Time window (in minutes) for rate limiting. Requests reset after this duration.',
 					'simple-sales-tax'
 				),
-				'desc_tip'    => true,
+				'desc_tip'    => false,
 				'custom_attributes' => array(
 					'min' => 1,
 				),
@@ -428,7 +428,7 @@ class SST_Settings {
 					'If enabled, customers will see a non-blocking message when TaxCloud tax calculation is temporarily unavailable.',
 					'simple-sales-tax'
 				),
-				'desc_tip'    => true,
+				'desc_tip'    => false,
 			),
 			'remove_all_data'             => array(
 				'title'       => __( 'Remove All Data', 'simple-sales-tax' ),
