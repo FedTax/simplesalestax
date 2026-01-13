@@ -59,9 +59,6 @@ class Refunds extends RequestBase {
 			return $this->get_auth_token();
 		}
 
-						error_log( 'Before refund order: ' . print_r( $refund, true ) );
-
-
 		$response = wp_remote_post( $this->get_api_url( $order_id ), array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $this->get_auth_token(),
@@ -70,8 +67,6 @@ class Refunds extends RequestBase {
 			'body'    => json_encode( $refund ),
 			'timeout' => 30,
 		) );
-
-				error_log( 'Refunded order: ' . print_r( $response, true ) );
 
 		if ( is_wp_error( $response ) ) {
 			return $response;
@@ -83,8 +78,6 @@ class Refunds extends RequestBase {
 		if ( $code >= 400 ) {
 			return new WP_Error( 'sst_v3_refunds_error', 'Failed to refund order: ' . $body );
 		}
-
-
 
 		return json_decode( $body, true );
 	}

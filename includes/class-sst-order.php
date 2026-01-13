@@ -791,7 +791,7 @@ class SST_Order extends SST_Abstract_Cart {
 	 *
 	 * @since 5.0
 	 */
-	public function do_refund( $refund_or_items, $args = array() ) {
+	public function do_refund( $refund_or_items ) {
 		$order = $this->order;
 
 		// Logging
@@ -922,9 +922,6 @@ class SST_Order extends SST_Abstract_Cart {
 				// Refund class
 				$txc_refund = new TaxCloud_V3\Refunds();
 
-				error_log( 'Refund order: ' . $order_id );
-				error_log( 'Refund items: ' . print_r( $refund_items, true ) );
-
 				// Refund order
 				$response = $txc_refund->refund_order( $order_id, array(
 					'items' => $refund_items,
@@ -933,11 +930,10 @@ class SST_Order extends SST_Abstract_Cart {
 				if ( is_wp_error( $response ) ) {
 					SST_Logger::order_log( sprintf( __( 'Failed to refund package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response->get_error_message() );
 				} elseif ( ! empty( $response ) ) {
-					SST_Logger::order_log( __( 'Refund request sent for package %s in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $response );
+					SST_Logger::order_log( sprintf( __( 'Refund request response for package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response );
 				}
 
-				return true;
-			} elseif ( ! empty( $refund_items ) ) {
+			} elseif ( ! empty( $refund_items ) ) { // Handle v1
 				$order_id = $this->get_package_order_id(
 					$package_key,
 					$package
@@ -975,11 +971,18 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		// If order was fully refunded, set status accordingly.
-		if ( 0 >= $order->get_remaining_refund_amount() ) {
+		if ( 0 >= $order->get_remaining_refund_amount() || did_action( 'woocommerce_order_fully_refunded' ) ) {
 			$this->update_meta( 'status', 'refunded' );
 
 			// Logging
 			SST_Logger::order_log( __( 'Order fully refunded.', 'simple-sales-tax' ), $order->get_id() );
+
+			$order->save();
+		} elseif ( did_action( 'woocommerce_order_partially_refunded' ) ) {
+			$this->update_meta( 'status', 'partially_refunded' );
+
+			// Logging
+			SST_Logger::order_log( __( 'Order partially refunded.', 'simple-sales-tax' ), $order->get_id() );
 
 			$order->save();
 		}
@@ -1174,80 +1177,6 @@ class SST_Order extends SST_Abstract_Cart {
 				return false;
 			}
 		}
-	}
-
-	/**
-	 * Refund order in TaxCloud.
-	 *
-	 * @param WC_Order_Refund|array $refund_or_items Refund order or array of items.
-	 * @param WC_Order              $order           Order.
-	 *
-	 * @return bool True on success, false on failure.
-	 * @since 8.4.1
-	 */
-	protected function refund_order_in_taxcloud_v3( $refund_or_items, $order ) {
-		$refund_items = array();
-
-		if ( is_a( $refund_or_items, 'WC_Order_Refund' ) ) {
-			$items = $refund_or_items->get_items( array( 'line_item', 'fee', 'shipping' ) );
-		} else if ( is_array( $refund_or_items ) ) {
-			$items = $refund_or_items;
-		} else {
-			$items = $order->get_items( array( 'line_item', 'fee', 'shipping' ) );
-		}
-
-		foreach ( $items as $item ) {
-			$item_id = '';
-			switch ( $item->get_type() ) {
-				case 'line_item':
-					$item_id = $item->get_variation_id() ? $item->get_variation_id() : $item->get_product_id();
-					break;
-				case 'shipping':
-					$item_id = SST_SHIPPING_ITEM;
-					break;
-				case 'fee':
-					$name    = ! empty( $item->get_name() ) ? $item->get_name() : __( 'Fee', 'simple-sales-tax' );
-					$item_id = sanitize_title( $name );
-					break;
-			}
-
-			if ( ! empty( $item_id ) ) {
-				$refund_items[] = array(
-					'itemId'   => $item_id,
-					'quantity' => abs( $item->get_quantity() ),
-				);
-			}
-		}
-
-		$txc_refund = new TaxCloud_V3\Refunds();
-		
-		// In v3, we refund per package-order-id.
-		$packages = $this->get_packages();
-		$success  = true;
-
-		foreach ( $packages as $key => $package ) {
-			$order_id = $this->get_package_order_id( $key, $package );
-			
-			// For now, we'll try to match items to this package if needed, 
-			// but v3 documentation says if items is empty, it refunds the whole order.
-			// Since we might be doing a partial refund, we should pass the items.
-			
-			$response = $txc_refund->refund_order( $order_id, array(
-				'items' => $refund_items,
-			) );
-
-			if ( is_wp_error( $response ) ) {
-				SST_Logger::order_log( sprintf( __( 'Failed to refund package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response->get_error_message() );
-				$success = false;
-			}
-		}
-
-		if ( $success && 0 >= $order->get_remaining_refund_amount() ) {
-			$this->update_meta( 'status', 'refunded' );
-			$order->save();
-		}
-
-		return $success;
 	}
 
 }
