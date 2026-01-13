@@ -86,7 +86,7 @@ class SST_Order_Controller {
 		SST_Logger::order_log( __( 'refund_created: Refunding order.', 'simple-sales-tax' ), $order->get_id() );
 
 		try {
-			$result = $order->do_refund( $refund );
+			$result = $order->do_refund( $refund, $args );
 
 			// Avoid Deleting the refund - WooApi errors if the refund is deleted
 			// if ( ! $result ) {
