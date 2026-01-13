@@ -127,6 +127,7 @@ final class SimpleSalesTax {
 		require_once __DIR__ . '/class-sst-install.php';
 		require_once __DIR__ . '/class-sst-settings.php';
 		require_once __DIR__ . '/class-sst-logger.php';
+		require_once __DIR__ . '/class-sst-rate-limit.php';
 		require_once __DIR__ . '/class-sst-ajax.php';
 		require_once __DIR__ . '/class-sst-tic.php';
 		require_once __DIR__ . '/class-sst-product.php';

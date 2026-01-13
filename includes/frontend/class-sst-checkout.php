@@ -48,6 +48,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		add_filter( 'wootax_cart_packages', array( $this, 'handle_negative_fees' ), PHP_INT_MAX - 1 );
 		add_action( 'woocommerce_init', array( $this, 'init_certificate_id' ) );
 		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( $this, 'handle_checkout' ), 10, 2 );
+		add_action( 'woocommerce_before_calculate_totals', array( $this, 'add_rate_limit_notice' ), 10 );
 
 		if ( sst_storefront_active() ) {
 			add_action( 'woocommerce_checkout_shipping', array( $this, 'output_exemption_form' ), 15 );
@@ -581,6 +582,36 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 */
 	public function get_certificate_id() {
 		return WC()->session->get( 'sst_certificate_id', '' );
+	}
+
+	/**
+	 * Adds a notice to the cart/checkout page if the TaxCloud rate limit has been reached.
+	 *
+	 * @param WC_Cart $cart Cart object.
+	 */
+	public function add_rate_limit_notice( $cart ) {
+		
+		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+			return;
+		}
+
+		if ( $cart->is_empty() ) {
+			return;
+		}
+
+		if ( 'yes' !== SST_Settings::get( 'show_rate_limit_notice', 'no' ) ) {
+			return;
+		}
+
+		$rate_limit = new SST_Rate_Limit();
+
+		if ( $rate_limit->limit_reached() ) {
+			$message = __( 'Tax calculation is temporarily unavailable. Your order will continue without live tax estimation.', 'simple-sales-tax' );
+
+			if ( ! wc_has_notice( $message, 'error' ) ) {
+				wc_add_notice( $message, 'error' );
+			}
+		}
 	}
 
 	/**

@@ -110,6 +110,23 @@ class SST_Logger {
 		}
 	}
 
+	/**
+	 * Log an error message.
+	 *
+	 * @param string $message Log message.
+	 * @param array  $context Log context.
+	 *
+	 * @since 8.4.2
+	 */
+	public static function error( $message, $context = array() ) {
+		if ( ! is_null( self::$logger ) ) {
+			self::$logger->error( $message, array( 
+				'source' => self::$handle, 
+				'_context' => (array) $context 
+				) 
+			);
+		}
+	}
 
 }
 
