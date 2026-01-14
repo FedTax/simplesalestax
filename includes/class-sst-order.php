@@ -785,6 +785,7 @@ class SST_Order extends SST_Abstract_Cart {
 	 * @param WC_Order|array $refund_or_items Refund order or array of items to
 	 *                                        refund. Items array is deprecated
 	 *                                        and should no longer be used.
+	 * @param array $args Arguments.
 	 *
 	 * @return bool True on success, false on failure.
 	 *
@@ -818,6 +819,14 @@ class SST_Order extends SST_Abstract_Cart {
 			);
 
 			return false;
+		}
+
+		// V3: Data Mover Mode - Refund order in TaxCloud.
+		// TODO: Handle refunds for v3. (instead of checking data_mover)
+		$data_mover = SST_Settings::get( 'data_mover' );
+		$api_version = $data_mover ? 'v3' : 'v1';
+		if ( $data_mover ) {
+			SST_Logger::order_log( __( 'Data Mover Mode enabled. Refunding using v3.', 'simple-sales-tax' ), $order->get_id() );
 		}
 
 		if ( is_array( $refund_or_items ) ) {
@@ -858,7 +867,7 @@ class SST_Order extends SST_Abstract_Cart {
 			$refund_items    = array();
 
 			foreach ( $cart_items as $item_index => $cart_item ) {
-				$item_id = $cart_item['id'];
+				$item_id = $api_version === 'v3' ? $cart_item['itemId'] : $cart_item['id'];
 
 				if ( 'shipping' === $cart_item['type'] ) {
 					$item_id = $shipping_method;
@@ -879,21 +888,51 @@ class SST_Order extends SST_Abstract_Cart {
 					$refund_amount / $cart_item['price']
 				);
 
-				$refund_items[] = new TaxCloud\CartItem(
-					$item_index,
-					$cart_item['id'],
-					$cart_item['tic'],
-					$cart_item['price'],
-					$refund_qty
-				);
+				// Handle v3
+				if( $api_version === 'v3' ) {
+					$refund_items[] = array(
+						'itemId'   => $item_id,
+						'quantity' => $refund_qty
+					);
+				} else {
+					$refund_items[] = new TaxCloud\CartItem(
+						$item_index,
+						$cart_item['id'],
+						$cart_item['tic'],
+						$cart_item['price'],
+						$refund_qty
+					);
 
+				}
+				
 				$refund_amount -= $refund_qty * $cart_item['price'];
 			}
 
 			// Logging
 			SST_Logger::order_log( __( 'Refunding order items:', 'simple-sales-tax' ), $order->get_id(), $refund_items );
 
-			if ( ! empty( $refund_items ) ) {
+			// Handle v3
+			if ( ! empty( $refund_items ) && $api_version === 'v3' ) {
+				$order_id = $this->get_package_order_id(
+					$package_key,
+					$package
+				);
+
+				// Refund class
+				$txc_refund = new TaxCloud_V3\Refunds();
+
+				// Refund order
+				$response = $txc_refund->refund_order( $order_id, array(
+					'items' => $refund_items,
+				) );
+
+				if ( is_wp_error( $response ) ) {
+					SST_Logger::order_log( sprintf( __( 'Failed to refund package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response->get_error_message() );
+				} elseif ( ! empty( $response ) ) {
+					SST_Logger::order_log( sprintf( __( 'Refund request response for package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response );
+				}
+
+			} elseif ( ! empty( $refund_items ) ) { // Handle v1
 				$order_id = $this->get_package_order_id(
 					$package_key,
 					$package
@@ -931,11 +970,18 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		// If order was fully refunded, set status accordingly.
-		if ( 0 >= $order->get_remaining_refund_amount() ) {
+		if ( 0 >= $order->get_remaining_refund_amount() || did_action( 'woocommerce_order_fully_refunded' ) ) {
 			$this->update_meta( 'status', 'refunded' );
 
 			// Logging
 			SST_Logger::order_log( __( 'Order fully refunded.', 'simple-sales-tax' ), $order->get_id() );
+
+			$order->save();
+		} elseif ( did_action( 'woocommerce_order_partially_refunded' ) ) {
+			$this->update_meta( 'status', 'partially_refunded' );
+
+			// Logging
+			SST_Logger::order_log( __( 'Order partially refunded.', 'simple-sales-tax' ), $order->get_id() );
 
 			$order->save();
 		}
