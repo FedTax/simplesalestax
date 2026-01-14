@@ -596,7 +596,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	/**
 	 * Adds a notice to the cart/checkout page if the TaxCloud rate limit has been reached.
 	 *
-	 * @param WC_Cart $cart Cart object.
+	 * @return void
 	 */
 	public function add_rate_limit_notice() {
 		
