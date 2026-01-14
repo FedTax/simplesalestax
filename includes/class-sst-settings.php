@@ -305,7 +305,7 @@ class SST_Settings {
 				'label'       => ' ',
 				'default'     => '',
 				'description' => __(
-					'When selected, TaxCloud for WooCommerce will force a tax lookup for each order regardless of cached results.',
+					'When selected, TaxCloud for WooCommerce will force a tax lookup for each order regardless of cached results. This affects on rate limit.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,

@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 use \Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use \TaxCloud\ExemptionCertificate;
 use \TaxCloud\ExemptionCertificateBase;
+use Automattic\WooCommerce\StoreApi\Utilities\NoticeHandler;
 
 /**
  * Checkout.
@@ -48,7 +49,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		add_filter( 'wootax_cart_packages', array( $this, 'handle_negative_fees' ), PHP_INT_MAX - 1 );
 		add_action( 'woocommerce_init', array( $this, 'init_certificate_id' ) );
 		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( $this, 'handle_checkout' ), 10, 2 );
-		add_action( 'woocommerce_before_calculate_totals', array( $this, 'add_rate_limit_notice' ), 10 );
+		add_action( 'template_redirect', array( $this, 'add_rate_limit_notice' ), 10 );
 
 		if ( sst_storefront_active() ) {
 			add_action( 'woocommerce_checkout_shipping', array( $this, 'output_exemption_form' ), 15 );
@@ -57,6 +58,14 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		add_action( 'woocommerce_checkout_create_order_shipping_item', array( $this, 'add_shipping_meta' ), 10, 3 );
+
+		add_action( 'woocommerce_store_api_cart_get_cart', function () {
+		    NoticeHandler::add_notice(
+		        'delivery_info_notice',
+		        'Delivery may take 2–3 extra days for remote areas.',
+		        'notice' // notice | success | error
+		    );
+		});
 
 		parent::__construct();
 
@@ -589,13 +598,13 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 *
 	 * @param WC_Cart $cart Cart object.
 	 */
-	public function add_rate_limit_notice( $cart ) {
+	public function add_rate_limit_notice() {
 		
 		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
 			return;
 		}
 
-		if ( $cart->is_empty() ) {
+		if ( ! is_cart() && ! is_checkout() ) {
 			return;
 		}
 
@@ -608,8 +617,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 		if ( $rate_limit->limit_reached() ) {
 			$message = __( 'Tax calculation is temporarily unavailable. Your order will continue without live tax estimation.', 'simple-sales-tax' );
 
-			if ( ! wc_has_notice( $message, 'error' ) ) {
-				wc_add_notice( $message, 'error' );
+			if ( ! wc_has_notice( $message, 'notice' ) ) {
+				wc_add_notice( $message, 'notice' );
 			}
 		}
 	}
