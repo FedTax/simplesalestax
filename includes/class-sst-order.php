@@ -826,8 +826,7 @@ class SST_Order extends SST_Abstract_Cart {
 		$data_mover = SST_Settings::get( 'data_mover' );
 		$api_version = $data_mover ? 'v3' : 'v1';
 		if ( $data_mover ) {
-			SST_Logger::order_log( __( 'Data Mover Mode enabled. Refunding order using v3.', 'simple-sales-tax' ), $order->get_id() );
-			// return $this->refund_order_in_taxcloud_v3( $refund_or_items, $args );
+			SST_Logger::order_log( __( 'Data Mover Mode enabled. Refunding using v3.', 'simple-sales-tax' ), $order->get_id() );
 		}
 
 		if ( is_array( $refund_or_items ) ) {
