@@ -79,26 +79,32 @@ abstract class SST_Abstract_Cart {
 				$tax_totals = current( $package['response'] );
 				$cart_items = $package['cart_items'];
 
+				$accumulated_taxes = array();
+
 				foreach ( $cart_items as $index => $item ) {
 					$tax_total = $tax_totals[ $index ];
-					switch ( $item['type'] ) {
-						case 'shipping':
-							$this->set_shipping_tax(
-								$item['cart_id'],
-								$tax_total
-							);
-							break;
-						case 'line_item':
-							$this->set_product_tax(
-								$item['cart_id'],
-								$tax_total
-							);
-							break;
-						case 'fee':
-							$this->set_fee_tax(
-								$item['cart_id'],
-								$tax_total
-							);
+					$cart_id   = $item['cart_id'];
+					$type      = $item['type'];
+					
+					if ( ! isset( $accumulated_taxes[ $type ][ $cart_id ] ) ) {
+						$accumulated_taxes[ $type ][ $cart_id ] = 0;
+					}
+					$accumulated_taxes[ $type ][ $cart_id ] += $tax_total;
+				}
+
+				foreach ( $accumulated_taxes as $type => $cart_ids ) {
+					foreach ( $cart_ids as $cart_id => $tax_total ) {
+						switch ( $type ) {
+							case 'shipping':
+								$this->set_shipping_tax( $cart_id, $tax_total );
+								break;
+							case 'line_item':
+								$this->set_product_tax( $cart_id, $tax_total );
+								break;
+							case 'fee':
+								$this->set_fee_tax( $cart_id, $tax_total );
+								break;
+						}
 					}
 				}
 			} else {
@@ -234,8 +240,14 @@ abstract class SST_Abstract_Cart {
 		$data_mover = SST_Settings::get( 'data_mover', false );
 		$v3_data    = array();
 
+		$excise_tax_amount  = 0;
+		$first_item_cart_id = '';
+
 		/* Add products */
 		foreach ( $package['contents'] as $cart_id => $item ) {
+			if ( empty( $first_item_cart_id ) ) {
+				$first_item_cart_id = isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'];
+			}
 
 			$line_total       = $item['line_total'];
 			$discounted_price = round( $line_total / $item['quantity'], wc_get_price_decimals() );
@@ -252,10 +264,12 @@ abstract class SST_Abstract_Cart {
 			/* Give devs a chance to change the taxable product price. */
 			$price = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
 
+			$tic = SST_Product::get_tic( $item['product_id'], $item['variation_id'] );
+
 			$cart_items[]     = new TaxCloud\CartItem(
 				count( $cart_items ),
 				$item['variation_id'] ? $item['variation_id'] : $item['product_id'],
-				SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
+				$tic,
 				$price,
 				$quantity
 			);
@@ -274,7 +288,7 @@ abstract class SST_Abstract_Cart {
 						'amount' => number_format( $item['line_tax'], 2 ),
 						'rate' => number_format( $tax_rate, 2 )
 					),
-					'tic' => SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
+					'tic' => $tic,
 				) );
 			}
 
@@ -282,6 +296,51 @@ abstract class SST_Abstract_Cart {
 				'type'    => 'line_item',
 				'id'      => $item['data']->get_id(),
 				'cart_id' => isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'],
+				'v3_data' => $v3_data
+			);
+
+			/* Colorado Ammo/Firearms Excise Tax */
+			if ( in_array( $tic, array( 90505, 90506 ) ) ) {
+				$excise_tax_amount += ( $price * $quantity ) * 0.065;
+			}
+		}
+
+		/* Colorado Ammo/Firearms Excise Tax Cart Item */
+		$dest_state = '';
+		if ( is_a( $package['destination'], 'TaxCloud\Address' ) ) {
+			$dest_state = $package['destination']->getState();
+		} elseif ( is_array( $package['destination'] ) ) {
+			$dest_state = $package['destination']['state'];
+		}
+
+		if ( 'CO' === $dest_state && $excise_tax_amount > 0 && current_time( 'Ymd' ) >= 20250401 ) {
+			$cart_items[] = new TaxCloud\CartItem(
+				count( $cart_items ),
+				'CO_EXCISE_TAX',
+				99990,
+				$excise_tax_amount,
+				1
+			);
+
+			// V3: Data Mover Mode.
+			if ( $data_mover ) {
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index'    => count( $cart_items ),
+					'itemId'   => 'CO_EXCISE_TAX',
+					'price'    => $excise_tax_amount,
+					'quantity' => 1,
+					'tax'      => array(
+						'amount' => 0,
+						'rate'   => 0
+					),
+					'tic'      => 99990,
+				) );
+			}
+
+			$package['map'][] = array(
+				'type'    => 'line_item',
+				'id'      => 'CO_EXCISE_TAX',
+				'cart_id' => $first_item_cart_id,
 				'v3_data' => $v3_data
 			);
 		}
