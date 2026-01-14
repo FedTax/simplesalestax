@@ -196,9 +196,19 @@ abstract class SST_Abstract_Cart {
 			return $package;
 		}
 
+		// Check rate limit.
+		$rate_limit = new SST_Rate_Limit();
+		if ( $rate_limit->limit_reached() ) {
+			$rate_limit->log_limit_reached();
+			return $package;
+		}
+
 		try {
 			$package['response'] = TaxCloud()->Lookup( $package['request'] );
 			$package['cart_id']  = key( $package['response'] );
+
+			$rate_limit->increment_count();
+
 			SST_Logger::debug( __( 'Tax lookup response:', 'simple-sales-tax' ), $package );
 		} catch ( Exception $ex ) {
 			$package['response'] = new WP_Error( 'lookup_error', $ex->getMessage() );
