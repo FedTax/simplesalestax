@@ -305,7 +305,7 @@ class SST_Settings {
 				'label'       => ' ',
 				'default'     => '',
 				'description' => __(
-					'When selected, TaxCloud for WooCommerce will force a tax lookup for each order regardless of cached results.',
+					'When selected, TaxCloud for WooCommerce will force a tax lookup for each order regardless of cached results. This affects on rate limit.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
@@ -393,7 +393,7 @@ class SST_Settings {
 				),
 			),
 			'taxcloud_rate_limit_scope'   => array(
-				'title'       => __( 'Rate Limit Identifier Priority', 'simple-sales-tax' ),
+				'title'       => __( 'Apply Rate Limit to', 'simple-sales-tax' ),
 				'type'        => 'select',
 				'default'     => 'customer',
 				'description' => __(
@@ -407,7 +407,7 @@ class SST_Settings {
 				),
 			),
 			'taxcloud_rate_limit_window'  => array(
-				'title'       => __( 'Request Limit Per', 'simple-sales-tax' ),
+				'title'       => __( 'Time Window (Minutes)', 'simple-sales-tax' ),
 				'type'        => 'number',
 				'default'     => 60,
 				'description' => __(
@@ -420,7 +420,7 @@ class SST_Settings {
 				),
 			),
 			'show_rate_limit_notice'      => array(
-				'title'       => __( 'Show Customer Notice on Rate Limit', 'simple-sales-tax' ),
+				'title'       => __( 'Notify Customer When Limited', 'simple-sales-tax' ),
 				'type'        => 'checkbox',
 				'label'       => __( 'Display a notice to customers when tax lookup is skipped', 'simple-sales-tax' ),
 				'default'     => 'no',

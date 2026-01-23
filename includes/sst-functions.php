@@ -571,13 +571,3 @@ function sst_get_rate_label() {
 function sst_get_rate_code() {
 	return apply_filters( 'wootax_rate_code', 'SALES-TAX' );
 }
-
-// /**
-//  * Return an API client instance.
-//  *
-//  * @return \TaxCloud_V3\Client
-//  * @since 5.0
-//  */
-// function TaxCloud_V3() {
-// 	return new TaxCloud_V3\Client();
-// }
