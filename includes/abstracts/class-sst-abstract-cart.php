@@ -79,32 +79,31 @@ abstract class SST_Abstract_Cart {
 				$tax_totals = current( $package['response'] );
 				$cart_items = $package['cart_items'];
 
-				$accumulated_taxes = array();
-
 				foreach ( $cart_items as $index => $item ) {
 					$tax_total = $tax_totals[ $index ];
-					$cart_id   = $item['cart_id'];
-					$type      = $item['type'];
-					
-					if ( ! isset( $accumulated_taxes[ $type ][ $cart_id ] ) ) {
-						$accumulated_taxes[ $type ][ $cart_id ] = 0;
-					}
-					$accumulated_taxes[ $type ][ $cart_id ] += $tax_total;
-				}
-
-				foreach ( $accumulated_taxes as $type => $cart_ids ) {
-					foreach ( $cart_ids as $cart_id => $tax_total ) {
-						switch ( $type ) {
-							case 'shipping':
-								$this->set_shipping_tax( $cart_id, $tax_total );
-								break;
-							case 'line_item':
-								$this->set_product_tax( $cart_id, $tax_total );
-								break;
-							case 'fee':
-								$this->set_fee_tax( $cart_id, $tax_total );
-								break;
-						}
+					switch ( $item['type'] ) {
+						case 'shipping':
+							$this->set_shipping_tax(
+								$item['cart_id'],
+								$tax_total
+							);
+							break;
+						case 'line_item':
+							$this->set_product_tax(
+								$item['cart_id'],
+								$tax_total
+							);
+							break;
+						case 'fee':
+							$this->set_fee_tax(
+								$item['cart_id'],
+								$tax_total
+							);
+						case 'co_excise_tax':
+							$this->set_co_excise_tax_fee(
+								'CO EXCISE TAX',
+								$item['price']
+							);
 					}
 				}
 			} else {
@@ -338,9 +337,9 @@ abstract class SST_Abstract_Cart {
 			}
 
 			$package['map'][] = array(
-				'type'    => 'line_item',
+				'type'    => 'co_excise_tax',
 				'id'      => 'CO_EXCISE_TAX',
-				'cart_id' => $first_item_cart_id,
+				'cart_id' => 'co_excise_tax',
 				'v3_data' => $v3_data
 			);
 		}
@@ -960,5 +959,17 @@ abstract class SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	abstract protected function handle_error( $message );
+
+	/**
+	 * Set the tax for a CO EXCISE TAX fee.
+	 *
+	 * @param mixed $id  Fee ID.
+	 * @param float $fee Sales tax for fee.
+	 *
+	 * @since 8.4.3
+	 */
+	protected function set_co_excise_tax_fee( $id, $fee ) {
+		return true;
+	}
 
 }
