@@ -329,12 +329,6 @@ class SST_Certificates {
 				throw new Exception( "Invalid user ID '{$user_id}'" );
 			}
 
-			if ( ! current_user_can( 'edit_user', $user_id ) ) {
-				throw new Exception(
-					'User does not have permission to add a certificate'
-				);
-			}
-
 			// Add certificate
 			$request = new TaxCloud\Request\AddExemptCertificate(
 				SST_Settings::get( 'tc_id' ),
