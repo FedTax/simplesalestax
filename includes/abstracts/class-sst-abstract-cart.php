@@ -41,6 +41,23 @@ abstract class SST_Abstract_Cart {
 	public function __construct() {
 		$this->api_id  = SST_Settings::get( 'tc_id' );
 		$this->api_key = SST_Settings::get( 'tc_key' );
+		// Modify the TIC for the Colorado Excise Tax fee.
+		add_filter( 'wootax_fee_tic', array( $this, 'filter_excise_tax_tic' ), 10, 2 );
+	}
+
+	/**
+	 * Ensures the Colorado Excise Tax fee is sent with TIC 99990.
+	 *
+	 * @param int $tic Original TIC.
+	 * @param object $fee Fee object.
+	 * @return int
+	 */
+	public function filter_excise_tax_tic( $tic, $fee ) {
+		$id = is_object( $fee ) && isset( $fee->id ) ? $fee->id : ( is_string( $fee ) ? $fee : '' );
+		if ( strpos( $id, 'co-excise-tax' ) !== false || strpos( $id, 'CO EXCISE TAX' ) !== false ) {
+			return 99990;
+		}
+		return $tic;
 	}
 
 	/**
@@ -307,44 +324,44 @@ abstract class SST_Abstract_Cart {
 			$dest_state = $package['destination']['state'];
 		}
 
-		if ( 'CO' === $dest_state && $excise_tax_amount > 0 && current_time( 'Ymd' ) >= 20250401 ) {
-			$cart_items[] = new TaxCloud\CartItem(
-				count( $cart_items ),
-				'CO_EXCISE_TAX',
-				99990,
-				$excise_tax_amount,
-				1
-			);
+		// if ( 'CO' === $dest_state && $excise_tax_amount > 0 && current_time( 'Ymd' ) >= 20250401 ) {
+		// 	$cart_items[] = new TaxCloud\CartItem(
+		// 		count( $cart_items ),
+		// 		'CO_EXCISE_TAX',
+		// 		99990,
+		// 		$excise_tax_amount,
+		// 		1
+		// 	);
 
-			// V3: Data Mover Mode.
-			if ( $data_mover ) {
-				$v3_data = new TaxCloud_V3\Model\CartItem( array(
-					'index'    => count( $cart_items ),
-					'itemId'   => 'CO_EXCISE_TAX',
-					'price'    => $excise_tax_amount,
-					'quantity' => 1,
-					'tax'      => array(
-						'amount' => 0,
-						'rate'   => 0
-					),
-					'tic'      => 99990,
-				) );
-			}
+		// 	// V3: Data Mover Mode.
+		// 	if ( $data_mover ) {
+		// 		$v3_data = new TaxCloud_V3\Model\CartItem( array(
+		// 			'index'    => count( $cart_items ),
+		// 			'itemId'   => 'CO_EXCISE_TAX',
+		// 			'price'    => $excise_tax_amount,
+		// 			'quantity' => 1,
+		// 			'tax'      => array(
+		// 				'amount' => 0,
+		// 				'rate'   => 0
+		// 			),
+		// 			'tic'      => 99990,
+		// 		) );
+		// 	}
 
-			$package['map'][] = array(
-				'type'    => 'co_excise_tax',
-				'id'      => 'CO_EXCISE_TAX',
-				'cart_id' => 'co_excise_tax',
-				'v3_data' => $v3_data
-			);
-		}
+		// 	$package['map'][] = array(
+		// 		'type'    => 'co_excise_tax',
+		// 		'id'      => 'CO_EXCISE_TAX',
+		// 		'cart_id' => 'co_excise_tax',
+		// 		'v3_data' => $v3_data
+		// 	);
+		// }
 
 		/* Add fees */
 		foreach ( $package['fees'] as $cart_id => $fee ) {
 			$cart_items[]     = new TaxCloud\CartItem(
 				count( $cart_items ),
 				$fee->id,
-				apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC ),
+				apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
 				apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
 				1
 			);
@@ -360,7 +377,7 @@ abstract class SST_Abstract_Cart {
 						'amount' => 0,
 						'rate' => 0
 					),
-					'tic' => apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC ),
+					'tic' => apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
 				) );
 			}
 
