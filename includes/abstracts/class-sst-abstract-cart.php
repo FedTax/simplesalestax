@@ -54,7 +54,7 @@ abstract class SST_Abstract_Cart {
 	 */
 	public function filter_excise_tax_tic( $tic, $fee ) {
 		$id = is_object( $fee ) && isset( $fee->id ) ? $fee->id : ( is_string( $fee ) ? $fee : '' );
-		if ( strpos( $id, 'co-excise-tax' ) !== false || strpos( $id, 'CO EXCISE TAX' ) !== false ) {
+		if ( $id === 'co-excise-tax' || $id === 'CO EXCISE TAX' ) {
 			return 99990;
 		}
 		return $tic;
