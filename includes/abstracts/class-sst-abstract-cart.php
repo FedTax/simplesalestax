@@ -251,15 +251,8 @@ abstract class SST_Abstract_Cart {
 		$data_mover = SST_Settings::get( 'data_mover', false );
 		$v3_data    = array();
 
-		$excise_tax_amount  = 0;
-		$first_item_cart_id = '';
-
 		/* Add products */
 		foreach ( $package['contents'] as $cart_id => $item ) {
-			if ( empty( $first_item_cart_id ) ) {
-				$first_item_cart_id = isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'];
-			}
-
 			$line_total       = $item['line_total'];
 			$discounted_price = round( $line_total / $item['quantity'], wc_get_price_decimals() );
 
