@@ -49,6 +49,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		add_filter( 'wootax_cart_packages', array( $this, 'handle_negative_fees' ), PHP_INT_MAX - 1 );
 		add_action( 'woocommerce_init', array( $this, 'init_certificate_id' ) );
 		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( $this, 'handle_checkout' ), 10, 2 );
+		add_action( 'woocommerce_cart_calculate_fees', array( $this, 'add_co_excise_tax_fee' ) );
 		add_action( 'template_redirect', array( $this, 'add_rate_limit_notice' ), 10 );
 
 		if ( sst_storefront_active() ) {
@@ -1146,6 +1147,23 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$this->process_checkout( $data, $order );
 	}
 
+	/**
+	 * Adds the Colorado excise tax fee to the cart.
+	 *
+	 * @since 8.4.3
+	 */
+	public function add_co_excise_tax_fee( $cart ) {
+		$state = WC()->customer->get_shipping_state();
+		if ( empty( $state ) ) {
+			$state = WC()->customer->get_billing_state();
+		}
+
+		$excise_tax = $this->calculate_excise_tax( WC()->cart->get_cart(), $state );
+
+		if ( $excise_tax > 0 ) {
+			WC()->cart->add_fee( __( 'CO EXCISE TAX', 'simple-sales-tax' ), $excise_tax, false );
+		}
+	}
 }
 
 new SST_Checkout();

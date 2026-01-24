@@ -99,11 +99,6 @@ abstract class SST_Abstract_Cart {
 								$item['cart_id'],
 								$tax_total
 							);
-						case 'co_excise_tax':
-							$this->set_co_excise_tax_fee(
-								'CO EXCISE TAX',
-								$item['price']
-							);
 					}
 				}
 			} else {
@@ -961,15 +956,33 @@ abstract class SST_Abstract_Cart {
 	abstract protected function handle_error( $message );
 
 	/**
-	 * Set the tax for a CO EXCISE TAX fee.
+	 * Calculates the Colorado excise tax for a given set of items and destination state.
 	 *
-	 * @param mixed $id  Fee ID.
-	 * @param float $fee Sales tax for fee.
-	 *
-	 * @since 8.4.3
+	 * @param array  $items List of cart/order items.
+	 * @param string $state Destination state code.
+	 * @return float Calculated excise tax.
 	 */
-	protected function set_co_excise_tax_fee( $id, $fee ) {
-		return true;
+	protected function calculate_excise_tax( $items, $state ) {
+		if ( 'CO' !== $state || current_time( 'Ymd' ) < 20250401 ) {
+			return 0;
+		}
+
+		$excise_tax = 0;
+		foreach ( $items as $item ) {
+			$product_id   = $item['product_id'] ?? 0;
+			$variation_id = $item['variation_id'] ?? 0;
+			
+			if ( ! $product_id ) continue;
+
+			$tic = SST_Product::get_tic( $product_id, $variation_id );
+
+			if ( in_array( (int)$tic, array( 90505, 90506 ) ) ) {
+				$line_total = $item['line_total'] ?? 0;
+				$excise_tax += $line_total * 0.065;
+			}
+		}
+
+		return $excise_tax;
 	}
 
 }
