@@ -309,52 +309,7 @@ abstract class SST_Abstract_Cart {
 				'cart_id' => isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'],
 				'v3_data' => $v3_data
 			);
-
-			/* Colorado Ammo/Firearms Excise Tax */
-			if ( in_array( $tic, array( 90505, 90506 ) ) ) {
-				$excise_tax_amount += ( $price * $quantity ) * 0.065;
-			}
 		}
-
-		/* Colorado Ammo/Firearms Excise Tax Cart Item */
-		$dest_state = '';
-		if ( is_a( $package['destination'], 'TaxCloud\Address' ) ) {
-			$dest_state = $package['destination']->getState();
-		} elseif ( is_array( $package['destination'] ) ) {
-			$dest_state = $package['destination']['state'];
-		}
-
-		// if ( 'CO' === $dest_state && $excise_tax_amount > 0 && current_time( 'Ymd' ) >= 20250401 ) {
-		// 	$cart_items[] = new TaxCloud\CartItem(
-		// 		count( $cart_items ),
-		// 		'CO_EXCISE_TAX',
-		// 		99990,
-		// 		$excise_tax_amount,
-		// 		1
-		// 	);
-
-		// 	// V3: Data Mover Mode.
-		// 	if ( $data_mover ) {
-		// 		$v3_data = new TaxCloud_V3\Model\CartItem( array(
-		// 			'index'    => count( $cart_items ),
-		// 			'itemId'   => 'CO_EXCISE_TAX',
-		// 			'price'    => $excise_tax_amount,
-		// 			'quantity' => 1,
-		// 			'tax'      => array(
-		// 				'amount' => 0,
-		// 				'rate'   => 0
-		// 			),
-		// 			'tic'      => 99990,
-		// 		) );
-		// 	}
-
-		// 	$package['map'][] = array(
-		// 		'type'    => 'co_excise_tax',
-		// 		'id'      => 'CO_EXCISE_TAX',
-		// 		'cart_id' => 'co_excise_tax',
-		// 		'v3_data' => $v3_data
-		// 	);
-		// }
 
 		/* Add fees */
 		foreach ( $package['fees'] as $cart_id => $fee ) {
