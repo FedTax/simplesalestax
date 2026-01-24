@@ -1150,18 +1150,36 @@ class SST_Checkout extends SST_Abstract_Cart {
 	/**
 	 * Adds the Colorado excise tax fee to the cart.
 	 *
+	 * @param WC_Cart $cart Cart object.
+	 *
 	 * @since 8.4.3
 	 */
 	public function add_co_excise_tax_fee( $cart ) {
-		$state = WC()->customer->get_shipping_state();
-		if ( empty( $state ) ) {
-			$state = WC()->customer->get_billing_state();
+		if ( $cart->is_empty() ) {
+			return;
 		}
 
-		$excise_tax = $this->calculate_excise_tax( WC()->cart->get_cart(), $state );
+		$state = WC()->customer->get_shipping_state() ?: WC()->customer->get_billing_state();
+
+		if ( ! $state ) {
+			return;
+		}
+
+		$excise_tax = $this->calculate_excise_tax( $cart->get_cart(), $state );
+
+		if ( $excise_tax <= 0 ) {
+			return;
+		}
+
+		// Prevent duplicate fees
+		foreach ( $cart->get_fees() as $fee ) {
+			if ( 'co-excise-tax' === $fee->id ) {
+				return;
+			}
+		}
 
 		if ( $excise_tax > 0 ) {
-			WC()->cart->add_fee( __( 'CO EXCISE TAX', 'simple-sales-tax' ), $excise_tax, false );
+			$cart->add_fee( __( 'CO EXCISE TAX', 'simple-sales-tax' ), $excise_tax, false );
 		}
 	}
 }
