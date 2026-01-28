@@ -5,7 +5,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This p
 - [8.4.3] - 2026-01-28 =
 
 Fixed:
-- [DEV-6070] - Handle 6.5% excise tax on guns and ammo from WooCommerce
+- [DEV-6070] - Handle Colorado excise tax on guns and ammo from WooCommerce
 - [DEV-6422] - Tax exempt customer issues in WooCommerce
 
 
