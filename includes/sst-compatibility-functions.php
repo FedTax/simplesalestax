@@ -77,3 +77,12 @@ function sst_storefront_active() {
 
 	return 'storefront' === strtolower( $theme_name );
 }
+/**
+ * Is Advanced Dynamic Pricing active?
+ *
+ * @return bool
+ * @since 8.4.4
+ */
+function sst_adp_active() {
+	return class_exists( 'ADP\BaseVersion\Includes\CartProcessor\CartProcessor' );
+}
