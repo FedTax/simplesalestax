@@ -41,6 +41,24 @@ abstract class SST_Abstract_Cart {
 	public function __construct() {
 		$this->api_id  = SST_Settings::get( 'tc_id' );
 		$this->api_key = SST_Settings::get( 'tc_key' );
+		// Modify the TIC for the Colorado Excise Tax fee.
+		add_filter( 'wootax_fee_tic', array( $this, 'filter_excise_tax_tic' ), 10, 2 );
+	}
+
+	/**
+	 * Ensures the Colorado Excise Tax fee is sent with TIC 99990.
+	 *
+	 * @param int $tic Original TIC.
+	 * @param object $fee Fee object.
+	 * @return int
+	 */
+	public function filter_excise_tax_tic( $tic, $fee ) {
+		$id = is_object( $fee ) && isset( $fee->id ) ? $fee->id : ( is_string( $fee ) ? $fee : '' );
+		$name = is_object( $fee ) && isset( $fee->name ) ? $fee->name : '';
+		if ( $id === 'co-excise-tax' || $id === 'CO EXCISE TAX' || $name === 'CO EXCISE TAX' ) {
+			return 99990;
+		}
+		return $tic;
 	}
 
 	/**
@@ -83,6 +101,13 @@ abstract class SST_Abstract_Cart {
 							);
 							break;
 						case 'fee':
+							// Don't apply tax to CO EXCISE TAX fee - it's a tax itself
+							$fee_id = isset( $item['id'] ) ? $item['id'] : '';
+							if ( $fee_id === 'co-excise-tax' || $fee_id === 'CO EXCISE TAX' ) {
+								// Skip setting tax on excise tax fee - TaxCloud may return tax for it
+								// but we don't want to charge tax on a tax
+								break;
+							}
 							$this->set_fee_tax(
 								$item['cart_id'],
 								$tax_total
@@ -228,17 +253,10 @@ abstract class SST_Abstract_Cart {
 
 		/* Add fees */
 		foreach ( $package['fees'] as $cart_id => $fee ) {
-			// Skip CO EXCISE TAX fee - it's a tax itself and shouldn't be sent to TaxCloud
-			$fee_id = is_object( $fee ) && isset( $fee->id ) ? $fee->id : ( is_string( $fee ) ? $fee : '' );
-			$fee_name = is_object( $fee ) && isset( $fee->name ) ? $fee->name : '';
-			if ( $fee_id === 'co-excise-tax' || $fee_id === 'CO EXCISE TAX' || $fee_name === 'CO EXCISE TAX' ) {
-				continue;
-			}
-
 			$cart_items[]     = new TaxCloud\CartItem(
 				count( $cart_items ),
 				$fee->id,
-				apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC ),
+				apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
 				apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
 				1
 			);
