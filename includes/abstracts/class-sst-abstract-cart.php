@@ -54,7 +54,8 @@ abstract class SST_Abstract_Cart {
 	 */
 	public function filter_excise_tax_tic( $tic, $fee ) {
 		$id = is_object( $fee ) && isset( $fee->id ) ? $fee->id : ( is_string( $fee ) ? $fee : '' );
-		if ( $id === 'co-excise-tax' || $id === 'CO EXCISE TAX' ) {
+		$name = is_object( $fee ) && isset( $fee->name ) ? $fee->name : '';
+		if ( $id === 'co-excise-tax' || $id === 'CO EXCISE TAX' || $name === 'CO EXCISE TAX' ) {
 			return 99990;
 		}
 		return $tic;
@@ -112,6 +113,13 @@ abstract class SST_Abstract_Cart {
 							);
 							break;
 						case 'fee':
+							// Don't apply tax to CO EXCISE TAX fee - it's a tax itself
+							$fee_id = isset( $item['id'] ) ? $item['id'] : '';
+							if ( $fee_id === 'co-excise-tax' || $fee_id === 'CO EXCISE TAX' ) {
+								// Skip setting tax on excise tax fee - TaxCloud may return tax for it
+								// but we don't want to charge tax on a tax
+								break;
+							}
 							$this->set_fee_tax(
 								$item['cart_id'],
 								$tax_total
