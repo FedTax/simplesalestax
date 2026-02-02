@@ -3,7 +3,7 @@ Contributors: fedtaxceo
 Tags: taxcloud, woocommerce, tax, sales tax, sales tax filing
 Requires at least: 4.5.0
 Tested up to: 6.9
-Stable tag: 8.4.3
+Stable tag: 8.4.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
