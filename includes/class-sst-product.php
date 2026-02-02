@@ -59,7 +59,7 @@ class SST_Product {
 			}
 		}
 
-		return $return;
+		return !empty( $return ) ? $return : SST_Addresses::get_default_addresses();
 	}
 
 	/**

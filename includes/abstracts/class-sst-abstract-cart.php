@@ -261,7 +261,6 @@ abstract class SST_Abstract_Cart {
 
 		/* Add products */
 		foreach ( $package['contents'] as $cart_id => $item ) {
-
 			$line_total       = $item['line_total'];
 			$discounted_price = round( $line_total / $item['quantity'], wc_get_price_decimals() );
 
@@ -277,10 +276,12 @@ abstract class SST_Abstract_Cart {
 			/* Give devs a chance to change the taxable product price. */
 			$price = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
 
+			$tic = SST_Product::get_tic( $item['product_id'], $item['variation_id'] );
+
 			$cart_items[]     = new TaxCloud\CartItem(
 				count( $cart_items ),
 				$item['variation_id'] ? $item['variation_id'] : $item['product_id'],
-				SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
+				$tic,
 				$price,
 				$quantity
 			);
@@ -299,7 +300,7 @@ abstract class SST_Abstract_Cart {
 						'amount' => number_format( $item['line_tax'], 2 ),
 						'rate' => number_format( $tax_rate, 2 )
 					),
-					'tic' => SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
+					'tic' => $tic,
 				) );
 			}
 
@@ -332,7 +333,7 @@ abstract class SST_Abstract_Cart {
 						'amount' => 0,
 						'rate' => 0
 					),
-					'tic' => apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC ),
+					'tic' => apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
 				) );
 			}
 
@@ -926,5 +927,35 @@ abstract class SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	abstract protected function handle_error( $message );
+
+	/**
+	 * Calculates the Colorado excise tax for a given set of items and destination state.
+	 *
+	 * @param array  $items List of cart/order items.
+	 * @param string $state Destination state code.
+	 * @return float Calculated excise tax.
+	 */
+	protected function calculate_excise_tax( $items, $state ) {
+		if ( 'CO' !== $state || current_time( 'Ymd' ) < 20250401 ) {
+			return 0;
+		}
+
+		$excise_tax = 0;
+		foreach ( $items as $item ) {
+			$product_id   = $item['product_id'] ?? 0;
+			$variation_id = $item['variation_id'] ?? 0;
+			
+			if ( ! $product_id ) continue;
+
+			$tic = SST_Product::get_tic( $product_id, $variation_id );
+
+			if ( in_array( (int)$tic, array( 90505, 90506 ) ) ) {
+				$line_total = $item['line_total'] ?? 0;
+				$excise_tax += $line_total * 0.065;
+			}
+		}
+
+		return $excise_tax;
+	}
 
 }
