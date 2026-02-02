@@ -248,7 +248,6 @@ abstract class SST_Abstract_Cart {
 				'cart_id' => $cart_id,
 			);
 		}
-		}
 
 		/* Add shipping */
 		$shipping_rate  = $package['shipping'];
