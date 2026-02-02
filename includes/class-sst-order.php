@@ -166,6 +166,7 @@ class SST_Order extends SST_Abstract_Cart {
 		$virtual_package = $this->create_virtual_package( $items );
 		if ( $virtual_package ) {
 			$packages[] = $virtual_package;
+			SST_Logger::order_log( __( 'Virtual package created.', 'simple-sales-tax' ), $this->order->get_id() );
 		}
 
 		/* Create an additional package for each shipping method. */
@@ -199,6 +200,9 @@ class SST_Order extends SST_Abstract_Cart {
 
 				next( $ship_methods );
 			}
+
+			// Logging
+			SST_Logger::order_log( __( 'Shipping methods and items assigned to packages.', 'simple-sales-tax' ), $this->order->get_id(), $packages );
 		} elseif ( $items ) {
 			/**
 			 * If there are no shipping lines added to the order, we assume that
@@ -218,6 +222,9 @@ class SST_Order extends SST_Abstract_Cart {
 					),
 				)
 			);
+
+			// Logging
+			SST_Logger::order_log( __( 'No shipping method but items assigned to packages.', 'simple-sales-tax' ), $this->order->get_id(), $packages );
 		}
 
 		return $packages;
@@ -324,6 +331,9 @@ class SST_Order extends SST_Abstract_Cart {
 
 			$packages[ key( $packages ) ]['fees'] = $fees;
 		}
+
+		// Logging
+		SST_Logger::order_log( __( 'Final shipping packages:', 'simple-sales-tax' ), $this->order->get_id(), $packages );
 
 		return apply_filters( 'wootax_order_packages', $packages, $this->order );
 	}
@@ -602,8 +612,13 @@ class SST_Order extends SST_Abstract_Cart {
 				substr( $raw_address['postcode'], 0, 5 )
 			);
 
+			// Logging
+			SST_Logger::order_log( __( 'Verifying destination address.', 'simple-sales-tax' ), $this->order->get_id(), $address );
+
 			return SST_Addresses::verify_address( $address );
 		} catch ( Exception $ex ) {
+			// Logging
+			SST_Logger::order_log( __( 'Destination address is invalid.', 'simple-sales-tax' ), $this->order->get_id(), $ex->getMessage() );
 			return null;
 		}
 	}
@@ -642,6 +657,23 @@ class SST_Order extends SST_Abstract_Cart {
 	public function do_capture() {
 		$order = $this->order;
 
+		// Logging
+		SST_Logger::order_log( __( 'Capturing order.', 'simple-sales-tax' ), $order->get_id() );
+
+		// Capture Order In TaxCloud is disabled.
+		if ( 'no' === SST_Settings::get( 'capture_orders_in_taxcloud' ) ) {
+			// Logging
+			SST_Logger::order_log( __( 'Capture Order In TaxCloud is disabled in plugin settings.', 'simple-sales-tax' ), $order->get_id() );
+			
+			SST_Logger::add(
+				sprintf(
+					'Capture Order In TaxCloud is disabled in plugin settings. Skipping Capture process for Order ID: %d',
+					$order->get_id()
+				)
+			);
+			return false;
+		}
+
 		// Let devs control whether the order is captured in TaxCloud.
 		if ( ! apply_filters( 'sst_should_capture_order', true, $order, $this ) ) {
 			// Note: This is considered a success for consistency with do_refund.
@@ -654,6 +686,9 @@ class SST_Order extends SST_Abstract_Cart {
 
 		// Handle error cases.
 		if ( 'captured' === $taxcloud_status ) {
+			// Logging
+			SST_Logger::order_log( __( 'Order already captured.', 'simple-sales-tax' ), $order->get_id() );
+
 			if ( 'no' === SST_Settings::get( 'capture_immediately' ) ) {
 				$this->handle_error(
 					sprintf(
@@ -667,6 +702,9 @@ class SST_Order extends SST_Abstract_Cart {
 			return false;
 		} else {
 			if ( 'refunded' === $taxcloud_status ) {
+				// Logging
+				SST_Logger::order_log( __( 'Order already refunded.', 'simple-sales-tax' ), $order->get_id() );
+
 				$this->handle_error(
 					sprintf(
 						/* translators: WooCommerce order ID */
@@ -678,10 +716,22 @@ class SST_Order extends SST_Abstract_Cart {
 				return false;
 			}
 		}
+		
+		// V3: Data Mover Mode.
+		$data_mover = SST_Settings::get( 'data_mover' );
+		if ( $data_mover ) {
+			// Logging
+			SST_Logger::order_log( __( 'Data Mover Mode enabled. Creating order in TaxCloud.', 'simple-sales-tax' ), $order->get_id() );
+			$created_order = $this->create_order_in_taxcloud( $packages, $order );
+			return true;
+		}
+
+		// Logging
+		SST_Logger::order_log( __( 'Capturing order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
 
 		// Send AuthorizedWithCapture for all packages.
 		foreach ( $packages as $key => $package ) {
-			$now      = date( 'c' );
+			$now      = gmdate( 'c' );
 			$order_id = $this->get_package_order_id( $key, $package );
 
 			try {
@@ -695,8 +745,17 @@ class SST_Order extends SST_Abstract_Cart {
 					$now
 				);
 
+				// Logging
+				SST_Logger::order_log( __( 'Sending AuthorizedWithCapture request.', 'simple-sales-tax' ), $order->get_id(), $request );
+
 				TaxCloud()->AuthorizedWithCapture( $request );
+
+				// Logging
+				SST_Logger::order_log( __( 'AuthorizedWithCapture request successfully sent.', 'simple-sales-tax' ), $order->get_id(), $request );
 			} catch ( Exception $ex ) {
+				// Logging
+				SST_Logger::order_log( __( 'Failed to capture order.', 'simple-sales-tax' ), $order->get_id(), $ex->getMessage() );
+
 				$this->handle_error(
 					sprintf(
 						/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
@@ -711,6 +770,10 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		$this->update_meta( 'status', 'captured' );
+
+		// Logging
+		SST_Logger::order_log( __( 'Order status updated to captured.', 'simple-sales-tax' ), $order->get_id() );
+
 		$order->save();
 
 		return true;
@@ -722,6 +785,7 @@ class SST_Order extends SST_Abstract_Cart {
 	 * @param WC_Order|array $refund_or_items Refund order or array of items to
 	 *                                        refund. Items array is deprecated
 	 *                                        and should no longer be used.
+	 * @param array $args Arguments.
 	 *
 	 * @return bool True on success, false on failure.
 	 *
@@ -729,6 +793,9 @@ class SST_Order extends SST_Abstract_Cart {
 	 */
 	public function do_refund( $refund_or_items ) {
 		$order = $this->order;
+
+		// Logging
+		SST_Logger::order_log( __( 'Sending Refund request.', 'simple-sales-tax' ), $order->get_id() );
 
 		// Let devs control whether the order is refunded in TaxCloud.
 		if ( ! apply_filters( 'sst_should_refund_order', true, $order, $this ) ) {
@@ -740,6 +807,9 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		if ( 'captured' !== $this->get_taxcloud_status() ) {
+			// Logging
+			SST_Logger::order_log( __( 'Order must be captured first.', 'simple-sales-tax' ), $order->get_id() );
+
 			$this->handle_error(
 				sprintf(
 					/* translators: WooCommerce order ID */
@@ -749,6 +819,14 @@ class SST_Order extends SST_Abstract_Cart {
 			);
 
 			return false;
+		}
+
+		// V3: Data Mover Mode - Refund order in TaxCloud.
+		// TODO: Handle refunds for v3. (instead of checking data_mover)
+		$data_mover = SST_Settings::get( 'data_mover' );
+		$api_version = $data_mover ? 'v3' : 'v1';
+		if ( $data_mover ) {
+			SST_Logger::order_log( __( 'Data Mover Mode enabled. Refunding using v3.', 'simple-sales-tax' ), $order->get_id() );
 		}
 
 		if ( is_array( $refund_or_items ) ) {
@@ -778,6 +856,9 @@ class SST_Order extends SST_Abstract_Cart {
 		// Process refunds while items remain.
 		$packages = $this->get_packages();
 
+		// Logging
+		SST_Logger::order_log( __( 'Refunding order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
+
 		foreach ( $packages as $package_key => $package ) {
 			$cart_items      = $package['cart_items'];
 			$shipping_method = $this->process_method_id(
@@ -786,7 +867,7 @@ class SST_Order extends SST_Abstract_Cart {
 			$refund_items    = array();
 
 			foreach ( $cart_items as $item_index => $cart_item ) {
-				$item_id = $cart_item['id'];
+				$item_id = $api_version === 'v3' ? $cart_item['itemId'] : $cart_item['id'];
 
 				if ( 'shipping' === $cart_item['type'] ) {
 					$item_id = $shipping_method;
@@ -807,18 +888,51 @@ class SST_Order extends SST_Abstract_Cart {
 					$refund_amount / $cart_item['price']
 				);
 
-				$refund_items[] = new TaxCloud\CartItem(
-					$item_index,
-					$cart_item['id'],
-					$cart_item['tic'],
-					$cart_item['price'],
-					$refund_qty
-				);
+				// Handle v3
+				if( $api_version === 'v3' ) {
+					$refund_items[] = array(
+						'itemId'   => $item_id,
+						'quantity' => $refund_qty
+					);
+				} else {
+					$refund_items[] = new TaxCloud\CartItem(
+						$item_index,
+						$cart_item['id'],
+						$cart_item['tic'],
+						$cart_item['price'],
+						$refund_qty
+					);
 
+				}
+				
 				$refund_amount -= $refund_qty * $cart_item['price'];
 			}
 
-			if ( ! empty( $refund_items ) ) {
+			// Logging
+			SST_Logger::order_log( __( 'Refunding order items:', 'simple-sales-tax' ), $order->get_id(), $refund_items );
+
+			// Handle v3
+			if ( ! empty( $refund_items ) && $api_version === 'v3' ) {
+				$order_id = $this->get_package_order_id(
+					$package_key,
+					$package
+				);
+
+				// Refund class
+				$txc_refund = new TaxCloud_V3\Refunds();
+
+				// Refund order
+				$response = $txc_refund->refund_order( $order_id, array(
+					'items' => $refund_items,
+				) );
+
+				if ( is_wp_error( $response ) ) {
+					SST_Logger::order_log( sprintf( __( 'Failed to refund package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response->get_error_message() );
+				} elseif ( ! empty( $response ) ) {
+					SST_Logger::order_log( sprintf( __( 'Refund request response for package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response );
+				}
+
+			} elseif ( ! empty( $refund_items ) ) { // Handle v1
 				$order_id = $this->get_package_order_id(
 					$package_key,
 					$package
@@ -830,11 +944,17 @@ class SST_Order extends SST_Abstract_Cart {
 						$this->api_key,
 						$order_id,
 						$refund_items,
-						date( 'c' )
+						gmdate( 'c' )
 					);
+
+					// Logging
+					SST_Logger::order_log( __( 'Refund request sent.', 'simple-sales-tax' ), $order->get_id(), $request );
 
 					TaxCloud()->Returned( $request );
 				} catch ( Exception $ex ) {
+					// Logging
+					SST_Logger::order_log( __( 'Refund request failed.', 'simple-sales-tax' ), $order->get_id(), $ex->getMessage() );
+
 					$this->handle_error(
 						sprintf(
 							/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
@@ -850,8 +970,19 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		// If order was fully refunded, set status accordingly.
-		if ( 0 >= $order->get_remaining_refund_amount() ) {
+		if ( 0 >= $order->get_remaining_refund_amount() || did_action( 'woocommerce_order_fully_refunded' ) ) {
 			$this->update_meta( 'status', 'refunded' );
+
+			// Logging
+			SST_Logger::order_log( __( 'Order fully refunded.', 'simple-sales-tax' ), $order->get_id() );
+
+			$order->save();
+		} elseif ( did_action( 'woocommerce_order_partially_refunded' ) ) {
+			$this->update_meta( 'status', 'partially_refunded' );
+
+			// Logging
+			SST_Logger::order_log( __( 'Order partially refunded.', 'simple-sales-tax' ), $order->get_id() );
+
 			$order->save();
 		}
 
@@ -993,6 +1124,58 @@ class SST_Order extends SST_Abstract_Cart {
 	 */
 	protected function save_package( $hash, $package ) {
 		// No op.
+	}
+
+	/**
+	 * Create order in TaxCloud.
+	 *
+	 * @param array    $packages Packages.
+	 * @param WC_Order $order    Order.
+	 *
+	 * @return bool True on success, false on failure.
+	 * @since 8.4.1
+	 */
+	protected function create_order_in_taxcloud( $packages, $order ) {
+		// No packages found.
+		if ( empty( $packages ) ) {
+			return;
+		}
+
+		// Order object.
+		$txc_order = new TaxCloud_V3\Orders();
+
+		// Send order for all packages.
+		foreach ( $packages as $key => $package ) {
+			$now      = gmdate( 'c' );
+			$order_id = $this->get_package_order_id( $key, $package );
+
+			// Create order in TaxCloud.
+			$order_response = $txc_order->create_order([
+				'completedDate' => $now,
+				'customerId' => 'customer-' . $package['customer_id'],
+				'destination' => $package['destination'],
+				'lineItems' => $package['cart_items'],
+				'orderId' => $order_id,
+				'origin' => $package['origin'],
+				'transactionDate' => $now,
+				'currencyCode' => $order->get_currency(),
+			]);
+
+			// Check error.
+			if( !is_wp_error( $order_response ) ) {
+				// Update order meta
+				$this->update_meta( 'status', 'captured' );
+
+				// Logging
+				SST_Logger::order_log( __( 'Order status updated to captured.', 'simple-sales-tax' ), $order->get_id() );
+
+				$order->save();
+			} else {
+				// Logging
+				SST_Logger::order_log( __( 'Failed to create order in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $order_response->get_error_message() );
+				return false;
+			}
+		}
 	}
 
 }

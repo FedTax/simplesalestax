@@ -20,7 +20,7 @@ final class SimpleSalesTax {
 	 *
 	 * @var string
 	 */
-	public $version = '8.2.1';
+	    public $version = '8.4.2';
 
 	/**
 	 * The singleton plugin instance.
@@ -47,7 +47,6 @@ final class SimpleSalesTax {
 	 */
 	private function __construct() {
 		$this->define_constants();
-		$this->load_text_domain();
 
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
 		add_action( 'before_woocommerce_init', array( $this, 'declare_hpos_compatibility' ) );
@@ -60,6 +59,7 @@ final class SimpleSalesTax {
 	 */
 	public function init() {
 		if ( $this->check_environment() ) {
+			$this->load_text_domain();
 			$this->includes();
 			$this->add_hooks();
 		}
@@ -117,6 +117,7 @@ final class SimpleSalesTax {
 		 * Abstract classes.
 		 */
 		require_once __DIR__ . '/abstracts/class-sst-abstract-cart.php';
+		// require_once __DIR__ . '/v3/class-sst-taxcloud-v3-api-request.php';
 
 		/**
 		 * Core classes.
@@ -126,6 +127,7 @@ final class SimpleSalesTax {
 		require_once __DIR__ . '/class-sst-install.php';
 		require_once __DIR__ . '/class-sst-settings.php';
 		require_once __DIR__ . '/class-sst-logger.php';
+		require_once __DIR__ . '/class-sst-rate-limit.php';
 		require_once __DIR__ . '/class-sst-ajax.php';
 		require_once __DIR__ . '/class-sst-tic.php';
 		require_once __DIR__ . '/class-sst-product.php';
@@ -138,6 +140,13 @@ final class SimpleSalesTax {
 		require_once __DIR__ . '/class-sst-assets.php';
 		require_once __DIR__ . '/class-sst-marketplaces.php';
 		require_once __DIR__ . '/class-sst-blocks.php';
+
+		/**
+		 * TaxCloud v3 API.
+		 * @since 8.4.1
+		 */
+		require_once __DIR__ . '/class-sst-taxcloud-v3-api.php';
+		require_once __DIR__ . '/class-sst-taxcloud-v3.php';
 
 		/**
 		 * Third party integrations.
@@ -285,7 +294,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be used alongside the <a href="https://wordpress.org/plugins/taxjar-simplified-taxes-for-woocommerce/" target="_blank">TaxJar</a> plugin. Please deactivate TaxJar to use Simple Sales Tax.',
+				'<strong>TaxCloud for WooCommerce is inactive.</strong> TaxCloud for WooCommerce cannot be used alongside the <a href="https://wordpress.org/plugins/taxjar-simplified-taxes-for-woocommerce/" target="_blank">TaxJar</a> plugin. Please deactivate TaxJar to use TaxCloud for WooCommerce.',
 				'simple-sales-tax'
 			)
 		);
@@ -298,7 +307,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be used alongside the <a href="https://woocommerce.com/products/woocommerce-avatax/" target="_blank">WooCommerce AvaTax</a> plugin. Please deactivate WooCommerce AvaTax to use Simple Sales Tax.',
+				'<strong>TaxCloud for WooCommerce is inactive.</strong> TaxCloud for WooCommerce cannot be used alongside the <a href="https://woocommerce.com/products/woocommerce-avatax/" target="_blank">WooCommerce AvaTax</a> plugin. Please deactivate WooCommerce AvaTax to use TaxCloud for WooCommerce.',
 				'simple-sales-tax'
 			)
 		);
@@ -312,7 +321,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be used alongside <a href="https://docs.woocommerce.com/document/woocommerce-services/#section-10" target="_blank">WooCommerce Services Automated Taxes</a>. Please disable automated taxes to use Simple Sales Tax.',
+				'<strong>TaxCloud for WooCommerce is inactive.</strong> TaxCloud for WooCommerce cannot be used alongside <a href="https://docs.woocommerce.com/document/woocommerce-services/#section-10" target="_blank">WooCommerce Services Automated Taxes</a>. Please disable automated taxes to use TaxCloud for WooCommerce.',
 				'simple-sales-tax'
 			)
 		);
@@ -324,7 +333,7 @@ final class SimpleSalesTax {
 	public function php_version_notice() {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
-			__( '<strong>PHP needs to be updated.</strong> Simple Sales Tax requires PHP 7.2+.', 'simple-sales-tax' ) // phpcs:ignore WordPress.Security.EscapeOutput
+			__( '<strong>PHP needs to be updated.</strong> TaxCloud for WooCommerce requires PHP 7.2+.', 'simple-sales-tax' ) // phpcs:ignore WordPress.Security.EscapeOutput
 		);
 	}
 
@@ -335,7 +344,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>WooCommerce not detected.</strong> Please install or activate WooCommerce to use Simple Sales Tax.',
+				'<strong>WooCommerce not detected.</strong> Please install or activate WooCommerce to use TaxCloud for WooCommerce.',
 				'simple-sales-tax'
 			)
 		);
@@ -348,7 +357,7 @@ final class SimpleSalesTax {
 		printf(
 			'<div class="notice notice-error"><p>%s</p></div>',
 			__( // phpcs:ignore WordPress.Security.EscapeOutput
-				'<strong>WooCommerce needs to be updated.</strong> Simple Sales Tax requires WooCommerce 6.9.0+.',
+				'<strong>WooCommerce needs to be updated.</strong> TaxCloud for WooCommerce requires WooCommerce 6.9.0+.',
 				'simple-sales-tax'
 			)
 		);

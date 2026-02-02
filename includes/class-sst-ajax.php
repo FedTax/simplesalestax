@@ -27,6 +27,9 @@ class SST_Ajax {
 		'sst_add_certificate'         => false,
 		'woocommerce_calc_line_taxes' => false,
 		'sst_get_certificates'        => false,
+		'sst_dismiss_taxcloud_notice'	=> false,
+		'sst_get_order_log'						=> false,
+		'sst_update_data_mover'				=> false,
 	);
 
 	/**
@@ -62,6 +65,9 @@ class SST_Ajax {
 		$taxcloud_id  = '';
 		$taxcloud_key = '';
 
+		// Verify nonce.
+		check_ajax_referer( 'sst_verify_taxcloud_nonce' );
+
 		if ( isset( $_POST['wootax_tc_id'] ) ) {
 			$taxcloud_id = sanitize_text_field( wp_unslash( $_POST['wootax_tc_id'] ) ); // phpcs:ignore WordPress.CSRF.NonceVerification
 		}
@@ -74,6 +80,10 @@ class SST_Ajax {
 		} else {
 			try {
 				TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
+
+				// Ping successful, update data mover settings
+				$data_mover_settings = SST_TaxCloud_V3_API::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
+
 				wp_send_json_success();
 			} catch ( Exception $ex ) {
 				wp_send_json_error( $ex->getMessage() );
@@ -280,6 +290,91 @@ class SST_Ajax {
 				sprintf( 'Failed to set %s address for order #%d: %s', $type, $order->get_id(), $ex->getMessage() )
 			);
 		}
+	}
+
+	/**
+	 * Dismiss a TaxCloud admin notice.
+	 *
+	 * @since 8.3.6
+	 */
+	public static function dismiss_taxcloud_notice() {
+		check_ajax_referer( 'dismiss_taxcloud_notice', 'nonce' );
+		$id = sanitize_text_field( wp_unslash( $_POST['notice_id'] ) );
+		$dismissed_notices = SST_Settings::get( 'dismissed_notices', [] );
+		if ( ! in_array( $id, $dismissed_notices, true ) ) {
+			$dismissed_notices[] = $id;
+			SST_Settings::set( 'dismissed_notices', $dismissed_notices );
+		}
+		wp_send_json_success( SST_Settings::get( 'dismissed_notices', [] ) );
+	}
+
+	/**
+	 * Get the order log.
+	 *
+	 * @since 8.3.5
+	 */
+	public static function get_order_log() {
+		// Verify nonce.
+		check_ajax_referer( 'sst-debug-order-nonce' );
+
+		// Get the order ID.
+		$order_id = (int) sanitize_text_field( wp_unslash( $_POST['order_id'] ) );
+
+		// Order object.
+		$order = wc_get_order( $order_id );
+		if ( ! $order ) {
+			wp_send_json_error( __( 'Invalid order ID.', 'simple-sales-tax' ) );
+		}
+
+		// Meta keys
+		$meta_keys = [
+			'_wootax_status',
+			'_wootax_db_version',
+			'_wootax_exempt_cert',
+			'_shipping_address_index',
+			'_wootax_packages',
+		];
+
+		// Get Woo Order status
+		$order_meta['order_status'] = $order->get_status();
+
+		// Get customer ID
+		$order_meta['customer_id'] = $order->get_customer_id();
+
+		// Totals
+		$order_meta['total']        = $order->get_total();
+		$order_meta['shipping']     = $order->get_shipping_total();
+		$order_meta['tax']          = $order->get_total_tax();
+
+		// Get order meta.
+		foreach ( $meta_keys as $key ) {
+			$order_meta[ $key ] = maybe_unserialize( $order->get_meta( $key, true ) );
+		}
+
+		// Logging
+		SST_Logger::order_log( __( 'View Order Debug Log triggered.', 'simple-sales-tax' ), $order_id, $order_meta );
+
+		wp_send_json_success();
+	}
+
+	/**
+	 * Update Data Mover settings.
+	 *
+	 * @since 8.3.5
+	 */
+	public static function update_data_mover() {
+		// Verify nonce.
+		check_ajax_referer( 'sst-update-data-mover-nonce' );
+
+		// Update data mover settings
+		SST_TaxCloud_V3_API::update_data_mover_settings();
+
+		// Get data mover settings
+		$data_mover = SST_Settings::get( 'data_mover', false );
+		$integration_mode = $data_mover == false ? __( 'Real Time', 'simple-sales-tax' ) : __( 'Data Import', 'simple-sales-tax' );
+
+		// Response
+		wp_send_json_success( [ 'integration_mode' => $integration_mode, 'data_mover' => $data_mover ] );
 	}
 
 }

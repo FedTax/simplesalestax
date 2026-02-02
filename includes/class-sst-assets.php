@@ -106,6 +106,10 @@ class SST_Assets {
 									'simple-sales-tax'
 								),
 								'verify_failed'    => __( 'Connection to TaxCloud failed.', 'simple-sales-tax' ),
+								'verify_btn'       => __( 'Verify Settings', 'simple-sales-tax' ),
+								'verifying'        => __( 'Verifying...', 'simple-sales-tax' ),
+								'went_wrong'      => __( 'Something went wrong.', 'simple-sales-tax' ),
+								'mode_refreshed'   => __( 'Success! Your integration mode is now ', 'simple-sales-tax' ),
 							),
 						),
 					),

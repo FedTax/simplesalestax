@@ -88,7 +88,7 @@ class SST_Settings {
 				'title'       => __( 'TaxCloud Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
 				'description' => __(
-					'You must enter a valid TaxCloud API ID and API Key for Simple Sales Tax to work properly. Use the "Verify Settings" button to test your settings.',
+					'You must enter a valid TaxCloud API ID and API Key for TaxCloud for WooCommerce to work properly. Use the "Verify Settings" button to test your settings.',
 					'simple-sales-tax'
 				),
 			),
@@ -118,16 +118,30 @@ class SST_Settings {
 				'type'        => 'button',
 				'description' => __(
 					'Use this button to verify that your site can communicate with TaxCloud.',
-					'woocommerce-integration-demo'
+					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
 				'id'          => 'verifySettings',
+			),
+			'integration_mode'            => array(
+				'title'       => __( 'Integration Mode', 'simple-sales-tax' ),
+				'type'        => 'integration_mode',
+				'default'     => '',
+				'desc_tip'    => true,
+				'description' => __(
+					'Click the refresh button to check TaxCloud for the current mode setting.',
+					'simple-sales-tax'
+				),
+				'custom_attributes' => array(
+					'readonly' => 'readonly',
+					'disabled' => 'disabled',
+				),
 			),
 			'address_settings'            => array(
 				'title'       => __( 'Address Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
 				'description' => __(
-					'To accurately determine the sales tax for an order, Simple Sales Tax needs to know the locations you ship your products from.<br>You can select from the addresses entered on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud.',
+					'To accurately determine the sales tax for an order, TaxCloud for WooCommerce needs to know the locations you ship your products from.<br>You can select from the addresses entered on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in your TaxCloud account.',
 					'simple-sales-tax'
 				),
 			),
@@ -202,7 +216,7 @@ class SST_Settings {
 				'description' => __( 'Control how taxes are displayed during checkout.', 'simple-sales-tax' ),
 			),
 			'show_zero_tax'               => array(
-				'title'       => __( 'Show Zero Tax?', 'simple-sales-tax' ),
+				'title'       => __( 'Show Zero Tax On Cart Page?', 'simple-sales-tax' ),
 				'type'        => 'select',
 				'options'     => array(
 					'true'  => __( 'Yes', 'simple-sales-tax' ),
@@ -214,6 +228,20 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'disabled'    => $disable_show_zero_tax,
+				'desc_tip'    => true,
+			),
+			'order_show_zero_tax'					=> array(
+				'title'       => __( 'Show Zero Tax on Order Page?', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'false' => __( 'No', 'simple-sales-tax' ),
+					'true'  => __( 'Yes', 'simple-sales-tax' ),
+				),
+				'default'     => 'true',
+				'description' => __(
+					'When the sales tax due is zero, should the "Sales Tax" line be shown on the order page?',
+					'simple-sales-tax'
+				),
 				'desc_tip'    => true,
 			),
 			'advanced_settings'           => array(
@@ -245,10 +273,14 @@ class SST_Settings {
 						'simple-sales-tax'
 					),
 					'11098' => __( '11098 - Colorado Retail Delivery Fees', 'simple-sales-tax' ),
+					'11013' => __(
+						'11013 - Transportation, shipping, postage, and similar charges where the charge is marked up.',
+						'simple-sales-tax'
+					),
 				),
 				'default'     => self::get_default_shipping_tic(),
 				'description' => __(
-					'Enter TIC code on <a href="https://taxcloud.net/tic" target="_blank">TaxCloud website</a> for details.',
+					'Enter TIC code on <a href="https://support.taxcloud.com/article/109-taxability-information-codes" target="_blank">TaxCloud website</a> for details.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => __(
@@ -262,7 +294,29 @@ class SST_Settings {
 				'label'       => ' ',
 				'default'     => 'yes',
 				'description' => __(
-					'When selected, Simple Sales Tax will log all requests sent to TaxCloud for debugging purposes.',
+					'When selected, TaxCloud for WooCommerce will log all requests sent to TaxCloud for debugging purposes.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
+			'force_tax_lookup'						=> array(
+				'title'       => __( 'Force Tax Lookup', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => ' ',
+				'default'     => '',
+				'description' => __(
+					'When selected, TaxCloud for WooCommerce will force a tax lookup for each order regardless of cached results. This affects on rate limit.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
+			'capture_orders_in_taxcloud'         => array(
+				'title'       => __( 'Capture Orders in TaxCloud', 'simple-sales-tax' ),
+				'label'       => ' ',
+				'type'        => 'checkbox',
+				'default'     => 'yes',
+				'description' => __(
+					'When enabled, orders are submitted to TaxCloud for reporting and filing. Orders are captured only if the integration connection is set to Live in TaxCloud.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
@@ -274,6 +328,20 @@ class SST_Settings {
 				'default'     => 'no',
 				'description' => __(
 					'By default, orders are marked as Captured in TaxCloud when they are shipped. Select this option to mark orders as Captured immediately when payment is received. Useful for stores that have items with long lead times.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
+			'disable_real_time_calc' => array(
+				'title'       => __( 'Disable Real-Time Tax Calculation', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'no'  => __( 'No', 'simple-sales-tax' ),
+					'yes' => __( 'Yes', 'simple-sales-tax' ),
+				),
+				'default'     => 'no',
+				'description' => __(
+					'If enabled, real-time sales tax calculations will be disabled during cart and checkout',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
@@ -292,13 +360,83 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
+			'rate_limit_settings'         => array(
+				'title'       => __( 'Rate Limit Settings', 'simple-sales-tax' ),
+				'type'        => 'title',
+				'description' => __(
+					'Configure rate limiting for TaxCloud tax lookup requests to prevent excessive API calls.',
+					'simple-sales-tax'
+				),
+			),
+			'enable_taxcloud_rate_limit'  => array(
+				'title'       => __( 'Enable TaxCloud Rate Limiting', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Enable rate limiting for TaxCloud tax lookup requests', 'simple-sales-tax' ),
+				'default'     => 'no',
+				'description' => __(
+					'Limit how many TaxCloud tax lookup requests can be made within a defined time window.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => false,
+			),
+			'taxcloud_rate_limit_requests' => array(
+				'title'       => __( 'Number of Requests', 'simple-sales-tax' ),
+				'type'        => 'number',
+				'default'     => '',
+				'description' => __(
+					'Maximum number of TaxCloud tax lookup requests allowed within the configured time window. Leave empty to disable.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => false,
+				'custom_attributes' => array(
+					'min' => 1,
+				),
+			),
+			'taxcloud_rate_limit_scope'   => array(
+				'title'       => __( 'Apply Rate Limit to', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'default'     => 'customer',
+				'description' => __(
+					'Choose how rate limits are applied.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => false,
+				'options'     => array(
+					'customer' => __( 'Customer / Visitor (per user or session)', 'simple-sales-tax' ),
+					'global'   => __( 'Global (shared across all users)', 'simple-sales-tax' ),
+				),
+			),
+			'taxcloud_rate_limit_window'  => array(
+				'title'       => __( 'Time Window (Minutes)', 'simple-sales-tax' ),
+				'type'        => 'number',
+				'default'     => 60,
+				'description' => __(
+					'Time window (in minutes) for rate limiting. Requests reset after this duration.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => false,
+				'custom_attributes' => array(
+					'min' => 1,
+				),
+			),
+			'show_rate_limit_notice'      => array(
+				'title'       => __( 'Notify Customer When Limited', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Display a notice to customers when tax lookup is skipped', 'simple-sales-tax' ),
+				'default'     => 'no',
+				'description' => __(
+					'If enabled, customers will see a non-blocking message when TaxCloud tax calculation is temporarily unavailable.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => false,
+			),
 			'remove_all_data'             => array(
 				'title'       => __( 'Remove All Data', 'simple-sales-tax' ),
 				'label'       => ' ',
 				'type'        => 'checkbox',
 				'default'     => 'no',
 				'description' => __(
-					'When this feature is enabled, all Simple Sales Tax options and data will be removed when you click deactivate and delete the plugin.',
+					'When this feature is enabled, all TaxCloud for WooCommerce options and data will be removed when you click deactivate and delete the plugin.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
@@ -307,17 +445,17 @@ class SST_Settings {
 				'title'       => __( 'Debug Report', 'simple-sales-tax' ),
 				'label'       => __( 'Download', 'simple-sales-tax' ),
 				'type'        => 'anchor',
-				'url'         => add_query_arg( 'download_debug_report', true ),
+				'url'         => add_query_arg( array( 'download_debug_report' => true, 'nonce' => wp_create_nonce( 'sst_debug_report' ) ) ),
 				'id'          => 'debug_report_button',
 				'description' => __(
-					'Send a copy of this report to TaxCloud support to help with debugging Simple Sales Tax issues.',
+					'Send a copy of this report to TaxCloud support to help with debugging TaxCloud for WooCommerce issues.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
 			),
 		);
 
-		return apply_filters( 'sst_settings_form_fields', $fields );
+		return apply_filters( 'sst_settings_form_fields', $fields, self::get_settings() );
 	}
 
 	/**
@@ -365,7 +503,7 @@ class SST_Settings {
 			self::$settings[ $key ] = $empty_value;
 		}
 
-		return self::$settings[ $key ];
+		return apply_filters( 'sst_get_option', self::$settings[ $key ], $key );
 	}
 
 	/**
@@ -397,6 +535,19 @@ class SST_Settings {
 		}
 
 		return $wp_roles->get_names();
+	}
+
+	/**
+	 * Get SST settings
+	 *
+	 * @return array
+	 */
+	public static function get_settings() {
+		if ( empty( self::$settings ) ) {
+			self::load_settings();
+		}
+
+		return self::$settings;
 	}
 
 }

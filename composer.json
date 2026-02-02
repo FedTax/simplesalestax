@@ -10,7 +10,7 @@
   "description": "Sales tax compliance solution for WooCommerce.",
   "type": "project",
   "require": {
-    "bporcelli/php-taxcloud": "1.1.0"
+    "fedtax/php-taxcloud": "dev-master"
   },
   "license": "GPL-3.0+",
   "authors": [
@@ -23,10 +23,27 @@
     {
       "type": "package",
       "package": {
+        "name": "fedtax/php-taxcloud",
+        "version": "dev-master",
+        "source": {
+          "url": "https://github.com/FedTax/php-taxcloud.git",
+          "type": "git",
+          "reference": "dev-master"
+        }
+      },
+      "autoload": {
+        "psr-0": {
+          "TaxCloud": "lib/"
+        }
+      }
+    },
+    {
+      "type": "package",
+      "package": {
         "name": "woocommerce/woocommerce",
         "version": "dev-trunk",
         "dist": {
-          "url": "https://github.com/woocommerce/woocommerce/archive/refs/heads/trunk.zip",
+          "url": "https://github.com/woocommerce/woocommerce/archive/refs/tags/9.7.1.zip",
           "type": "zip"
         }
       }
@@ -34,5 +51,14 @@
   ],
   "require-dev": {
     "woocommerce/woocommerce": "dev-trunk"
+  },
+  "autoload": {
+    "psr-0": {
+      "TaxCloud": "includes/vendor/fedtax/php-taxcloud/lib/"
+    },
+    "psr-4": {
+      "TaxCloud_V3\\": "includes/v3/"
+    }
+
   }
 }

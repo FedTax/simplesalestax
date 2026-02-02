@@ -1,5 +1,6 @@
-/* WooTax admin CSS */
-
+/**
+ * TaxCloud for WooCommerce - admin CSS 
+ */
 .toplevel .form-error {
     border-color: #be0636 !important;
 }
@@ -8,7 +9,8 @@
     padding-left: 10px;
 }
 
-.button.add-order-tax, a.delete_refund {
+.button.add-order-tax,
+a.delete_refund {
     display: none !important;
 }
 
@@ -21,31 +23,19 @@
     max-width: 771px;
 }
 
-/**
- * Hide Tax Status/Tax Class fields
- */
-.form-field._tax_status_field, .form-field._tax_class_field {
-    display: none !important;
-}
-
-#woocommerce-fields-bulk > label:nth-of-type(2), #woocommerce-fields-bulk > label:nth-of-type(3) {
-    display: none !important;
-}
-
-.woocommerce_variable_attributes .data > div:nth-of-type(5) p:nth-of-type(2), p[class*="variable_tax_class"] {
-    display: none !important;
-}
-
 
 /**
  * Shipping origin select
  */
-#shipping_origin_field .select2-container, .form-field.wootax_tic .select2-container {
+#shipping_origin_field .select2-container,
+.form-field.wootax_tic .select2-container {
     width: 50% !important;
 }
 
 @media only screen and (max-width: 1280px) {
-    #shipping_origin_field .select2-container, .form-field.wootax_tic .select2-container {
+
+    #shipping_origin_field .select2-container,
+    .form-field.wootax_tic .select2-container {
         width: 80% !important;
     }
 }
@@ -61,7 +51,7 @@
     padding-bottom: 0;
 }
 
-.postbox#sales_tax_meta .inside > div {
+.postbox#sales_tax_meta .inside>div {
     margin: 1.33em 0;
 }
 
@@ -150,8 +140,8 @@
 }
 
 .sst-loader div:nth-child(2) {
-  left: 8px;
-  animation-delay: -0.12s;
+    left: 8px;
+    animation-delay: -0.12s;
 }
 
 .sst-loader div:nth-child(3) {
@@ -164,7 +154,9 @@
         top: 0;
         height: 24px;
     }
-    50%, 100% {
+
+    50%,
+    100% {
         top: 6px;
         height: 12px;
     }
@@ -199,4 +191,9 @@
 .woocommerce-message ul.sst-address-list {
     list-style: disc;
     padding-left: 1.5rem;
+}
+
+.d-flex {
+    display: flex;
+    gap: 10px;
 }

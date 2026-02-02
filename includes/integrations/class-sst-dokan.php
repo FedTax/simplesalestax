@@ -98,14 +98,8 @@ class SST_Dokan extends SST_Marketplace_Integration {
 		<div class="notice notice-error">
 			<p>
 				<?php
-				printf(
-					/* translators: minimum supported Dokan version */
-					esc_html__(
-						'Simple Sales Tax does not support the installed version of Dokan. Dokan %s+ is required.',
-						'simple-sales-tax'
-					),
-					esc_html( $this->min_version )
-				);
+				// translators: %s is the minimum required version of Dokan.
+				printf(esc_html__( 'TaxCloud for WooCommerce does not support the installed version of Dokan. Dokan %s+ is required.', 'simple-sales-tax' ),esc_html( $this->min_version ));
 				?>
 			</p>
 		</div>
@@ -249,6 +243,11 @@ class SST_Dokan extends SST_Marketplace_Integration {
 		}
 
 		try {
+			// Validate the address.
+			if ( !$this->is_valid_origin( $address ) ) {
+				throw new Exception( __( 'Incomplete origin address.', 'simple-sales-tax' ) );	
+			}
+
 			return new SST_Origin_Address(
 				"S-{$seller_id}",
 				false,
@@ -259,7 +258,12 @@ class SST_Dokan extends SST_Marketplace_Integration {
 				$address['postcode']
 			);
 		} catch ( Exception $ex ) {
-			SST_Logger::add( "Error encountered while constructing origin address for seller {$seller_id}: {$ex->getMessage()}. Falling back to default store origin." );
+			// Log the error with debug context.
+			SST_Logger::add( sprintf( __( 'Failed to get origin address for seller %d: %s. Falling back to default store origin.', 'simple-sales-tax' ), $seller_id, $ex->getMessage() ), array(
+				'source' => 'dokan',
+				'seller_address' => $address,
+				'seller_id' => $seller_id
+			) );
 
 			return SST_Addresses::get_default_address();
 		}

@@ -24,9 +24,9 @@ class SST_Integration extends WC_Integration {
 	 */
 	public function __construct() {
 		$this->id                 = 'wootax';
-		$this->method_title       = __( 'Simple Sales Tax', 'simple-sales-tax' );
+		$this->method_title       = __( 'TaxCloud for WooCommerce', 'simple-sales-tax' );
 		$this->method_description = __(
-			'<p>Simple Sales Tax makes sales tax easy by connecting your store with <a href="https://www.taxcloud.com" target="_blank">TaxCloud</a>. If you have trouble with Simple Sales Tax, please consult the <a href="https://wordpress.org/plugins/simple-sales-tax/#faq-header" target="_blank">FAQ</a> and the <a href="https://wordpress.org/plugins/simple-sales-tax/#installation" target="_blank">Installation Guide</a> before contacting support.</p><p>Need help? <a href="https://taxcloud.com/contact-us/" target="_blank">Contact us</a>.</p>',
+			'<p>TaxCloud for WooCommerce makes sales tax easy by connecting your store with <a href="https://www.taxcloud.com" target="_blank">TaxCloud</a>. If you have trouble with TaxCloud for WooCommerce, please consult the <a href="https://wordpress.org/plugins/simple-sales-tax/#faq-header" target="_blank">FAQ</a> and the <a href="https://wordpress.org/plugins/simple-sales-tax/#installation" target="_blank">Installation Guide</a>.</p>',
 			'simple-sales-tax'
 		);
 
@@ -36,6 +36,7 @@ class SST_Integration extends WC_Integration {
 		// Register action hooks.
 		add_action( 'woocommerce_update_options_integration_' . $this->id, array( $this, 'process_admin_options' ) );
 		add_action( 'woocommerce_update_options_integration_' . $this->id, array( $this, 'refresh_origin_address_list' ), 15 );
+		add_action( 'woocommerce_update_options_integration_' . $this->id, array( $this, 'update_data_mover_settings' ), 20 );
 		add_action( 'admin_init', array( $this, 'maybe_download_debug_report' ) );
 		add_action( 'woocommerce_hide_sst_address_mismatch_notice', array( $this, 'maybe_dismiss_address_notice' ) );
 	}
@@ -77,7 +78,7 @@ class SST_Integration extends WC_Integration {
 		<tr valign="top">
 			<th scope="row" class="titledesc">
 				<label for="<?php echo esc_attr( $field ); ?>">
-					<?php echo wp_kses_post( $data['title'] ); ?><?php echo $this->get_tooltip_html( $data ); ?>
+					<?php echo wp_kses_post( $data['title'] ); ?><?php echo wp_kses_post( $this->get_tooltip_html( $data ) ); ?>
 				</label>
 			</th>
 			<td class="forminp">
@@ -85,10 +86,10 @@ class SST_Integration extends WC_Integration {
 					<legend class="screen-reader-text">
 						<span><?php echo wp_kses_post( $data['title'] ); ?></span>
 					</legend>
-					<button class="wp-core-ui button button-secondary" type="button" id="<?php echo esc_attr( $data['id'] ); ?>">
+					<button class="wp-core-ui button button-secondary" type="button" id="<?php echo esc_attr( $data['id'] ); ?>" <?php if( $key == 'verify_settings' ): ?>data-nonce="<?php echo esc_attr( wp_create_nonce( 'sst_verify_taxcloud_nonce' ) ); ?>"<?php endif; ?>>
 						<?php echo wp_kses_post( $data['label'] ); ?>
 					</button>
-					<?php echo $this->get_description_html( $data ); ?>
+					<?php echo wp_kses_post( $this->get_description_html( $data ) ); ?>
 				</fieldset>
 			</td>
 		</tr>
@@ -112,7 +113,7 @@ class SST_Integration extends WC_Integration {
 		<tr valign="top">
 			<th scope="row" class="titledesc">
 				<label for="<?php echo esc_attr( $field ); ?>">
-					<?php echo wp_kses_post( $data['title'] ); ?><?php echo $this->get_tooltip_html( $data ); ?>
+					<?php echo wp_kses_post( $data['title'] ); ?><?php echo wp_kses_post( $this->get_tooltip_html( $data ) ); ?>
 				</label>
 			</th>
 			<td class="forminp">
@@ -124,7 +125,7 @@ class SST_Integration extends WC_Integration {
 					   class="wp-core-ui button button-secondary" id="<?php echo esc_attr( $data['id'] ); ?>">
 						<?php echo wp_kses_post( $data['label'] ); ?>
 					</a>
-					<?php echo $this->get_description_html( $data ); ?>
+					<?php echo wp_kses_post( $this->get_description_html( $data ) ); ?>
 				</fieldset>
 			</td>
 		</tr>
@@ -151,7 +152,7 @@ class SST_Integration extends WC_Integration {
 		<tr valign="top">
 			<th scope="row" class="titledesc">
 				<label for="<?php echo esc_attr( $field ); ?>">
-					<?php echo wp_kses_post( $data['title'] ); ?><?php echo $this->get_tooltip_html( $data ); ?>
+					<?php echo wp_kses_post( $data['title'] ); ?><?php echo wp_kses_post( $this->get_tooltip_html( $data ) ); ?>
 				</label>
 			</th>
 			<td class="forminp">
@@ -178,9 +179,11 @@ class SST_Integration extends WC_Integration {
 						<div class="notice notice-info inline sst-settings-notice">
 							<p>
 								<?php
-								_e(
-									'Enter your TaxCloud API credentials and click <strong>Save changes</strong> to configure your Origin Addresses.',
-									'simple-sales-tax'
+								echo wp_kses_post(
+									__(
+										'Enter your TaxCloud API credentials and click <strong>Save changes</strong> to configure your Origin Addresses.',
+										'simple-sales-tax'
+									)
 								);
 								?>
 							</p>
@@ -189,15 +192,17 @@ class SST_Integration extends WC_Integration {
 						<div class="notice notice-warning inline sst-settings-notice">
 							<p>
 								<?php
-								_e(
-									'Oops! It appears there are no addresses in your TaxCloud account. Please add at least one address on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud and then save your settings to refresh the address list.',
-									'simple-sales-tax'
+								echo wp_kses_post(
+									__(
+										'Oops! It appears there are no addresses in your TaxCloud account. Please add at least one address on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud and then save your settings to refresh the address list.',
+										'simple-sales-tax'
+									)
 								);
 								?>
 							</p>
 						</div>
 					<?php endif; ?>
-					<?php echo $this->get_description_html( $data ); ?>
+					<?php echo wp_kses_post( $this->get_description_html( $data ) ); ?>
 				</fieldset>
 			</td>
 		</tr>
@@ -225,7 +230,7 @@ class SST_Integration extends WC_Integration {
 		}
 
 		if ( empty( $value ) ) {
-			throw new Exception( __( 'Please select at least one origin address.', 'simple-sales-tax' ) );
+			throw new Exception( esc_html__( 'Please select at least one origin address.', 'simple-sales-tax' ) );
 		}
 
 		return array_map( 'sanitize_title', (array) $value );
@@ -237,7 +242,7 @@ class SST_Integration extends WC_Integration {
 	 * @since 7.0
 	 */
 	public function maybe_download_debug_report() {
-		if ( ! isset( $_GET['download_debug_report'] ) ) { // phpcs:ignore WordPress.CSRF.NonceVerification
+		if ( ! isset( $_GET['download_debug_report'] ) || ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( $_GET['nonce'], 'sst_debug_report' ) || ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
@@ -256,6 +261,7 @@ class SST_Integration extends WC_Integration {
 		header( 'Pragma: public' );
 		header( "Content-Length: {$report_length}"  );
 
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is served as a download, not rendered in browser.
 		die( $report );
 	}
 
@@ -280,43 +286,33 @@ class SST_Integration extends WC_Integration {
 	 * @return string Report content.
 	 */
 	protected function generate_debug_report() {
-		$settings    = wp_json_encode(
-			$this->get_settings_for_report(),
-			JSON_PRETTY_PRINT
-		);
-		$report      = wp_json_encode(
-			$this->get_system_status_report(),
-			JSON_PRETTY_PRINT
-		);
+		$settings    = wp_json_encode( $this->get_settings_for_report(), JSON_PRETTY_PRINT );
+		$report      = wp_json_encode( $this->get_system_status_report(), JSON_PRETTY_PRINT );
 		$request_log = $this->tail_log( 'wootax', 100 );
 		$error_log   = $this->tail_log( 'fatal-errors', 100 );
 
-		return <<<REPORT
-##################################
-### System Status Report       ###
-##################################
+		return
+			"##################################\n" .
+			"### System Status Report       ###\n" .
+			"##################################\n\n" .
+			$report . "\n\n" .
 
-{$report}
+			"##################################\n" .
+			"### SST Settings               ###\n" .
+			"##################################\n\n" .
+			$settings . "\n\n" .
 
-##################################
-### SST Settings               ###
-##################################
+			"##################################\n" .
+			"### SST Request Log (last 100) ###\n" .
+			"##################################\n\n" .
+			$request_log . "\n\n" .
 
-{$settings}
-
-##################################
-### SST Request Log (last 100) ###
-##################################
-
-{$request_log}
-
-##################################
-### Fatal Error Log (last 100) ###
-##################################
-
-{$error_log}
-REPORT;
+			"##################################\n" .
+			"### Fatal Error Log (last 100) ###\n" .
+			"##################################\n\n" .
+			$error_log;
 	}
+
 
 	/**
 	 * Get SST settings formatted for the debug report.
@@ -414,6 +410,87 @@ REPORT;
 
 		$updater->push_to_queue( 'sst_update_620_import_origin_addresses' );
 		$updater->save()->dispatch();
+	}
+
+	/**
+	 * Generates the integration mode HTML.
+	 *
+	 * @param string $key  The field key.
+	 * @param array  $data The field data.
+	 *
+	 * @return string The integration mode HTML.
+	 */
+	public function generate_integration_mode_html( $key, $data ) {
+		$field            = "{$this->plugin_id}{$this->id}_{$key}";
+		$api_id           = SST_Settings::get( 'tc_id' );
+		$api_key          = SST_Settings::get( 'tc_key' );
+		$data_mover       = SST_Settings::get( 'data_mover', false );
+
+		$integration_mode = $data_mover == false ? __( 'Real Time', 'simple-sales-tax' ) : __( 'Data Import', 'simple-sales-tax' );
+
+		ob_start();
+		?>
+		
+		<tr valign="top">
+			<th scope="row" class="titledesc">
+				<label for="<?php echo esc_attr( $field ); ?>">
+					<?php echo wp_kses_post( $data['title'] ); ?>
+					<?php if ( ! empty( $api_id ) && ! empty( $api_key ) ): ?>
+						<?php echo wp_kses_post( $this->get_tooltip_html( $data ) ); ?>
+					<?php endif; ?>
+				</label>
+			</th>
+			<td class="forminp">
+				<fieldset>
+					<legend class="screen-reader-text">
+						<span><?php echo wp_kses_post( $data['title'] ); ?></span>
+					</legend>
+					<?php if ( ! empty( $api_id ) && ! empty( $api_key ) ): ?>
+						<div class="d-flex">
+							<input type="text"
+								id="<?php echo esc_attr( $field ); ?>"
+								value="<?php echo esc_attr( $integration_mode ); ?>"
+								readonly="readonly"
+								disabled="disabled">
+								<button type="button" class="components-button is-secondary sst-update-data-mover" data-nonce="<?php echo wp_create_nonce( 'sst-update-data-mover-nonce' ); ?>">
+									<span class="dashicons dashicons-update"></span>
+									<?php echo wp_kses_post( __( 'Refresh', 'simple-sales-tax' ) ); ?>
+								</button>
+						</div>
+						<div class="description">
+							<p>
+								<a href="https://app.taxcloud.com/go/integrations" target="_blank">
+									<?php echo wp_kses_post( __( 'Configure in TaxCloud', 'simple-sales-tax' ) ); ?>
+								</a>
+							</p>
+						</div>
+					<?php else: ?>
+						<div class="notice notice-info inline sst-settings-notice">
+							<p>
+								<?php
+								echo wp_kses_post(
+									__(
+										'Enter your TaxCloud API credentials and click <strong>Save changes</strong> to display the Integration Mode.',
+										'simple-sales-tax'
+									)
+								);
+								?>
+							</p>
+						</div>
+					<?php endif; ?>
+					<?php echo wp_kses_post( $this->get_description_html( $data ) ); ?>
+				</fieldset>
+			</td>
+		</tr>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * Updates the data mover settings.
+	 */
+	public function update_data_mover_settings() {
+		SST_TaxCloud_V3_API::update_data_mover_settings();
 	}
 
 }

@@ -2,6 +2,135 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [8.4.2] - 2026-01-15 =
+
+Fixed:
+- [DEV-6619] - Fix: Rate limit notice blocking the checkout process  
+
+Added:
+- DEV-6619 - Rate Limiting Options 
+- DEV-6644 - Implement order return process in Data Import mode for TaxCloud 
+
+
+- [8.4.1] - 2026-01-07 =
+
+Changed:
+- Bump tested WC version to 10.4.3
+
+Fixed:
+- DEV-6508 - Adjust Integration Mode display to match terminology in the TaxCloud 
+- DEV-6506 - Make sure native tax features aren't blocked in Data Import mode 
+
+Added:
+- DEV-6506 - Woo Tax plugin functions when the integration is in Data Import mode 
+
+- [8.4.0] - 2025-12-04 =
+
+Changed:
+- WordPress Tested up to: 6.9
+- WC tested up to: 10.3.5
+
+Added:
+- DEV-5366: Force "disable real time calc" for non-premium users in woo plugin 
+- Introduce data_mover v3 APIs
+
+Fixed:
+- DEV-6306: Investigate vulnerability report from Patchstack
+
+
+- [8.3.8] - 2025-11-20 =
+
+Added:
+- DEV-6271 - Add new shipping tic option to woo shipping dropdown
+
+- [8.3.7] - 2025-10-24 =
+
+Fixed:
+- DEV-6055: Multivendor plugins tax calculation fails.
+
+- [8.3.6] - 2025-10-16 =
+
+Changed:
+- Shipping method required message 
+
+Added:
+- TaxCloud Settings Verification with AJAX Error Handling and Nonce Verification 
+- Order debug log: add wootax metadata 
+
+- [8.3.5] - 2025-10-02 =
+
+Fixed:
+- DEV-5715: Stripe Express Checkout 
+
+Added:
+- DEV-5767: Admin warning messages 
+
+
+- [8.3.4] - 2025-09-15 =
+
+Fixed:
+- PHP 8.2x support
+
+Added:
+- Option: Show Zero Tax on Order Page
+- Option: Force Tax Lookup
+- Option: Enable/Disable Capture Orders in TaxCloud
+- Cache verified address only
+- Detailed logging
+
+
+- [8.3.3] - 2025-09-01 =
+
+Fixed:
+- Tax calculation failures
+- Remove unhooked submenu code
+
+- [8.3.2] - 2025-01-27 =
+
+Added:
+- Setting to disable realtime tax calculation
+
+Fixed:
+- Broken links
+- Issue with composite products
+- Issue with newer WooCommerce versions
+
+- [8.3.1] - 2025-07-11 =
+
+Fixed:
+- Re-deployed version 8.3.0 to ensure all files and assets were correctly included in the WordPress.org release.
+- Resolved issues with missing or outdated plugin metadata in the initial 8.3.0 deployment.
+
+- [8.3.0] - 2025-07-11 =
+
+Changed:
+- Renamed plugin from **Simple Sales Tax** to **TaxCloud for WooCommerce**.
+- Updated plugin assets and branding for the WordPress.org plugin page.
+- Applied changes required for compliance with **WooCommerce Marketplace** QIT validation.
+
+Fixed:
+- Resolved issues causing failures in **WooCommerce onboarding task list** and **Payments settings navigation** during QIT automated tests.
+- Adjusted hook timing and database logic to avoid interfering with setup flows.
+
+- [8.2.4] - 2025-04-24 =
+
+Changed:
+- Verified compatibility with **WPC Composite Products for WooCommerce** by WPClever.
+- Verified compatibility with **WordPress 6.8**.
+
+Fixed:
+- Resolved a compatibility issue with the **"Tax Exemption for WooCommerce (PRO)"** plugin by RelyWP where exempted customers were not being correctly processed.
+
+- [8.2.3] - 2025-02-19 =
+
+Changed:
+- Change description
+
+- [8.2.2] - 2025-01-17 =
+
+Fixed:
+- Calculate Tax when edit subscription
+
 - [8.2.1] - 2024-10-24 =
 
 Fixed:

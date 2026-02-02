@@ -45,6 +45,7 @@ class SST_Admin {
 		add_action( 'woocommerce_before_settings_tax', array( __CLASS__, 'tax_based_on_notice' ) );
 		add_action( 'edit_user_profile', array( __CLASS__, 'render_user_certificates' ), 11 );
 		add_action( 'show_user_profile', array( __CLASS__, 'render_user_certificates' ), 11 );
+		add_action( 'admin_notices', array( __CLASS__, 'display_admin_notices' ) );
 	}
 
 	/**
@@ -105,7 +106,7 @@ class SST_Admin {
 	public static function add_metaboxes() {
 		add_meta_box(
 			'sales_tax_meta',
-			__( 'Simple Sales Tax', 'simple-sales-tax' ),
+			__( 'TaxCloud for WooCommerce', 'simple-sales-tax' ),
 			array( __CLASS__, 'output_tax_metabox' ),
 			self::get_order_screen_id(),
 			'side',
@@ -125,6 +126,9 @@ class SST_Admin {
 			? $post_or_order->ID
 			: $post_or_order->get_id();
 		$order    = new SST_Order( $order_id );
+
+		// JS Enqueue.
+		wp_enqueue_script( 'sst-admin-js' );
 
 		do_action( 'sst_output_tax_meta_box', $order );
 	}
@@ -227,6 +231,8 @@ class SST_Admin {
 	 * @since 5.0
 	 */
 	public static function output_category_tic_select( $term_or_taxonomy = null ) {
+		$allowed_tags = array( 'div', 'tr', 'th', 'td', 'label' );
+
 		$wrapper_el       = 'div';
 		$label_el         = 'label';
 		$field_wrapper_el = 'div';
@@ -240,13 +246,18 @@ class SST_Admin {
 			$value            = get_term_meta( $term_or_taxonomy->term_id, 'tic', true );
 		}
 
-		printf( '<%s class="form-field">', $wrapper_el );
+		// Validate tags against whitelist
+		$wrapper_el       = in_array( $wrapper_el, $allowed_tags, true ) ? $wrapper_el : 'div';
+		$label_el         = in_array( $label_el, $allowed_tags, true ) ? $label_el : 'label';
+		$field_wrapper_el = in_array( $field_wrapper_el, $allowed_tags, true ) ? $field_wrapper_el : 'div';
+
+		printf( '<%s class="form-field">', esc_attr( $wrapper_el ) );
 		printf(
 			'<%1$s>%2$s</%1$s>',
-			$label_el,
+			esc_attr( $label_el ),
 			esc_html__( 'Taxability Information Code', 'simple-sales-tax' )
 		);
-		printf( '<%s class="sst-tic-select-wrap">', $field_wrapper_el );
+		printf( '<%s class="sst-tic-select-wrap">', esc_attr( $field_wrapper_el ) );
 
 		sst_output_tic_select_field( compact( 'value' ) );
 
@@ -258,9 +269,10 @@ class SST_Admin {
 			)
 		);
 
-		printf( '</%s>', $field_wrapper_el );
-		printf( '</%s>', $wrapper_el );
+		printf( '</%s>', esc_attr( $field_wrapper_el ) );
+		printf( '</%s>', esc_attr( $wrapper_el ) );
 	}
+
 
 	/**
 	 * Save Default TIC for category.
@@ -283,22 +295,13 @@ class SST_Admin {
 		$section = isset( $_GET['section'] ) ? sanitize_text_field( wp_unslash( $_GET['section'] ) ) : ''; // phpcs:ignore WordPress.CSRF.NonceVerification
 
 		if ( in_array( $section, array( '', 'tax' ), true ) ) {
-			?>
-			<div class="notice notice-warning">
-				<p>
-					<?php
-					printf(
-						'<strong>%1$s</strong> %2$s',
-						esc_html__( 'Heads up!', 'simple-sales-tax' ),
-						esc_html__(
-							'The WooCommerce "Calculate tax based on" setting is not respected by Simple Sales Tax. The customer billing address will only be used for tax calculations when the shipping address is not provided (e.g. for sales of digital goods).',
-							'simple-sales-tax'
-						)
-					);
-					?>
-				</p>
-			</div>
-			<?php
+			printf(
+				'<div class="notice notice-warning"><p>%s</p></div>',
+				__( // phpcs:ignore WordPress.Security.EscapeOutput
+					'The WooCommerce "Calculate tax based on" setting is not respected by TaxCloud for WooCommerce. The customer billing address will only be used for tax calculations when the shipping address is not provided (e.g. for sales of digital goods).',
+					'simple-sales-tax'
+				)
+			);
 		}
 	}
 
@@ -341,6 +344,104 @@ class SST_Admin {
 		);
 
 		sst_render_certificate_table( $user->ID, $template_args );
+	}
+
+	/**
+	 * Render the admin notices.
+	 * 
+	 * @since 8.3.5
+	 */
+	public static function render_admin_notice( $args ) {
+		// Parse args
+		$args = wp_parse_args( $args, array(
+			'id'      => '',
+			'message' => '',
+			'type'    => 'warning',
+			'button'  => '',
+		));
+
+		// Check args
+		if ( empty( $args['id'] ) || empty( $args['message'] ) ) {
+			return;
+		}
+
+		// Check if notice has been dismissed
+		$dismissed_notices = SST_Settings::get( 'dismissed_notices', [] );
+		if ( in_array( $args['id'], $dismissed_notices, true ) ) {
+			return;
+		}
+
+		// Notice ID
+		$notice_id = 'txc-notice-' . sanitize_title( $args['id'] );
+		?>
+		<div id="<?php echo esc_attr( $notice_id ); ?>" class="taxcloud-notice notice notice-<?php echo esc_attr( $args['type'] ); ?> is-dismissible" data-id="<?php echo esc_attr( $args['id'] ); ?>">
+			<?php // phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent ?>
+			<img class="txc-notice-icon" srcset="https://ps.w.org/simple-sales-tax/assets/icon-128x128.png?rev=3326417, https://ps.w.org/simple-sales-tax/assets/icon-256x256.png?rev=3326417 2x" src="https://ps.w.org/simple-sales-tax/assets/icon-256x256.png?rev=3326417" alt="<?php esc_attr_e( 'TaxCloud for WooCommerce', 'simple-sales-tax' ); ?>">
+			<div class="txc-notice-message">
+				<p><?php echo esc_html( $args['message'] ); ?></p>
+				<?php if ( ! empty( $args['button'] ) ) : ?>
+					<?php echo wp_kses( $args['button'], array( 'a' => array( 'href' => array(), 'target' => array(), 'class' => array() ) ) ); ?>
+				<?php endif; ?>
+			</div>
+		</div>
+		<script type="text/javascript">
+			// Dismiss notices
+			jQuery( document ).ready( function() {
+        jQuery(document).on('click', '#<?php echo esc_attr( $notice_id ); ?> .notice-dismiss', function () {
+            const notice = jQuery(this).closest('.taxcloud-notice');
+            const noticeId = notice.data('id');
+            jQuery.post(ajaxurl, {
+							action: 'sst_dismiss_taxcloud_notice',
+							notice_id: noticeId,
+							nonce: '<?php echo esc_js( wp_create_nonce( 'dismiss_taxcloud_notice' ) ); ?>'
+            });
+        });
+			});
+		</script>
+		<style>
+			.taxcloud-notice {
+				display: flex;
+				align-items: center;
+				padding-top: 10px !important;
+				padding-bottom: 10px !important;
+			}
+			.txc-notice-icon {
+				margin-right: 10px;
+				height: 50px;
+			}
+			.txc-notice-message p{
+				margin-top: 0;
+			}
+		</style>
+		<?php
+	}
+
+	/**
+	 * Admin Notices.
+	 *
+	 * @since 8.3.5
+	 */
+	public static function display_admin_notices() {
+		// Check if taxes are enabled
+    if ( ! wc_tax_enabled() ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput
+			self::render_admin_notice( array(
+				'id'      => 'taxes-not-enabled',
+				'message' => __( 'Taxes are not enabled in WooCommerce. TaxCloud for WooCommerce will not calculate taxes for any orders. Please enable taxes from WooCommerce > Settings > General.', 'simple-sales-tax' ),
+				'type'    => 'error'
+			));
+    }
+
+    // Check if store has a shipping method set
+    $method_count  = wc_get_shipping_method_count();
+    if ( 0 === $method_count ) {
+				// phpcs:ignore WordPress.Security.EscapeOutput
+				self::render_admin_notice( array(
+					'id'      => 'no-shipping-methods',
+					'message' => __( 'No shipping methods are configured in WooCommerce. TaxCloud will not calculate taxes for orders that require shipping.', 'simple-sales-tax' ),
+					'button'  => '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=shipping' ) ) . '">' . __( 'Add a shipping method', 'simple-sales-tax' ) . '</a>',
+				));
+    }
 	}
 
 }

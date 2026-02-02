@@ -107,20 +107,32 @@ class SST_Addresses {
 			);
 		} else {
 			try {
+				// Check rate limit.
+				$rate_limit = new SST_Rate_Limit();
+				if ( $rate_limit->limit_reached() ) {
+					$rate_limit->log_limit_reached();
+					return $address;
+				}
+
 				$request = new TaxCloud\Request\VerifyAddress(
 					SST_Settings::get( 'tc_id' ),
 					SST_Settings::get( 'tc_key' ),
 					$address
 				);
 				$address = TaxCloud()->VerifyAddress( $request );
+
+				$rate_limit->increment_count();
+				
+				// Cache verified address.
+				$addresses[ $md5_hash ] = wp_json_encode( $address );
+
+				// Cache validated addresses for 3 days.
+				set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
 			} catch ( Exception $ex ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+				SST_Logger::add( 'Failed to verify address: ' . $ex->getMessage() );
 				// Leave address as-is.
 			}
 
-			$addresses[ $md5_hash ] = wp_json_encode( $address );
-
-			// Cache validated addresses for 3 days.
-			set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
 		}
 
 		return $address;

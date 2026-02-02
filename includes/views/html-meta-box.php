@@ -38,6 +38,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</div>
 </div>
 
+<?php if ( 'yes' === SST_Settings::get( 'log_requests' ) ) : ?>
+	<div>
+		<h3>
+			<?php esc_html_e( 'Order Debug', 'simple-sales-tax' ); ?>
+			<?php sst_tip( esc_html__( 'Debug information for the order.', 'simple-sales-tax' ) ); ?>
+		</h3>
+		<button class="button button-secondary sst-debug-order" data-redirect="<?php echo esc_url( admin_url( 'admin.php?page=wc-status&tab=logs&source=wootax-order-' . $args['order_id'] ) ); ?>" data-order-id="<?php echo esc_attr( $args['order_id'] ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'sst-debug-order-nonce' ) ); ?>">
+			<?php esc_html_e( '↗ View Debug Log', 'simple-sales-tax' ); ?>
+		</button>
+	</div>
+<?php endif; ?>
+
 <script type="text/html" id="tmpl-exempt-cert-select">
 	<# if (data.loading) { #>
 		<div class="sst-loader-wrapper">

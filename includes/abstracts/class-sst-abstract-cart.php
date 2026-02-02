@@ -72,14 +72,26 @@ abstract class SST_Abstract_Cart {
 
 		// No API Login ID or API Key? Bail.
 		if ( empty( $this->api_id ) || empty( $this->api_key ) ) {
-			SST_Logger::add( 'API Login ID or API Key is empty. Skipping lookup.' );
-
+			SST_Logger::add( __( 'API Login ID or API Key is empty. Skipping lookup.', 'simple-sales-tax' ) );
 			return false;
 		}
 
 		// Perform tax lookup(s).
 		foreach ( $this->do_lookup() as $package ) {
-			$response = $package['response'];
+
+			// Real-time tax calculation is disabled?.
+			if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+				SST_Logger::add( __( 'Real-time tax calculation is disabled. Calculating tax from saved packages.', 'simple-sales-tax' ), $package );
+				continue;
+			}
+
+			$response = isset( $package['response'] ) && !empty( $package['response'] ) ? $package['response'] : false;
+
+			// No response? Bail.
+			if ( ! $response ) {
+				SST_Logger::add( __( 'No response from TaxCloud. Skipping lookup.', 'simple-sales-tax' ) );
+				continue;
+			}
 
 			if ( ! is_wp_error( $response ) ) {
 				$tax_totals = current( $package['response'] );
@@ -141,6 +153,7 @@ abstract class SST_Abstract_Cart {
 	 */
 	protected function do_lookup() {
 		$packages = array();
+		$data_mover = SST_Settings::get( 'data_mover' );
 
 		foreach ( $this->create_packages() as $package ) {
 			if ( ! $this->should_do_lookup( $package ) ) {
@@ -149,6 +162,7 @@ abstract class SST_Abstract_Cart {
 
 			if ( ! $this->is_destination_valid( $package ) ) {
 				// Wait for a complete destination address.
+				SST_Logger::add( __( 'Tax lookup failed: Shipping destination address is invalid.', 'simple-sales-tax' ), $package['destination'] );
 				continue;
 			}
 
@@ -157,17 +171,19 @@ abstract class SST_Abstract_Cart {
 					__(
 						'Failed to calculate sales tax: Shipping origin address is invalid.',
 						'simple-sales-tax'
-					)
+					),
+					$package
 				);
 				continue;
 			}
 
 			$package['request'] = $this->get_lookup_for_package( $package );
 
-			$hash          = $this->get_package_hash( $package );
-			$saved_package = $this->get_saved_package( $hash );
+			$hash          		= $this->get_package_hash( $package );
+			$saved_package 		= $this->get_saved_package( $hash );
+			$force_tax_lookup	= SST_Settings::get( 'force_tax_lookup' );
 
-			if ( false === $saved_package ) {
+			if ( 'yes' === $force_tax_lookup || false === $saved_package ) {
 				$saved_package = $this->compress_package_data(
 					$this->do_package_lookup( $package )
 				);
@@ -175,6 +191,8 @@ abstract class SST_Abstract_Cart {
 				if ( $saved_package ) {
 					$this->save_package( $hash, $saved_package );
 				}
+			} else {
+				SST_Logger::debug( __( 'Tax lookup skipped: Package already saved.', 'simple-sales-tax' ), $saved_package );
 			}
 
 			if ( $saved_package ) {
@@ -197,11 +215,30 @@ abstract class SST_Abstract_Cart {
 	 * @return array Updated package.
 	 */
 	protected function do_package_lookup( $package ) {
+		// Skip lookup if real-time tax calculation is disabled. [Data Import Mode]
+		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping lookup.', 'simple-sales-tax' ) );
+			return $package;
+		}
+
+		// Check rate limit.
+		$rate_limit = new SST_Rate_Limit();
+		if ( $rate_limit->limit_reached() ) {
+			$rate_limit->log_limit_reached();
+			return $package;
+		}
+
 		try {
 			$package['response'] = TaxCloud()->Lookup( $package['request'] );
 			$package['cart_id']  = key( $package['response'] );
+
+			$rate_limit->increment_count();
+
+			SST_Logger::debug( __( 'Tax lookup response:', 'simple-sales-tax' ), $package );
 		} catch ( Exception $ex ) {
 			$package['response'] = new WP_Error( 'lookup_error', $ex->getMessage() );
+			// Logging.
+			SST_Logger::debug( __( 'Tax lookup failed. Exception:', 'simple-sales-tax' ), $ex );
 		}
 
 		return $package;
@@ -218,6 +255,9 @@ abstract class SST_Abstract_Cart {
 	protected function get_lookup_for_package( &$package ) {
 		$cart_items = array();
 		$based_on   = SST_Settings::get( 'tax_based_on' );
+		// V3: Data Mover Mode.
+		$data_mover = SST_Settings::get( 'data_mover', false );
+		$v3_data    = array();
 
 		/* Add products */
 		foreach ( $package['contents'] as $cart_id => $item ) {
@@ -235,7 +275,7 @@ abstract class SST_Abstract_Cart {
 			}
 
 			/* Give devs a chance to change the taxable product price. */
-			$price = apply_filters( 'wootax_product_price', $price, $item['data'] );
+			$price = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
 
 			$cart_items[]     = new TaxCloud\CartItem(
 				count( $cart_items ),
@@ -244,10 +284,30 @@ abstract class SST_Abstract_Cart {
 				$price,
 				$quantity
 			);
+
+			// V3: Data Mover Mode.
+			if( $data_mover ) {
+				// Calculate tax rate
+				$tax_rate = $item['line_tax'] / $price;
+
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index' => count( $cart_items ),
+					'itemId' => $item['variation_id'] ? $item['variation_id'] : $item['product_id'],
+					'price' => $price,
+					'quantity' => $quantity,
+					'tax' => array(
+						'amount' => number_format( $item['line_tax'], 2 ),
+						'rate' => number_format( $tax_rate, 2 )
+					),
+					'tic' => SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
+				) );
+			}
+
 			$package['map'][] = array(
 				'type'    => 'line_item',
 				'id'      => $item['data']->get_id(),
 				'cart_id' => isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'],
+				'v3_data' => $v3_data
 			);
 		}
 
@@ -260,10 +320,27 @@ abstract class SST_Abstract_Cart {
 				apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
 				1
 			);
+
+			// V3: Data Mover Mode.
+			if( $data_mover ) {
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index' => count( $cart_items ),
+					'itemId' => $fee->id,
+					'price' => apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
+					'quantity' => 1,
+					'tax' => array(
+						'amount' => 0,
+						'rate' => 0
+					),
+					'tic' => apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC ),
+				) );
+			}
+
 			$package['map'][] = array(
 				'type'    => 'fee',
 				'id'      => $fee->id,
 				'cart_id' => $cart_id,
+				'v3_data' => $v3_data
 			);
 		}
 
@@ -281,25 +358,57 @@ abstract class SST_Abstract_Cart {
 				apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
 				1
 			);
+
+			// V3: Data Mover Mode.
+			if( $data_mover ) {
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index' => count( $cart_items ),
+					'itemId' => SST_SHIPPING_ITEM,
+					'price' => apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
+					'quantity' => 1,
+					'tax' => array(
+						'amount' => 0,
+						'rate' => 0
+					),
+					'tic' => sst_get_shipping_tic( $shipping_rate->method_id ),
+				) );
+			}
+
 			$package['map'][] = array(
 				'type'    => 'shipping',
 				'id'      => SST_SHIPPING_ITEM,
 				'cart_id' => $shipping_rate->id,
+				'v3_data' => $v3_data
 			);
 		}
 
 		/* Build Lookup */
-		$request = new TaxCloud\Request\Lookup(
-			$this->api_id,
-			$this->api_key,
-			$package['user']['ID'],
-			null,
-			$cart_items,
-			$package['origin'],
-			$package['destination'],
-			$local_delivery,
-			$package['certificate']
-		);
+		if( $data_mover ) {
+			/**
+			 * V3: Data Mover Mode - Prepare request as array.
+			 * @since 8.4.1
+			 */
+			$request = array(
+				'customerId' => $package['user']['ID'],
+				'cartItems' => $cart_items,
+				'origin' => $package['origin'],
+				'destination' => $package['destination'],
+				'localDelivery' => $local_delivery,
+				'certificate' => $package['certificate']
+			);
+		} else {
+			$request = new TaxCloud\Request\Lookup(
+					$this->api_id,
+					$this->api_key,
+					$package['user']['ID'],
+					null,
+					$cart_items,
+					$package['origin'],
+					$package['destination'],
+					$local_delivery,
+					$package['certificate']
+			);
+		}
 
 		return $request;
 	}
@@ -327,9 +436,11 @@ abstract class SST_Abstract_Cart {
 				$package['destination']['state'],
 				substr( $package['destination']['postcode'], 0, 5 )
 			);
-
+			SST_Logger::add( __( 'Shipping destination verifying', 'simple-sales-tax' ), $destination );
+			// TODO: substr sometimes include trailing dash, e.g. 12345-
 			$package['destination'] = SST_Addresses::verify_address( $destination );
 		} catch ( Exception $ex ) {
+			SST_Logger::add( __( 'Shipping destination is not a verified address.', 'simple-sales-tax' ), $ex );
 			return array();
 		}
 
@@ -398,7 +509,7 @@ abstract class SST_Abstract_Cart {
 			$package['origin'] = SST_Addresses::get_default_address();
 		} elseif ( ! ( $package['origin'] instanceof SST_Origin_Address ) ) {
 			SST_Logger::add(
-				__( 'Origin address for shipping package is invalid. Using default origin address from Simple Sales Tax settings.', 'simple-sales-tax' )
+				__( 'Origin address for shipping package is invalid. Using default origin address from TaxCloud for WooCommerce settings.', 'simple-sales-tax' )
 			);
 			$package['origin'] = SST_Addresses::get_default_address();
 		}
@@ -475,6 +586,20 @@ abstract class SST_Abstract_Cart {
 	 * @since 7.0.2
 	 */
 	protected function is_origin_valid( $package ) {
+		// Debug: Check if valid origin
+		SST_Logger::add(
+			__(
+				'Checking package origin address validity',
+				'simple-sales-tax'
+			),
+			array(
+				'isset' => isset( $package['origin'] ),
+				'type'  => is_a( $package['origin'], 'TaxCloud\Address' ),
+				'instanceof' => isset( $package['origin'] ) && $package['origin'] instanceof TaxCloud\Address,
+			)
+		);
+
+		// Return
 		return (
 			isset( $package['origin'] ) &&
 			$package['origin'] instanceof TaxCloud\Address
@@ -542,6 +667,12 @@ abstract class SST_Abstract_Cart {
 	 * @return array Compressed package data.
 	 */
 	public function compress_package_data( $package ) {
+		// V3: Data Mover Mode.
+		$data_mover = SST_Settings::get( 'data_mover', false );
+		if ( $data_mover ) {
+			return ( new TaxCloud_V3\Model\CompressedPackage( $package ) )->get_package();
+		}
+
 		$already_compressed = isset( $package['cart_items'] );
 
 		if ( $already_compressed ) {

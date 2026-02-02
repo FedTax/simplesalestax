@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 use \Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use \TaxCloud\ExemptionCertificate;
 use \TaxCloud\ExemptionCertificateBase;
+use Automattic\WooCommerce\StoreApi\Utilities\NoticeHandler;
 
 /**
  * Checkout.
@@ -48,6 +49,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		add_filter( 'wootax_cart_packages', array( $this, 'handle_negative_fees' ), PHP_INT_MAX - 1 );
 		add_action( 'woocommerce_init', array( $this, 'init_certificate_id' ) );
 		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( $this, 'handle_checkout' ), 10, 2 );
+		add_action( 'template_redirect', array( $this, 'add_rate_limit_notice' ), 10 );
 
 		if ( sst_storefront_active() ) {
 			add_action( 'woocommerce_checkout_shipping', array( $this, 'output_exemption_form' ), 15 );
@@ -57,7 +59,16 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		add_action( 'woocommerce_checkout_create_order_shipping_item', array( $this, 'add_shipping_meta' ), 10, 3 );
 
+		add_action( 'woocommerce_store_api_cart_get_cart', function () {
+		    NoticeHandler::add_notice(
+		        'delivery_info_notice',
+		        'Delivery may take 2–3 extra days for remote areas.',
+		        'notice' // notice | success | error
+		    );
+		});
+
 		parent::__construct();
+
 	}
 
 	/**
@@ -72,6 +83,26 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function calculate_tax_totals( $total, $cart ) {
+		// The Tax Exemption for WooCommerce (PRO) plugin sets the
+		// is_tax_exempt session variable, and we need to respect that so we
+		// can allow customers that aren't logged in to show no tax when
+		// they're tax-exempt.
+		if ( WC()->session->get( 'is_tax_exempt', false ) ) {
+			return $total;
+		}
+
+		// Add session readiness check to prevent tax calculation failures
+		if ( ! WC()->session ) {
+			// Session not ready or no packages, skip tax calculation this time
+			// This prevents the refresh requirement issue
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				SST_Logger::add( __( 'SST: Session not ready for tax calculation, skipping to prevent refresh requirement.', 'simple-sales-tax' ) );
+			}
+			return $total;
+		}
+
+
+
 		$tax_total = 0;
 
 		$this->cart = new SST_Cart_Proxy( $cart );
@@ -80,11 +111,22 @@ class SST_Checkout extends SST_Abstract_Cart {
 			is_cart() ||
 			is_checkout() ||
 			doing_action( 'wc_ajax_square_digital_wallet_recalculate_totals' ) ||
-			$this->is_store_api_request()
+			$this->is_store_api_request() ||
+			$this->is_edit_subscription_request() ||
+			$this->is_stripe_express_checkout_request()
 		);
 
 		if ( apply_filters( 'sst_calculate_tax_totals', $should_calculate ) ) {
 			$this->calculate_taxes();
+
+			/**
+			 * Skip tax calculation if real-time tax calculation is disabled. [Data Import Mode]
+			 * @since 8.4.1
+			 */
+			if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+				SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping tax calculation.', 'simple-sales-tax' ) );
+				return $total;
+			}
 
 			/**
 			 * Woo won't include the taxes calculated by SST in the total so
@@ -114,6 +156,30 @@ class SST_Checkout extends SST_Abstract_Cart {
 	}
 
 	/**
+	 * Check come from edit-subscription
+	 * @return bool
+	 */
+	protected function is_edit_subscription_request() {
+		global $wp;
+		$subscriptionId = $wp->query_vars['edit-subscription'] ?? '';
+		if( !$subscriptionId ){
+			$subscriptionId = $wp->query_vars['view-subscription'] ?? '';
+		}
+		return $subscriptionId > 0;
+	}
+
+	/**
+	 * Check if is request to the Stripe Express Checkout.
+	 *
+	 * @return bool
+	 * @since 8.3.5
+	 */
+	protected function is_stripe_express_checkout_request() {
+		global $wp_query;
+		return defined( 'WC_DOING_AJAX' ) && 'wc_stripe_get_shipping_options' === $wp_query->get( 'wc-ajax' );
+	}
+
+	/**
 	 * Calculates the tax due for the cart.
 	 */
 	public function calculate_taxes() {
@@ -127,6 +193,15 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return true;
 		}
 
+		// Try to use cached packages first, create new ones if needed
+		if ( ! $this->get_packages() ) {
+			// No cached packages, create new ones to prevent tax calculation failures
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				SST_Logger::add( 'SST: No cached packages found, creating new packages to prevent tax calculation failures.' );
+			}
+			$this->create_packages();
+		}
+
 		return parent::calculate_taxes();
 	}
 
@@ -137,7 +212,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function hide_zero_taxes() {
-		return 'true' !== SST_Settings::get( 'show_zero_tax' );
+		return 'true' !== SST_Settings::get( 'show_zero_tax', 'true' );
 	}
 
 	/**
@@ -220,12 +295,22 @@ class SST_Checkout extends SST_Abstract_Cart {
 	protected function get_base_packages() {
 		$packages = WC()->shipping->get_packages();
 
+		// Debug Logging
+		if ( empty( $packages ) ) {
+			SST_Logger::add( __( 'Missing shipping packages', 'simple-sales-tax' ) );
+		} 
+
 		/*
 		 * After WooCommerce 3.0, items that do not need shipping are excluded
 		 * from shipping packages. To ensure that these products are taxed, we
 		 * create a special package for them.
 		 */
 		$virtual_package = $this->create_virtual_package();
+
+		// Debug Logging
+		if ( empty( $virtual_package ) ) {
+			SST_Logger::add( __( 'Missing virtual packages', 'simple-sales-tax' ) );
+		} 
 
 		if ( $virtual_package ) {
 			$packages[] = $virtual_package;
@@ -319,6 +404,13 @@ class SST_Checkout extends SST_Abstract_Cart {
 		// Add fees to first package.
 		if ( ! empty( $packages ) && apply_filters( 'wootax_add_fees', true ) ) {
 			$packages[ key( $packages ) ]['fees'] = $this->cart->get_fees();
+		}
+
+		// Debug Logging
+		if ( ! empty( $packages )  ) {
+			SST_Logger::add( __( 'Packages created successfully', 'simple-sales-tax' ), $packages );
+		} else {
+			SST_Logger::add( __( 'No packages created.', 'simple-sales-tax' ) );
 		}
 
 		return apply_filters( 'wootax_cart_packages', $packages, $this->cart );
@@ -483,6 +575,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 				$this->get_default_certificate_id()
 			);
 		}
+
+		// Ensure SST packages are initialized in session
+		if ( ! WC()->session->get( 'sst_packages' ) ) {
+			WC()->session->set( 'sst_packages', array() );
+		}
 	}
 
 	/**
@@ -494,6 +591,36 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 */
 	public function get_certificate_id() {
 		return WC()->session->get( 'sst_certificate_id', '' );
+	}
+
+	/**
+	 * Adds a notice to the cart/checkout page if the TaxCloud rate limit has been reached.
+	 *
+	 * @return void
+	 */
+	public function add_rate_limit_notice() {
+		
+		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+			return;
+		}
+
+		if ( ! is_cart() && ! is_checkout() ) {
+			return;
+		}
+
+		if ( 'yes' !== SST_Settings::get( 'show_rate_limit_notice', 'no' ) ) {
+			return;
+		}
+
+		$rate_limit = new SST_Rate_Limit();
+
+		if ( $rate_limit->limit_reached() ) {
+			$message = __( 'Tax calculation is temporarily unavailable. Your order will continue without live tax estimation.', 'simple-sales-tax' );
+
+			if ( ! wc_has_notice( $message, 'notice' ) ) {
+				wc_add_notice( $message, 'notice' );
+			}
+		}
 	}
 
 	/**
@@ -630,7 +757,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 				)
 			);
 
-			throw new Exception( $ex->getMessage() );
+			throw new Exception( esc_html( $ex->getMessage() ) );
 		}
 	}
 
@@ -870,9 +997,15 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @return array|bool The saved package with the given hash, or false if no such package exists.
 	 */
 	protected function get_saved_package( $hash ) {
+		// Add session readiness check
+		if ( ! WC()->session ) {
+			return false;
+		}
+
 		$saved_packages = WC()->session->get( 'sst_package_cache', array() );
 
-		if ( isset( $saved_packages[ $hash ] ) ) {
+		// Validate package data integrity before returning
+		if ( isset( $saved_packages[ $hash ] ) && $this->is_package_valid( $saved_packages[ $hash ] ) ) {
 			return $saved_packages[ $hash ];
 		}
 
@@ -890,6 +1023,35 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$saved_packages[ $hash ] = $package;
 
 		WC()->session->set( 'sst_package_cache', $saved_packages );
+	}
+
+	/**
+	 * Validates package data integrity to prevent using corrupted packages.
+	 *
+	 * @param array $package Package to validate.
+	 * @return bool True if package is valid, false otherwise.
+	 */
+	protected function is_package_valid( $package ) {
+		// Check if package has required keys
+		$required_keys = array( 'cart_items', 'customer_id' );
+		
+		foreach ( $required_keys as $key ) {
+			if ( ! isset( $package[ $key ] ) ) {
+				return false;
+			}
+		}
+
+		// Check if cart_items is an array and not empty
+		if ( ! is_array( $package['cart_items'] ) || empty( $package['cart_items'] ) ) {
+			return false;
+		}
+
+		// Check if customer_id is valid
+		if ( empty( $package['customer_id'] ) ) {
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -974,7 +1136,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$this->validate_checkout( $data, $error );
 
 		if ( $error->has_errors() ) {
-			throw new RouteException( 'sst_checkout_invalid_fields', $error->get_error_message(), 400 );
+			throw new RouteException(
+				'sst_checkout_invalid_fields',
+				esc_html( sanitize_text_field( $error->get_error_message() ) ),
+				400
+			);
 		}
 
 		$this->process_checkout( $data, $order );

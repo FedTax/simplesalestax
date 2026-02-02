@@ -86,7 +86,7 @@ class SST_WC_Vendors extends SST_Marketplace_Integration {
 				printf(
 					/* translators: minimum supported WC Vendors Pro version */
 					esc_html__(
-						'Simple Sales Tax does not support the installed version of WC Vendors Pro. WC Vendors Pro %s+ is required.',
+						'TaxCloud for WooCommerce does not support the installed version of WC Vendors Pro. WC Vendors Pro %s+ is required.',
 						'simple-sales-tax'
 					),
 					esc_html( $this->min_version )
@@ -205,6 +205,11 @@ class SST_WC_Vendors extends SST_Marketplace_Integration {
 		}
 
 		try {
+			// Validate the address.
+			if ( !$this->is_valid_origin( $address ) ) {
+				throw new Exception( __( 'Incomplete origin address.', 'simple-sales-tax' ) );	
+			}
+
 			return new SST_Origin_Address(
 				"S-{$seller_id}",
 				false,
@@ -215,8 +220,13 @@ class SST_WC_Vendors extends SST_Marketplace_Integration {
 				$address['postcode']
 			);
 		} catch ( Exception $ex ) {
-			SST_Logger::add( "Error encountered while constructing origin address for seller {$seller_id}: {$ex->getMessage()}. Falling back to default store origin." );
-
+			// Log the error with debug context.
+			SST_Logger::add( sprintf( __( 'Failed to get origin address for seller %d: %s. Falling back to default store origin.', 'simple-sales-tax' ), $seller_id, $ex->getMessage() ), array(
+				'source' => 'wc-vendors',
+				'seller_address' => $address,
+				'seller_id' => $seller_id
+			) );
+			
 			return SST_Addresses::get_default_address();
 		}
 	}

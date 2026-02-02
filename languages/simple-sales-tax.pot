@@ -1,8 +1,8 @@
-# Copyright (C) 2024 simple-sales-tax
+# Copyright (C) 2024 taxcloud-for-woocommerce
 # This file is distributed under the GPL-3.0+ license.
 msgid ""
 msgstr ""
-"Project-Id-Version: simple-sales-tax 8.2.0\n"
+"Project-Id-Version: taxcloud-for-woocommerce 8.2.0\n"
 "Report-Msgid-Bugs-To: TaxCloud <EMAIL>\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -14,13 +14,13 @@ msgstr ""
 "Language-Team: TaxCloud <EMAIL>\n"
 "X-Generator: @wp-blocks/make-pot 1.4.0\n"
 "Language: en\n"
-"domain: X-Domain: simple-sales-tax\n"
+"domain: X-Domain: taxcloud-for-woocommerce\n"
 
 #: simple-sales-tax.php
 #: includes/admin/class-sst-integration.php:27
 #: includes/admin/class-sst-admin.php:108
 #. Name of the plugin
-msgid "Simple Sales Tax"
+msgid "TaxCloud for WooCommerce (formerly Simple Sales Tax)"
 msgstr ""
 
 #: simple-sales-tax.php
@@ -59,7 +59,7 @@ msgstr ""
 #: includes/sst-update-functions.php:941
 msgid ""
 "<strong>IMPORTANT: Your TaxCloud Locations are out of sync.</strong> One or "
-"more of the addresses from your Simple Sales Tax settings are not "
+"more of the addresses from your TaxCloud for WooCommerce settings are not "
 "registered as Locations in your TaxCloud account. Please add all of the "
 "addresses listed below on the <a "
 "href=\"https://app.taxcloud.com/go/locations\" "
@@ -125,7 +125,7 @@ msgstr ""
 
 #: includes/class-sst-settings.php:90
 msgid ""
-"You must enter a valid TaxCloud API ID and API Key for Simple Sales Tax to "
+"You must enter a valid TaxCloud API ID and API Key for TaxCloud for WooCommerce to "
 "work properly. Use the \"Verify Settings\" button to test your settings."
 msgstr ""
 
@@ -167,7 +167,7 @@ msgstr ""
 
 #: includes/class-sst-settings.php:129
 msgid ""
-"To accurately determine the sales tax for an order, Simple Sales Tax needs "
+"To accurately determine the sales tax for an order, TaxCloud for WooCommerce needs "
 "to know the locations you ship your products from.<br>You can select from "
 "the addresses entered on the <a "
 "href=\"https://app.taxcloud.com/go/locations\" "
@@ -316,8 +316,8 @@ msgstr ""
 
 #: includes/class-sst-settings.php:264
 msgid ""
-"When selected, Simple Sales Tax will log all requests sent to TaxCloud for "
-"debugging purposes."
+"When selected, TaxCloud for WooCommerce will log all requests sent to TaxCloud for "
+"debugging purposes. This can be useful for troubleshooting issues."
 msgstr ""
 
 #: includes/class-sst-settings.php:271
@@ -357,8 +357,8 @@ msgstr ""
 
 #: includes/class-sst-settings.php:300
 msgid ""
-"When this feature is enabled, all Simple Sales Tax options and data will be "
-"removed when you click deactivate and delete the plugin."
+"When this feature is enabled, all TaxCloud for WooCommerce options and data will be "
+"removed from the database when the plugin is uninstalled."
 msgstr ""
 
 #: includes/class-sst-settings.php:307
@@ -372,7 +372,7 @@ msgstr ""
 #: includes/class-sst-settings.php:312
 msgid ""
 "Send a copy of this report to TaxCloud support to help with debugging "
-"Simple Sales Tax issues."
+"TaxCloud for WooCommerce issues."
 msgstr ""
 
 #: includes/class-sst-product.php:125
@@ -419,8 +419,8 @@ msgstr ""
 # 1 - URL to keep found rates, 2 - URL to delete found rates
 #: includes/class-sst-install.php:153
 msgid ""
-"Simple Sales Tax found extra rates in your tax tables. Please choose to <a "
-"href=\"%1$s\">keep the rates</a> or <a href=\"%2$s\">delete them</a>."
+"TaxCloud for WooCommerce found extra rates in your tax tables. Please choose to <a "
+"href=\"%s\">remove them</a> or <a href=\"%s\">keep them</a>."
 msgstr ""
 
 #: includes/class-sst-install.php:257
@@ -469,47 +469,38 @@ msgstr ""
 
 #: includes/class-simplesalestax.php:287
 msgid ""
-"<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be "
-"used alongside the <a "
-"href=\"https://wordpress.org/plugins/taxjar-simplified-taxes-for-"
-"woocommerce/\" target=\"_blank\">TaxJar</a> plugin. Please deactivate "
-"TaxJar to use Simple Sales Tax."
+"<strong>TaxCloud for WooCommerce is inactive.</strong> TaxCloud for WooCommerce cannot be "
+"active while TaxJar is active. Please deactivate TaxJar to use TaxCloud for WooCommerce."
 msgstr ""
 
 #: includes/class-simplesalestax.php:300
 msgid ""
-"<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be "
-"used alongside the <a "
-"href=\"https://woocommerce.com/products/woocommerce-avatax/\" "
-"target=\"_blank\">WooCommerce AvaTax</a> plugin. Please deactivate "
-"WooCommerce AvaTax to use Simple Sales Tax."
+"<strong>TaxCloud for WooCommerce is inactive.</strong> TaxCloud for WooCommerce cannot be "
+"active while WooCommerce AvaTax is active. Please deactivate WooCommerce AvaTax to use TaxCloud for WooCommerce."
 msgstr ""
 
 #: includes/class-simplesalestax.php:314
 msgid ""
-"<strong>Simple Sales Tax is inactive.</strong> Simple Sales Tax cannot be "
-"used alongside <a "
-"href=\"https://docs.woocommerce.com/document/woocommerce-services/#section-1"
-"0\" target=\"_blank\">WooCommerce Services Automated Taxes</a>. Please "
-"disable automated taxes to use Simple Sales Tax."
+"<strong>TaxCloud for WooCommerce is inactive.</strong> TaxCloud for WooCommerce cannot be "
+"active while WooCommerce automated taxes are enabled. Please disable automated taxes to use TaxCloud for WooCommerce."
 msgstr ""
 
 #: includes/class-simplesalestax.php:327
 msgid ""
-"<strong>PHP needs to be updated.</strong> Simple Sales Tax requires PHP "
-"7.2+."
+"<strong>PHP needs to be updated.</strong> TaxCloud for WooCommerce requires PHP "
+"version %s or higher. Please contact your hosting provider to upgrade PHP."
 msgstr ""
 
 #: includes/class-simplesalestax.php:337
 msgid ""
 "<strong>WooCommerce not detected.</strong> Please install or activate "
-"WooCommerce to use Simple Sales Tax."
+"WooCommerce to use TaxCloud for WooCommerce."
 msgstr ""
 
 #: includes/class-simplesalestax.php:350
 msgid ""
-"<strong>WooCommerce needs to be updated.</strong> Simple Sales Tax requires "
-"WooCommerce 6.9.0+."
+"<strong>WooCommerce needs to be updated.</strong> TaxCloud for WooCommerce requires "
+"WooCommerce version %s or higher. Please update WooCommerce to use TaxCloud for WooCommerce."
 msgstr ""
 
 #: includes/views/html-view-certificate.php:12
@@ -850,8 +841,8 @@ msgstr ""
 # minimum supported WCMp version
 #: includes/integrations/class-sst-wcmp.php:93
 msgid ""
-"Simple Sales Tax does not support the installed version of WC Marketplace. "
-"WC Marketplace %s+ is required."
+"TaxCloud for WooCommerce does not support the installed version of WC Marketplace. "
+"Please update WC Marketplace to version %s or higher."
 msgstr ""
 
 #: includes/integrations/class-sst-wcmp.php:130
@@ -865,7 +856,7 @@ msgstr ""
 # minimum supported WCFM version
 #: includes/integrations/class-sst-wcfm.php:99
 msgid ""
-"Simple Sales Tax does not support the installed version of WCFM. WCFM %s+ "
+"TaxCloud for WooCommerce does not support the installed version of WCFM. WCFM %s+ "
 "is required."
 msgstr ""
 
@@ -877,7 +868,7 @@ msgstr ""
 # minimum supported Dokan version
 #: includes/integrations/class-sst-dokan.php:103
 msgid ""
-"Simple Sales Tax does not support the installed version of Dokan. Dokan %s+ "
+"TaxCloud for WooCommerce does not support the installed version of Dokan. Dokan %s+ "
 "is required."
 msgstr ""
 
@@ -900,15 +891,13 @@ msgstr ""
 
 #: includes/admin/class-sst-integration.php:28
 msgid ""
-"<p>Simple Sales Tax makes sales tax easy by connecting your store with <a "
-"href=\"https://www.taxcloud.com\" target=\"_blank\">TaxCloud</a>. If you "
-"have trouble with Simple Sales Tax, please consult the <a "
-"href=\"https://wordpress.org/plugins/simple-sales-tax/#faq-header\" "
-"target=\"_blank\">FAQ</a> and the <a "
-"href=\"https://wordpress.org/plugins/simple-sales-tax/#installation\" "
-"target=\"_blank\">Installation Guide</a> before contacting "
-"support.</p><p>Need help? <a href=\"https://taxcloud.com/contact-us/\" "
-"target=\"_blank\">Contact us</a>.</p>"
+"<p>TaxCloud for WooCommerce makes sales tax easy by connecting your store with <a "
+"href=\"https://taxcloud.com\" target=\"_blank\">TaxCloud</a>. If you "
+"have trouble with TaxCloud for WooCommerce, please consult the <a "
+"href=\"https://wordpress.org/plugins/taxcloud-for-woocommerce/#faq-header\" "
+"target=\"_blank\">FAQ</a> or <a "
+"href=\"https://wordpress.org/plugins/taxcloud-for-woocommerce/#installation\" "
+"target=\"_blank\">installation guide</a>.</p>"
 msgstr ""
 
 #: includes/admin/class-sst-integration.php:165
@@ -973,7 +962,7 @@ msgstr ""
 #: includes/admin/class-sst-admin.php:293
 msgid ""
 "The WooCommerce \"Calculate tax based on\" setting is not respected by "
-"Simple Sales Tax. The customer billing address will only be used for tax "
+"TaxCloud for WooCommerce. The customer billing address will only be used for tax "
 "calculations when the shipping address is not provided (e.g. for sales of "
 "digital goods)."
 msgstr ""
@@ -1009,7 +998,7 @@ msgstr ""
 #: includes/abstracts/class-sst-abstract-cart.php:376
 msgid ""
 "Origin address for shipping package is invalid. Using default origin "
-"address from Simple Sales Tax settings."
+"address from TaxCloud for WooCommerce settings."
 msgstr ""
 
 #: includes/frontend/views/html-my-account.php:19
@@ -1059,13 +1048,13 @@ msgstr ""
 
 #: includes/admin/views/html-origin-select.php:39
 msgid ""
-"Used by Simple Sales Tax for tax calculations. These are the addresses from "
-"which this product will be shipped."
+"Used by TaxCloud for WooCommerce for tax calculations. These are the addresses from "
+"your TaxCloud account."
 msgstr ""
 
 #: includes/admin/views/html-notice-updating.php:17
 #: includes/admin/views/html-notice-update.php:17
-msgid "Simple Sales Tax data update."
+msgid "TaxCloud for WooCommerce data update."
 msgstr ""
 
 #: includes/admin/views/html-notice-updating.php:18

@@ -421,7 +421,7 @@ function sst_render_tax_meta_box( $order ) {
 
 	sst_load_template(
 		'includes/views/html-meta-box.php',
-		array( 'status' => $status )
+		array( 'status' => $status, 'order_id' => $order->get_id() )
 	);
 	sst_load_template( 'includes/views/html-add-certificate-modal.php' );
 	sst_load_template( 'includes/views/html-view-certificate.php' );
@@ -442,6 +442,7 @@ function sst_load_template( $path, $args = array() ) {
 		return;
 	}
 
+	// nosemgrep: audit.php.lang.security.file.inclusion-arg
 	require $full_path;
 }
 

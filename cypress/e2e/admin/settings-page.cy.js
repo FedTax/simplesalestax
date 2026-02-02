@@ -6,8 +6,8 @@ describe('Settings page', () => {
     cy.goToSettingsPage();
   });
 
-  it('has a heading Simple Sales Tax', () => {
-    cy.findByRole('heading', {name: 'Simple Sales Tax'}).should('exist');
+  it('has a heading TaxCloud for WooCommerce', () => {
+    cy.findByRole('heading', {name: 'TaxCloud for WooCommerce'}).should('exist');
   });
 
   it('has a working Verify Settings button', () => {
@@ -24,7 +24,7 @@ describe('Settings page', () => {
   });
 
   it('has a working Download Log button', () => {
-    cy.intercept('*&download_debug_report=1').as('downloadRequest');
+    cy.intercept('*download_debug_report=1*').as('downloadRequest');
     cy.findByRole('link', {name: 'Download'}).click();
     cy.wait('@downloadRequest', {timeout: 20000}).then((intercepted) => {
       expect(intercepted.response.statusCode).to.eq(200);
@@ -39,7 +39,7 @@ describe('Settings page', () => {
     });
 
     it('should disable Show Zero Tax dropdown', () => {
-      cy.findByRole('combobox', {name: /Show Zero Tax/i }).should('be.disabled');
+      cy.findByRole('combobox', {name: /Show Zero Tax On Cart Page/i }).should('be.disabled');
     });
   });
 });
