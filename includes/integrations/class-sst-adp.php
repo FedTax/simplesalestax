@@ -73,7 +73,11 @@ class SST_ADP {
 				}
 			}
 		} catch ( Exception $e ) {
-			// Silent fail, continue with standard flag addition
+			// Log the error
+			SST_Logger::debug(
+				__( 'ADP Integration Error:', 'simple-sales-tax' ),
+				$e->getMessage()
+			);
 		}
 
 		return $this->add_allow_totals_hooks_flag( $flags );
