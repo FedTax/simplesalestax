@@ -2,6 +2,11 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [8.4.4] - 2026-02-03 =
+
+Fixed:
+- [DEV-6070] - Fixed issue with CO EXCISE TAX double-charging
+
 - [8.4.3] - 2026-01-28 =
 
 Fixed:
