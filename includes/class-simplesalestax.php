@@ -198,6 +198,11 @@ final class SimpleSalesTax {
 		if ( is_plugin_active( 'deposits-for-woocommerce/deposits-for-woocommerce.php' ) ) {
 			require_once $integrations_dir . '/class-sst-deposits-for-wc.php';
 		}
+
+		// Advanced Dynamic Pricing for WooCommerce.
+		if ( sst_adp_active() ) {
+			require_once $integrations_dir . '/class-sst-adp.php';
+		}
 	}
 
 	/**
