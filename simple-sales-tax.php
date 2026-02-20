@@ -13,9 +13,9 @@
  * License:              GPLv2 or later
  *
  * Requires at least:    4.5.0
- * Tested up to:         6.9
+ * Tested up to:         6.9.1
  * WC requires at least: 6.9.0
- * WC tested up to:      10.4.3
+ * WC tested up to:      10.5.2
  * Requires PHP:         7.4
  *
  * @category             Plugin
