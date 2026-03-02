@@ -7,6 +7,7 @@ node_modules
 releases
 docker
 includes/vendor/woocommerce
+scripts
 
 # Files
 .distignore
@@ -18,3 +19,4 @@ cypress.config.js
 gruntfile.js
 package-lock.json
 package.json
+v3.md
