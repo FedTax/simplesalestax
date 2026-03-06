@@ -145,7 +145,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 			}
 		}
 
-		$this->cart->set_total_tax( $tax_total );
+		$this->cart->set_total_tax( WC_Tax::get_tax_total( $this->cart->get_taxes() ) );
 
 		return $total + $tax_total;
 	}
