@@ -318,9 +318,10 @@ class SST_Subscriptions {
 	 * @return float
 	 */
 	public function filter_calculated_total( $total ) {
-		$cart_tax = WC()->cart->get_cart_contents_tax();
+		$taxes   = WC()->cart->get_cart_contents_taxes();
+		$sst_tax = isset( $taxes[ SST_RATE_ID ] ) ? $taxes[ SST_RATE_ID ] : 0;
 
-		return max( 0, round( $total - $cart_tax, wc_get_price_decimals() ) );
+		return max( 0, round( $total - $sst_tax, wc_get_price_decimals() ) );
 	}
 
 }
