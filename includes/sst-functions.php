@@ -571,3 +571,14 @@ function sst_get_rate_label() {
 function sst_get_rate_code() {
 	return apply_filters( 'wootax_rate_code', 'SALES-TAX' );
 }
+
+/**
+ * Get the integration mode.
+ *
+ * @since 8.4.5
+ * @return string Integration mode
+ */
+function sst_integration_mode() {
+	$data_mover = SST_Settings::get( 'data_mover', false );
+	return $data_mover == false ? 'realtime' : 'data_import';
+}

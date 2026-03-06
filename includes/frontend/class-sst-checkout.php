@@ -84,6 +84,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function calculate_tax_totals( $total, $cart ) {
+		// Disable tax calculation if integration is disabled
+		if ( 'yes' === SST_Settings::get( 'disable_integration', 'no' ) ) {
+			return $total;
+		}
+
 		// The Tax Exemption for WooCommerce (PRO) plugin sets the
 		// is_tax_exempt session variable, and we need to respect that so we
 		// can allow customers that aren't logged in to show no tax when
