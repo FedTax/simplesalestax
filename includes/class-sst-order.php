@@ -717,9 +717,8 @@ class SST_Order extends SST_Abstract_Cart {
 			}
 		}
 		
-		// V3: Data Mover Mode.
-		$data_mover = SST_Settings::get( 'data_mover' );
-		if ( $data_mover ) {
+		// Data Mover Mode.
+		if ( 'data_mover' === sst_integration_mode() ) {
 			// Logging
 			SST_Logger::order_log( __( 'Data Mover Mode enabled. Creating order in TaxCloud.', 'simple-sales-tax' ), $order->get_id() );
 			$created_order = $this->create_order_in_taxcloud( $packages, $order );

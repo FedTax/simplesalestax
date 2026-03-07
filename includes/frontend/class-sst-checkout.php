@@ -107,8 +107,6 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return $total;
 		}
 
-
-
 		$tax_total = 0;
 
 		$this->cart = new SST_Cart_Proxy( $cart );
@@ -129,8 +127,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 			 * Skip tax calculation if real-time tax calculation is disabled. [Data Import Mode]
 			 * @since 8.4.1
 			 */
-			if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
-				SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping tax calculation.', 'simple-sales-tax' ) );
+			if ( 'data_mover' === sst_integration_mode() ) {
+				SST_Logger::add( __( 'Data mover mode. Skipping tax calculation.', 'simple-sales-tax' ) );
 				return $total;
 			}
 

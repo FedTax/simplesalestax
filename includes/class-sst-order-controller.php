@@ -58,6 +58,12 @@ class SST_Order_Controller {
 	 * @since 5.0
 	 */
 	public function capture_order( $_order_id, $order ) {
+		// Disable integration
+		if ( 'yes' === SST_Settings::get( 'disable_integration' ) ) {
+			SST_Logger::order_log( __( 'Integration disabled. Skipping order capture.', 'simple-sales-tax' ), $order->get_id() );
+			return false;
+		}
+
 		$sst_order = new SST_Order( $order );
 
 		// Logging
@@ -111,6 +117,12 @@ class SST_Order_Controller {
 	 * @since 5.0
 	 */
 	public function maybe_capture_order( $order_id ) {
+		// Disable integration
+		if ( 'yes' === SST_Settings::get( 'disable_integration' ) ) {
+			SST_Logger::order_log( __( 'Integration disabled. Skipping order capture.', 'simple-sales-tax' ), $order_id );
+			return;
+		}
+
 		if ( 'yes' === SST_Settings::get( 'capture_immediately' ) ) {
 			$order = new SST_Order( $order_id );
 
@@ -184,12 +196,18 @@ class SST_Order_Controller {
 			return;
 		}
 
+		// Disable integration
+		if ( 'yes' === SST_Settings::get( 'disable_integration' ) ) {
+			SST_Logger::order_log( __( 'Integration disabled. Skipping order tax calculation.', 'simple-sales-tax' ), $order->get_id() );
+			return;
+		}
+
 		/**
-		 * Real-time tax calculation is disabled?
+		 * Data mover mode
 		 * @since 8.4.1
 		 */
-		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
-			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping order tax calculation.', 'simple-sales-tax' ) );
+		if ( 'data_mover' === sst_integration_mode() ) {
+			SST_Logger::order_log( __( 'Data mover mode. Skipping order tax calculation.', 'simple-sales-tax' ), $order->get_id() );
 			return;
 		}
 

@@ -580,5 +580,5 @@ function sst_get_rate_code() {
  */
 function sst_integration_mode() {
 	$data_mover = SST_Settings::get( 'data_mover', false );
-	return $data_mover == false ? 'realtime' : 'data_import';
+	return $data_mover == false ? 'realtime' : 'data_mover';
 }
