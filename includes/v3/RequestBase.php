@@ -116,6 +116,10 @@ abstract class RequestBase {
 			return new WP_Error( 'sst_v3_auth_error', 'No access token received from TaxCloud v3 API.' );
 		}
 
+		if ( ! empty( $data['connection_id'] ) ) {
+			SST_Settings::set( 'tc_connection_id', $data['connection_id'] );
+		}
+
 		return $data['access_token'];
 	}
 

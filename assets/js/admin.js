@@ -27,6 +27,10 @@
       })
         .done(function (resp) {
           if (resp.success) {
+            if (resp.data.connection_id) {
+              jQuery('#woocommerce_wootax_tc_connection_id').val(resp.data.connection_id);
+              jQuery('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + resp.data.connection_id + '#settings');
+            }
             alert(data.strings.settings_valid);
           } else {
             alert(data.strings.verify_failed + ' ' + resp.data + '.');
@@ -96,6 +100,11 @@
           if (resp.success) {
             var integrationMode = resp.data.integration_mode;
             jQuery('#woocommerce_wootax_integration_mode').val(integrationMode);
+            if (resp.data.connection_id) {
+              jQuery('#woocommerce_wootax_tc_connection_id').val(resp.data.connection_id);
+              jQuery('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + resp.data.connection_id + '#settings');
+              jQuery('.tc-locations-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + resp.data.connection_id + '#locations');
+            }
             alert(data.strings.mode_refreshed + integrationMode);
           } else {
             alert(data.strings.went_wrong);
