@@ -112,6 +112,20 @@ class SST_Settings {
 				'desc_tip'    => true,
 				'default'     => '',
 			),
+			// 'tc_connection_id'            => array(
+			// 	'title'       => __( 'TaxCloud Connection ID', 'simple-sales-tax' ),
+			// 	'type'        => 'text',
+			// 	'description' => __(
+			// 		'TaxCloud Connection ID (URL ID). Automatically retrieved.',
+			// 		'simple-sales-tax'
+			// 	),
+			// 	'desc_tip'    => true,
+			// 	'default'     => '',
+			// 	'class'       => 'hidden',
+			// 	'custom_attributes' => array(
+			// 		'readonly' => 'readonly',
+			// 	),
+			// ),
 			'verify_settings'             => array(
 				'title'       => __( 'Verify TaxCloud Settings', 'simple-sales-tax' ),
 				'label'       => __( 'Verify Settings', 'simple-sales-tax' ),

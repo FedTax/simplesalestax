@@ -192,10 +192,14 @@ class SST_Integration extends WC_Integration {
 						<div class="notice notice-warning inline sst-settings-notice">
 							<p>
 								<?php
+								$locations_url = 'https://app.taxcloud.com/go/locations';
 								echo wp_kses_post(
-									__(
-										'Oops! It appears there are no addresses in your TaxCloud account. Please add at least one address on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in TaxCloud and then save your settings to refresh the address list.',
-										'simple-sales-tax'
+									sprintf(
+										__(
+											'Oops! It appears there are no addresses in your TaxCloud account. Please add at least one address on the <a href="%s" target="_blank" class="tc-locations-link">Locations</a> page in TaxCloud and then save your settings to refresh the address list.',
+											'simple-sales-tax'
+										),
+										esc_url( $locations_url )
 									)
 								);
 								?>
@@ -459,7 +463,14 @@ class SST_Integration extends WC_Integration {
 						</div>
 						<div class="description">
 							<p>
-								<a href="https://app.taxcloud.com/go/integrations" target="_blank">
+								<?php
+								$connection_id   = SST_Settings::get( 'tc_connection_id' );
+								$integration_url = 'https://app.taxcloud.com/go/integrations';
+								if ( ! empty( $connection_id ) ) {
+									$integration_url .= '/' . $connection_id . '#settings';
+								}
+								?>
+								<a href="<?php echo esc_url( $integration_url ); ?>" target="_blank" class="tc-connection-link">
 									<?php echo wp_kses_post( __( 'Configure in TaxCloud', 'simple-sales-tax' ) ); ?>
 								</a>
 							</p>

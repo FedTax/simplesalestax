@@ -82,9 +82,11 @@ class SST_Ajax {
 				TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
 
 				// Ping successful, update data mover settings
-				$data_mover_settings = SST_TaxCloud_V3_API::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
+				SST_TaxCloud_V3_API::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
 
-				wp_send_json_success();
+				wp_send_json_success( array(
+					'connection_id' => SST_Settings::get( 'tc_connection_id' ),
+				) );
 			} catch ( Exception $ex ) {
 				wp_send_json_error( $ex->getMessage() );
 			}
@@ -370,11 +372,15 @@ class SST_Ajax {
 		SST_TaxCloud_V3_API::update_data_mover_settings();
 
 		// Get data mover settings
-		$data_mover = SST_Settings::get( 'data_mover', false );
+		$data_mover       = SST_Settings::get( 'data_mover', false );
 		$integration_mode = $data_mover == false ? __( 'Real Time', 'simple-sales-tax' ) : __( 'Data Import', 'simple-sales-tax' );
 
 		// Response
-		wp_send_json_success( [ 'integration_mode' => $integration_mode, 'data_mover' => $data_mover ] );
+		wp_send_json_success( [
+			'integration_mode' => $integration_mode,
+			'data_mover'       => $data_mover,
+			'connection_id'    => SST_Settings::get( 'tc_connection_id' ),
+		] );
 	}
 
 }
