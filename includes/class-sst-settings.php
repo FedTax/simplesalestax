@@ -154,20 +154,10 @@ class SST_Settings {
 			'address_settings'            => array(
 				'title'       => __( 'Address Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
-				'description' => ( function() {
-					$connection_id = SST_Settings::get( 'tc_connection_id' );
-					$locations_url = 'https://app.taxcloud.com/go/locations';
-					if ( ! empty( $connection_id ) ) {
-						$locations_url = "https://app.taxcloud.com/go/integrations/{$connection_id}#locations";
-					}
-					return sprintf(
-						__(
-							'To accurately determine the sales tax for an order, TaxCloud for WooCommerce needs to know the locations you ship your products from.<br>You can select from the addresses entered on the <a href="%s" target="_blank" class="tc-locations-link">Locations</a> page in your TaxCloud account.',
-							'simple-sales-tax'
-						),
-						esc_url( $locations_url )
-					);
-				} )(),
+				'description' => __(
+					'To accurately determine the sales tax for an order, TaxCloud for WooCommerce needs to know the locations you ship your products from.<br>You can select from the addresses entered on the <a href="https://app.taxcloud.com/go/locations" target="_blank">Locations</a> page in your TaxCloud account.',
+					'simple-sales-tax'
+				),
 			),
 			'default_origin_addresses'      => array(
 				'title'       => __( 'Shipping Origin Addresses', 'simple-sales-tax' ),
