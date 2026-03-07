@@ -68,6 +68,13 @@ abstract class SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function calculate_taxes() {
+
+		// Integration disabled?
+		if ( 'yes' === SST_Settings::get( 'disable_integration' )) {
+			SST_Logger::add( __( 'Integration disabled. Skipping tax calculation.', 'simple-sales-tax' ) );
+			return false;
+		}
+
 		$this->reset_taxes();
 
 		// No API Login ID or API Key? Bail.
@@ -80,7 +87,7 @@ abstract class SST_Abstract_Cart {
 		foreach ( $this->do_lookup() as $package ) {
 
 			// Real-time tax calculation is disabled?.
-			if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+			if ( 'data_mover' === sst_integration_mode() ) {
 				SST_Logger::add( __( 'Real-time tax calculation is disabled. Calculating tax from saved packages.', 'simple-sales-tax' ), $package );
 				continue;
 			}
@@ -216,7 +223,7 @@ abstract class SST_Abstract_Cart {
 	 */
 	protected function do_package_lookup( $package ) {
 		// Skip lookup if real-time tax calculation is disabled. [Data Import Mode]
-		if ( 'yes' === SST_Settings::get( 'disable_real_time_calc' )) {
+		if ( 'data_mover' === sst_integration_mode() ) {
 			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping lookup.', 'simple-sales-tax' ) );
 			return $package;
 		}

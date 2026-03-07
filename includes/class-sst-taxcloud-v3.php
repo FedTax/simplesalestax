@@ -44,33 +44,11 @@ class SST_TaxCloud_V3 {
 	 */
 	protected function __construct() {
 		add_action( 'sst_update_data_mover_settings', array( 'SST_TaxCloud_V3_API', 'update_data_mover_settings' ) );
-		add_filter( 'sst_get_option', array( $this, 'update_realtime_calc_option' ), 10, 2 );
-		add_filter( 'sst_settings_form_fields', array( $this, 'disable_real_time_calc_option' ), 10, 2 );
+		add_filter( 'sst_get_option', array( $this, 'update_show_tax_option' ), 10, 2 );
 	}
 
 	/**
-	 * Disable the disable_real_time_calc option if data mover is true.
-	 *
-	 * @param array $fields   Array of settings fields.
-	 * @param array $settings Current settings.
-	 *
-	 * @return array Updated settings fields.
-	 * @since 8.4.1
-	 */
-	public function disable_real_time_calc_option( $fields, $settings ) {
-		$data_mover = isset( $settings['data_mover'] ) ? (bool) $settings['data_mover'] : false;
-		if( $data_mover ) {
-			$fields['disable_real_time_calc']['disabled'] =  $data_mover;
-			$fields['disable_real_time_calc']['options'] = array(
-				'yes' => __( 'Yes', 'simple-sales-tax' ),
-			);
-		}
-		return $fields;
-	}
-
-
-	/**
-	 * Update the disable_real_time_calc option if data mover is true.
+	 * Update the show_zero_tax option if disable_integration is true.
 	 *
 	 * @param string $value Value of the option.
 	 * @param string $key   Key of the option.
@@ -78,20 +56,15 @@ class SST_TaxCloud_V3 {
 	 * @return string Updated value.
 	 * @since 8.4.1
 	 */
-	public function update_realtime_calc_option( $value, $key ) {
-		if( 'disable_real_time_calc' === $key ) {
-			$data_mover = SST_Settings::get( 'data_mover', false );
-			if( $data_mover ) {
-				return 'yes';
-			}
-		} elseif ( 'show_zero_tax' === $key ) {
-			$disable_real_time_calc = SST_Settings::get( 'disable_real_time_calc', 'no' );
-			if( 'yes' === $disable_real_time_calc ) {
+	public function update_show_tax_option( $value, $key ) {
+		if ( 'show_zero_tax' === $key ) {
+			$disable_integration = SST_Settings::get( 'disable_integration', 'no' );
+			if( 'yes' === $disable_integration ) {
 				return 'no';
 			}
 		} elseif ( 'order_show_zero_tax' === $key ) {
-			$disable_real_time_calc = SST_Settings::get( 'disable_real_time_calc', 'no' );
-			if( 'yes' === $disable_real_time_calc ) {
+			$disable_integration = SST_Settings::get( 'disable_integration', 'no' );
+			if( 'yes' === $disable_integration ) {
 				return 'no';
 			}
 		}

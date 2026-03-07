@@ -332,8 +332,8 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
-			'disable_real_time_calc' => array(
-				'title'       => __( 'Disable Real-Time Tax Calculation', 'simple-sales-tax' ),
+			'disable_integration' => array(
+				'title'       => __( 'Disable Integration', 'simple-sales-tax' ),
 				'type'        => 'select',
 				'options'     => array(
 					'no'  => __( 'No', 'simple-sales-tax' ),
@@ -341,7 +341,7 @@ class SST_Settings {
 				),
 				'default'     => 'no',
 				'description' => __(
-					'If enabled, real-time sales tax calculations will be disabled during cart and checkout',
+					'If enabled, TaxCloud integration will be disabled for both real-time and data mover.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
