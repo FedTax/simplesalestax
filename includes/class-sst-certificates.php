@@ -203,7 +203,7 @@ class SST_Certificates {
 		if ( ! $user_id ) {
 			$user = wp_get_current_user();
 		} else {
-			$user = new WP_User( $user_id );
+			$user = new \WP_User( $user_id );
 		}
 
 		if ( ! isset( $user->ID ) ) {
@@ -211,10 +211,32 @@ class SST_Certificates {
 		}
 
 		try {
-			$request = new TaxCloud\Request\GetExemptCertificates(
+			if ( SST_Settings::get( 'data_mover' ) ) {
+				$v3_exemptions = new \TaxCloud_V3\Exemptions();
+				$response = $v3_exemptions->get_certificates( array(
+					'customerId' => (string) $user->ID,
+				) );
+
+				if ( is_wp_error( $response ) ) {
+					throw new \Exception( $response->get_error_message() );
+				}
+
+				$final_certs = array();
+				if ( isset( $response['items'] ) && is_array( $response['items'] ) ) {
+					foreach ( $response['items'] as $item ) {
+						if ( empty( $item['singlePurchase'] ) ) { /* Skip single certs */
+							$cert = self::build_v1_cert_from_v3( $item );
+							$final_certs[ $cert->getCertificateID() ] = $cert;
+						}
+					}
+				}
+				return $final_certs;
+			}
+
+			$request = new \TaxCloud\Request\GetExemptCertificates(
 				SST_Settings::get( 'tc_id' ),
 				SST_Settings::get( 'tc_key' ),
-				$user->user_login
+				$user->ID
 			);
 
 			$certificates = TaxCloud()->GetExemptCertificates( $request );
@@ -229,9 +251,61 @@ class SST_Certificates {
 			}
 
 			return $final_certs;
-		} catch ( Exception $ex ) {
+		} catch ( \Exception $ex ) {
 			return array();
 		}
+	}
+
+	/**
+	 * Convert TaxCloud v3 exemption certificate format to equivalent v1.
+	 *
+	 * @param array $v3_cert V3 certificate formatted as array.
+	 * @return \TaxCloud\ExemptionCertificate
+	 */
+	public static function build_v1_cert_from_v3( $v3_cert ) {
+		$name_parts = explode( ' ', $v3_cert['customerName'] ?? '', 2 );
+		$first_name = $name_parts[0];
+		$last_name  = isset( $name_parts[1] ) ? $name_parts[1] : '';
+
+		$exempt_states = array();
+		if ( isset( $v3_cert['states'] ) && is_array( $v3_cert['states'] ) ) {
+			foreach ( $v3_cert['states'] as $state ) {
+				$exempt_states[] = array(
+					'StateAbbr'            => $state['abbreviation'] ?? '',
+					'ReasonForExemption'   => $v3_cert['reason'] ?? '',
+					'IdentificationNumber' => '',
+				);
+			}
+		}
+
+		$v1_cert = array(
+			'CertificateID' => $v3_cert['certificateId'] ?? '',
+			'Detail'        => array(
+				'ExemptStates'                    => $exempt_states,
+				'PurchaserTaxID'                  => array(
+					'TaxType'      => '',
+					'IDNumber'     => '',
+					'StateOfIssue' => '',
+				),
+				'SinglePurchase'                  => $v3_cert['singlePurchase'] ?? false,
+				'SinglePurchaseOrderNumber'       => '',
+				'PurchaserFirstName'              => $first_name,
+				'PurchaserLastName'               => $last_name,
+				'PurchaserTitle'                  => '',
+				'PurchaserAddress1'               => $v3_cert['address']['line1'] ?? '',
+				'PurchaserAddress2'               => $v3_cert['address']['line2'] ?? '',
+				'PurchaserCity'                   => $v3_cert['address']['city'] ?? '',
+				'PurchaserState'                  => $v3_cert['address']['state'] ?? '',
+				'PurchaserZip'                    => $v3_cert['address']['zip'] ?? '',
+				'PurchaserBusinessType'           => $v3_cert['customerBusinessType'] ?? '',
+				'PurchaserBusinessTypeOtherValue' => $v3_cert['customerBusinessDescription'] ?? '',
+				'PurchaserExemptionReason'        => $v3_cert['reason'] ?? '',
+				'PurchaserExemptionReasonValue'   => $v3_cert['reasonDescription'] ?? '',
+				'CreatedDate'                     => $v3_cert['createdDate'] ?? gmdate( 'c' ),
+			),
+		);
+
+		return \TaxCloud\ExemptionCertificate::fromArray( $v1_cert );
 	}
 
 	/**
@@ -330,14 +404,49 @@ class SST_Certificates {
 			}
 
 			// Add certificate
-			$request = new TaxCloud\Request\AddExemptCertificate(
-				SST_Settings::get( 'tc_id' ),
-				SST_Settings::get( 'tc_key' ),
-				$user->user_login,  // TODO: use user ID instead?
-				$certificate
-			);
+			if ( SST_Settings::get( 'data_mover' ) ) {
+				$detail = $certificate->getDetail();
+				
+				$states = array();
+				foreach ( $detail->getExemptStates() as $state ) {
+					$states[] = array( 'abbreviation' => $state->getStateAbbr() );
+				}
 
-			$certificate_id = TaxCloud()->AddExemptCertificate( $request );
+				$v3_args = array(
+					'customerId'           => (string) $user->ID,
+					'customerName'         => trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() ),
+					'customerBusinessType' => $detail->getPurchaserBusinessType() ?: 'Other',
+					'customerBusinessDescription' => $detail->getPurchaserBusinessTypeOtherValue(),
+					'reason'               => $detail->getPurchaserExemptionReason() ?: 'Other',
+					'reasonDescription'    => $detail->getPurchaserExemptionReasonValue(),
+					'address'              => array(
+						'line1' => $detail->getPurchaserAddress1(),
+						'line2' => $detail->getPurchaserAddress2(),
+						'city'  => $detail->getPurchaserCity(),
+						'state' => $detail->getPurchaserState(),
+						'zip'   => substr( $detail->getPurchaserZip(), 0, 5 ),
+					),
+					'states' => $states
+				);
+
+				$v3_exemptions = new \TaxCloud_V3\Exemptions();
+				$response = $v3_exemptions->create_certificate( $v3_args );
+
+				if ( is_wp_error( $response ) ) {
+					throw new \Exception( $response->get_error_message() );
+				}
+
+				$certificate_id = $response['certificateId'];
+			} else {
+				$request = new \TaxCloud\Request\AddExemptCertificate(
+					SST_Settings::get( 'tc_id' ),
+					SST_Settings::get( 'tc_key' ),
+					$user->ID,
+					$certificate
+				);
+
+				$certificate_id = TaxCloud()->AddExemptCertificate( $request );
+			}
 
 			// Invalidate cached certificates
 			SST_Certificates::delete_certificates( $user->ID );
@@ -376,13 +485,22 @@ class SST_Certificates {
 			throw new Exception( 'Unauthorized' );
 		}
 
-		$request = new TaxCloud\Request\DeleteExemptCertificate(
-			SST_Settings::get( 'tc_id' ),
-			SST_Settings::get( 'tc_key' ),
-			$certificate_id
-		);
+		if ( SST_Settings::get( 'data_mover' ) ) {
+			$v3_exemptions = new \TaxCloud_V3\Exemptions();
+			$response = $v3_exemptions->delete_certificate( $certificate_id );
 
-		TaxCloud()->DeleteExemptCertificate( $request );
+			if ( is_wp_error( $response ) ) {
+				throw new \Exception( $response->get_error_message() );
+			}
+		} else {
+			$request = new \TaxCloud\Request\DeleteExemptCertificate(
+				SST_Settings::get( 'tc_id' ),
+				SST_Settings::get( 'tc_key' ),
+				$certificate_id
+			);
+
+			TaxCloud()->DeleteExemptCertificate( $request );
+		}
 
 		// Invalidate cached certificates.
 		SST_Certificates::delete_certificates( $user_id );
