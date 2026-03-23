@@ -211,7 +211,8 @@ class SST_Certificates {
 		}
 
 		try {
-			if ( SST_Settings::get( 'data_mover' ) ) {
+			if ( sst_get_api_version() === 'v3' ) {
+			
 				$v3_exemptions = new \TaxCloud_V3\Exemptions();
 				$response = $v3_exemptions->get_certificates( array(
 					'customerId' => (string) $user->ID,
@@ -230,8 +231,11 @@ class SST_Certificates {
 						}
 					}
 				}
+
 				return $final_certs;
 			}
+
+	
 
 			$request = new \TaxCloud\Request\GetExemptCertificates(
 				SST_Settings::get( 'tc_id' ),
@@ -267,15 +271,40 @@ class SST_Certificates {
 		$first_name = $name_parts[0];
 		$last_name  = isset( $name_parts[1] ) ? $name_parts[1] : '';
 
+		$v3_reason  = $v3_cert['reason'] ?? '';
+		$reason_map = array(
+			'ReligiousOrganization'   => 'ReligiousOrEducationalOrganization',
+			'EducationalOrganization' => 'ReligiousOrEducationalOrganization',
+			'FederalGovernment'       => 'FederalGovernmentDepartment',
+			'StateOrLocalGovernment'  => 'StateOrLocalGovernmentName',
+			'TribalGovernment'        => 'TribalGovernmentName',
+			'IndustrialProduction'    => 'IndustrialProductionOrManufacturing',
+		);
+		$v1_reason = isset( $reason_map[ $v3_reason ] ) ? $reason_map[ $v3_reason ] : $v3_reason;
+		if ( ! defined( '\TaxCloud\ExemptionReason::' . $v1_reason ) ) {
+			$v1_reason = 'Other';
+		}
+
 		$exempt_states = array();
 		if ( isset( $v3_cert['states'] ) && is_array( $v3_cert['states'] ) ) {
 			foreach ( $v3_cert['states'] as $state ) {
+				$abbr = $state['abbreviation'] ?? '';
+				if ( ! defined( '\TaxCloud\State::' . $abbr ) ) {
+					continue; // Skip invalid states
+				}
+
 				$exempt_states[] = array(
-					'StateAbbr'            => $state['abbreviation'] ?? '',
-					'ReasonForExemption'   => $v3_cert['reason'] ?? '',
+					'StateAbbr'            => $abbr,
+					'ReasonForExemption'   => $v1_reason,
 					'IdentificationNumber' => '',
 				);
 			}
+		}
+
+		// TaxType and BusinessType mapped similarly
+		$v3_business_type = $v3_cert['customerBusinessType'] ?? '';
+		if ( ! defined( '\TaxCloud\BusinessType::' . $v3_business_type ) ) {
+			$v3_business_type = 'Other';
 		}
 
 		$v1_cert = array(
@@ -283,7 +312,7 @@ class SST_Certificates {
 			'Detail'        => array(
 				'ExemptStates'                    => $exempt_states,
 				'PurchaserTaxID'                  => array(
-					'TaxType'      => '',
+					'TaxType'      => 'FEIN',
 					'IDNumber'     => '',
 					'StateOfIssue' => '',
 				),
@@ -297,9 +326,9 @@ class SST_Certificates {
 				'PurchaserCity'                   => $v3_cert['address']['city'] ?? '',
 				'PurchaserState'                  => $v3_cert['address']['state'] ?? '',
 				'PurchaserZip'                    => $v3_cert['address']['zip'] ?? '',
-				'PurchaserBusinessType'           => $v3_cert['customerBusinessType'] ?? '',
+				'PurchaserBusinessType'           => $v3_business_type,
 				'PurchaserBusinessTypeOtherValue' => $v3_cert['customerBusinessDescription'] ?? '',
-				'PurchaserExemptionReason'        => $v3_cert['reason'] ?? '',
+				'PurchaserExemptionReason'        => $v1_reason,
 				'PurchaserExemptionReasonValue'   => $v3_cert['reasonDescription'] ?? '',
 				'CreatedDate'                     => $v3_cert['createdDate'] ?? gmdate( 'c' ),
 			),
@@ -404,7 +433,7 @@ class SST_Certificates {
 			}
 
 			// Add certificate
-			if ( SST_Settings::get( 'data_mover' ) ) {
+			if ( sst_get_api_version() === 'v3' ) {
 				$detail = $certificate->getDetail();
 				
 				$states = array();
@@ -485,7 +514,7 @@ class SST_Certificates {
 			throw new Exception( 'Unauthorized' );
 		}
 
-		if ( SST_Settings::get( 'data_mover' ) ) {
+		if ( sst_get_api_version() === 'v3' ) {
 			$v3_exemptions = new \TaxCloud_V3\Exemptions();
 			$response = $v3_exemptions->delete_certificate( $certificate_id );
 

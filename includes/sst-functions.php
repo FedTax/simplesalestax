@@ -582,3 +582,12 @@ function sst_integration_mode() {
 	$data_mover = SST_Settings::get( 'data_mover', false );
 	return $data_mover == false ? 'realtime' : 'data_mover';
 }
+
+/**
+ * Get the API version.
+ *
+ * @return string API version
+ */
+function sst_get_api_version() {
+	return 'v3';
+}
