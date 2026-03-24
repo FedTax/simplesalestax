@@ -175,7 +175,7 @@ class Exemptions extends RequestBase {
 			return $token;
 		}
 
-		$url = $this->get_fetch_api_url() . '/' . $certificate_id;
+		$url = $this->get_api_url() . '/' . $certificate_id;
 
 		$response = wp_remote_request( $url, array(
 			'method'  => 'DELETE',
