@@ -217,20 +217,22 @@ class SST_Certificates {
 			if ( sst_get_api_version() === 'v3' ) {
 			
 				$v3_exemptions = new \TaxCloud_V3\Exemptions();
-				$response = $v3_exemptions->get_certificates( array(
-					'customerId' => (string) $user->ID,
-				) );
+				$final_certs   = array();
 
-				if ( is_wp_error( $response ) ) {
-					throw new \Exception( $response->get_error_message() );
-				}
+				// Try fetching by ID and Username to catch legacy certificates
+				$lookup_ids = array( (string) $user->ID, $user->user_login );
 
-				$final_certs = array();
-				if ( isset( $response['items'] ) && is_array( $response['items'] ) ) {
-					foreach ( $response['items'] as $item ) {
-						if ( empty( $item['singlePurchase'] ) ) { /* Skip single certs */
-							$cert = self::build_v1_cert_from_v3( $item );
-							$final_certs[ $cert->getCertificateID() ] = $cert;
+				foreach ( $lookup_ids as $lookup_id ) {
+					$response = $v3_exemptions->get_certificates( array(
+						'customerId' => $lookup_id,
+					) );
+
+					if ( ! is_wp_error( $response ) && isset( $response['items'] ) && is_array( $response['items'] ) ) {
+						foreach ( $response['items'] as $item ) {
+							if ( empty( $item['singlePurchase'] ) ) { /* Skip single certs */
+								$cert = self::build_v1_cert_from_v3( $item );
+								$final_certs[ $cert->getCertificateID() ] = $cert;
+							}
 						}
 					}
 				}
