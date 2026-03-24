@@ -23,7 +23,7 @@ class Exemptions extends RequestBase {
 	 * @since 8.4.2
 	 */
 	function __construct() {
-		$this->connection_id = SST_Settings::get( 'tc_connection_id' ) ?: SST_Settings::get( 'tc_key' ); // Fallback to tc_key
+		$this->connection_id = SST_Settings::get( 'tc_key' ); 
 	}
 
 	/**

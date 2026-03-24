@@ -163,6 +163,9 @@ class SST_Certificates {
 	public static function get_certificates_formatted( $user_id = 0 ) {
 		$certificates = array();
 		foreach ( self::get_certificates( $user_id ) as $id => $raw_cert ) {
+			if ( empty( $id ) ) {
+				continue;
+			}
 			$certificates[ $id ] = self::format_certificate( $raw_cert );
 		}
 

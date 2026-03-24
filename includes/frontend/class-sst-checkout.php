@@ -529,7 +529,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	public function get_certificate() {
 		$certificate_id = $this->get_certificate_id();
 
-		if ( $certificate_id ) {
+		if ( $certificate_id && 'none' !== $certificate_id ) {
 			// Apply saved entity-based cert
 			return new ExemptionCertificateBase( $certificate_id );
 		}
@@ -572,7 +572,15 @@ class SST_Checkout extends SST_Abstract_Cart {
 			$certificate_id = sanitize_text_field(
 				wp_unslash( $post_data['certificate_id'] )
 			);
-			WC()->session->set( 'sst_certificate_id', $certificate_id );
+
+			if ( 'none' === $certificate_id ) {
+				$certificate_id = '';
+			}
+
+			if ( $certificate_id !== WC()->session->get( 'sst_certificate_id' ) ) {
+				WC()->session->set( 'sst_certificate_id', $certificate_id );
+				WC()->session->set( 'sst_packages', array() ); // Clear cache on selection change
+			}
 		} else if ( is_null( WC()->session->sst_certificate_id ) ) {
 			WC()->session->set(
 				'sst_certificate_id',
@@ -879,8 +887,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		$certificates = SST_Certificates::get_certificates_formatted();
 		$options      = array(
-			''    => 'None',
-			'new' => 'Add new certificate',
+			'none' => __( 'Select a exemption certificate', 'simple-sales-tax' ),
+			'new'  => __( 'Add new certificate', 'simple-sales-tax' ),
 		);
 
 		foreach ( $certificates as $cert ) {
