@@ -487,12 +487,12 @@ function sst_render_certificate_table( $user_id = 0, $options = array() ) {
 	);
 
 	wp_enqueue_style( 'sst-certificate-modal-css' );
-	wp_enqueue_script( 'sst-certificate-table' );
 	wp_localize_script(
 		'sst-certificate-table',
 		'SST_Certificate_Table_Data',
 		$script_data
 	);
+	wp_enqueue_script( 'sst-certificate-table' );
 
 	sst_load_template( 'includes/views/html-certificate-list.php', $options );
 
