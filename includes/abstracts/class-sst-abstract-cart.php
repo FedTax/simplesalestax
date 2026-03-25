@@ -943,23 +943,38 @@ abstract class SST_Abstract_Cart {
 	 * @return float Calculated excise tax.
 	 */
 	protected function calculate_excise_tax( $items, $state ) {
-		if ( 'CO' !== $state || current_time( 'Ymd' ) < 20250401 ) {
+		$is_colorado_order = 'CO' === strtoupper( $state );
+
+		if ( ! $is_colorado_order || current_time( 'Ymd' ) < 20250401 ) {
 			return 0;
 		}
 
-		$excise_tax = 0;
+		if ( ! is_null( $this->get_certificate() ) ) {
+			return 0;
+		}
+
+		$excise_tax                = 0;
+		$has_gun_or_ammo_tic_item  = false;
+
 		foreach ( $items as $item ) {
 			$product_id   = $item['product_id'] ?? 0;
 			$variation_id = $item['variation_id'] ?? 0;
-			
-			if ( ! $product_id ) continue;
+
+			if ( ! $product_id ) {
+				continue;
+			}
 
 			$tic = SST_Product::get_tic( $product_id, $variation_id );
 
-			if ( in_array( (int)$tic, array( 90505, 90506 ) ) ) {
-				$line_total = $item['line_total'] ?? 0;
-				$excise_tax += $line_total * 0.065;
+			if ( SST_Product::is_gun_or_ammo_tic( $tic ) ) {
+				$has_gun_or_ammo_tic_item = true;
+				$line_total               = $item['line_total'] ?? 0;
+				$excise_tax              += $line_total * 0.065;
 			}
+		}
+
+		if ( ! $has_gun_or_ammo_tic_item ) {
+			return 0;
 		}
 
 		return $excise_tax;
