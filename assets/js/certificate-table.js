@@ -1,5 +1,5 @@
-( function( $ ) {
-	var script_data = SST_Certificate_Table_Data;
+jQuery( function( $ ) {
+	var script_data = window.SST_Certificate_Table_Data || { strings: {}, certificates: {}, user_id: 0 };
 	var $row_template = wp.template( 'sst-certificate-row' );
 	var $blank_template = wp.template( 'sst-certificate-row-blank' );
 
@@ -246,4 +246,4 @@
 		user_id: script_data.user_id,
 		certificates: script_data.certificates,
 	} );
-} )( jQuery );
+} );
