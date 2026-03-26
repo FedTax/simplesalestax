@@ -2,6 +2,13 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [8.4.7] - 2026-03-26 =
+
+Fixed:
+- [DEV-7181] - Wild Horse Ammo (58285) - Seeing excise tax applied for exempt orders (WooCommerce)
+- [DEV-6819] - Exemption certificates should use the real customer ID from WooCommerce (v3 API)
+
+
 - [8.4.6] - 2026-03-10 =
 
 Fixed:
