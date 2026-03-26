@@ -98,6 +98,18 @@ class SST_Product {
 	}
 
 	/**
+	 * Is the given TIC a guns or ammo TIC?
+	 *
+	 * @param int $tic TIC.
+	 *
+	 * @return bool
+	 * @since 8.4.4
+	 */
+	public static function is_gun_or_ammo_tic( $tic ) {
+		return in_array( (int) $tic, array( 90505, 90506 ) );
+	}
+
+	/**
 	 * Output "Shipping Origin Addresses" select box.
 	 *
 	 * @since 4.6

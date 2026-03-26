@@ -405,9 +405,29 @@ class SST_Checkout extends SST_Abstract_Cart {
 			$packages = array_merge( $packages, $this->split_package( $raw_package ) );
 		}
 
-		// Add fees to first package.
+		// Add fees to packages.
 		if ( ! empty( $packages ) && apply_filters( 'wootax_add_fees', true ) ) {
-			$packages[ key( $packages ) ]['fees'] = $this->cart->get_fees();
+			foreach ( $this->cart->get_fees() as $key => $fee ) {
+				$target_package_key = key( $packages );
+
+				if ( 'co-excise-tax' === $fee->id || 'CO EXCISE TAX' === strtoupper( $fee->name ) ) {
+					foreach ( $packages as $pkg_key => $pkg ) {
+						foreach ( $pkg['contents'] as $content ) {
+							$tic = SST_Product::get_tic( $content['product_id'], $content['variation_id'] );
+							if ( SST_Product::is_gun_or_ammo_tic( $tic ) ) {
+								$target_package_key = $pkg_key;
+								break 2;
+							}
+						}
+					}
+				}
+
+				if ( ! isset( $packages[ $target_package_key ] ) ) {
+					$target_package_key = key( $packages );
+				}
+
+				$packages[ $target_package_key ]['fees'][ $key ] = $fee;
+			}
 		}
 
 		// Debug Logging

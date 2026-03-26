@@ -315,21 +315,37 @@ class SST_Order extends SST_Abstract_Cart {
 			$packages = array_merge( $packages, $this->split_package( $raw_package ) );
 		}
 
-		// Add fees to first package.
-		if ( apply_filters( 'wootax_add_fees', true ) ) {
-			$fees = array();
-
+		// Add fees to packages.
+		if ( ! empty( $packages ) && apply_filters( 'wootax_add_fees', true ) ) {
 			foreach ( $this->order->get_fees() as $item_id => $fee ) {
 				$name   = empty( $fee['name'] ) ? __( 'Fee', 'simple-sales-tax' ) : $fee['name'];
 				$fee_id = sanitize_title( $name );
 
-				$fees[ $item_id ] = (object) array(
+				$fee_obj = (object) array(
 					'id'     => $fee_id,
 					'amount' => $fee['line_total'],
 				);
-			}
 
-			$packages[ key( $packages ) ]['fees'] = $fees;
+				$target_package_key = key( $packages );
+
+				if ( $fee_id === 'co-excise-tax' || 'CO EXCISE TAX' === strtoupper( $name ) ) {
+					foreach ( $packages as $pkg_key => $pkg ) {
+						foreach ( $pkg['contents'] as $content ) {
+							$tic = SST_Product::get_tic( $content['product_id'], $content['variation_id'] );
+							if ( SST_Product::is_gun_or_ammo_tic( $tic ) ) {
+								$target_package_key = $pkg_key;
+								break 2;
+							}
+						}
+					}
+				}
+
+				if ( ! isset( $packages[ $target_package_key ] ) ) {
+					$target_package_key = key( $packages );
+				}
+
+				$packages[ $target_package_key ]['fees'][ $item_id ] = $fee_obj;
+			}
 		}
 
 		// Logging
