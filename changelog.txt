@@ -8,6 +8,10 @@ Fixed:
 - [DEV-7181] - Wild Horse Ammo (58285) - Seeing excise tax applied for exempt orders (WooCommerce)
 - [DEV-6819] - Exemption certificates should use the real customer ID from WooCommerce (v3 API)
 
+Changed:
+- WordPress Tested up to: 6.9.4
+- WC tested up to: 10.6.1
+
 
 - [8.4.6] - 2026-03-10 =
 
