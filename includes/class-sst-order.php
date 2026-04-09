@@ -1213,7 +1213,7 @@ class SST_Order extends SST_Abstract_Cart {
 
 		foreach ( $packages as $key => $package ) {
 			$order_id = $this->get_package_order_id( $key, $package );
-			$cart_id  = $order_id; // Using same ID as requested in lookup
+			$cart_id  = isset( $package['cart_id'] ) ? $package['cart_id'] : $order_id;
 
 			$response = $carts_api->create_order( $cart_id, $order_id, true );
 
