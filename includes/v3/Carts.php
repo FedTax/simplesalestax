@@ -2,7 +2,6 @@
 namespace TaxCloud_V3;
 
 use SST_Settings;
-use WP_Error;
 use TaxCloud_V3\Model\Address;
 use TaxCloud_V3\Model\CartItem;
 use TaxCloud_V3\Model\Currency;
@@ -27,10 +26,7 @@ class Carts extends RequestBase {
 	 * @since 8.4.1
 	 */
 	function __construct() {
-		$this->connection_id = SST_Settings::get( 'tc_connection_id' );
-		if ( ! $this->connection_id ) {
-			$this->connection_id = SST_Settings::get( 'tc_key' ); // Fallback
-		}
+		$this->connection_id = SST_Settings::get( 'tc_key' );
 	}
 
 	/**
@@ -58,39 +54,39 @@ class Carts extends RequestBase {
 	 *
 	 * @param array $args Request arguments.
 	 *
-	 * @return array|WP_Error Response on success, WP_Error on failure.
+	 * @return array|\WP_Error Response on success, \WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public function calculate_tax( $args ) {
 		$payload = $this->prepare_item_for_request( $args );
 
-		if ( is_wp_error( $payload ) ) {
+		if ( \is_wp_error( $payload ) ) {
 			return $payload;
 		}
 
 		$token = $this->get_auth_token();
-		if ( is_wp_error( $token ) ) {
+		if ( \is_wp_error( $token ) ) {
 			return $token;
 		}
 
-		$response = wp_remote_post( $this->get_api_url(), array(
+		$response = \wp_remote_post( $this->get_api_url(), array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
-			'body'    => json_encode( $payload ),
+			'body'    => \json_encode( $payload ),
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
+		if ( \is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
+		$code = \wp_remote_retrieve_response_code( $response );
+		$body = \wp_remote_retrieve_body( $response );
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_carts_error', 'Failed to calculate tax: ' . $body );
+			return new \WP_Error( 'sst_v3_carts_error', 'Failed to calculate tax: ' . $body );
 		}
 
 		return json_decode( $body, true );
@@ -103,12 +99,12 @@ class Carts extends RequestBase {
 	 * @param string $order_id  ID of the order in external system.
 	 * @param bool   $completed Whether the order is completed/shipped.
 	 *
-	 * @return array|WP_Error Response on success, WP_Error on failure.
+	 * @return array|\WP_Error Response on success, \WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public function create_order( $cart_id, $order_id, $completed = false ) {
 		$token = $this->get_auth_token();
-		if ( is_wp_error( $token ) ) {
+		if ( \is_wp_error( $token ) ) {
 			return $token;
 		}
 
@@ -118,24 +114,24 @@ class Carts extends RequestBase {
 			'completed' => $completed,
 		);
 
-		$response = wp_remote_post( $this->get_order_api_url(), array(
+		$response = \wp_remote_post( $this->get_order_api_url(), array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
-			'body'    => json_encode( $payload ),
+			'body'    => \json_encode( $payload ),
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
+		if ( \is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
+		$code = \wp_remote_retrieve_response_code( $response );
+		$body = \wp_remote_retrieve_body( $response );
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_carts_error', 'Failed to create order from cart: ' . $body );
+			return new \WP_Error( 'sst_v3_carts_error', 'Failed to create order from cart: ' . $body );
 		}
 
 		return json_decode( $body, true );
@@ -146,7 +142,7 @@ class Carts extends RequestBase {
 	 *
 	 * @param array $args Request arguments.
 	 *
-	 * @return array|WP_Error Prepared item on success, WP_Error on failure.
+	 * @return array|\WP_Error Prepared item on success, WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public function prepare_item_for_request( $args ) {

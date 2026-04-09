@@ -40,7 +40,7 @@ class Orders extends RequestBase {
 	 * @since 8.4.1
 	 */
 	public function get_api_url( $item_id = null ) {
-		return self::API_BASE_URL . '/tax/connections/' . $this->connection_id . '/orders' . ( $item_id ? '/' . $item_id : '' );
+		return rtrim( self::API_BASE_URL, '/' ) . '/tax/connections/' . $this->connection_id . '/orders' . ( $item_id ? '/' . $item_id : '' );
 	}
 
 	/**
@@ -48,7 +48,7 @@ class Orders extends RequestBase {
 	 *
 	 * @param array $args Request arguments.
 	 *
-	 * @return array|WP_Error Order response on success, WP_Error on failure.
+	 * @return array|\WP_Error Order response on success, WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public function create_order( $args ) {
@@ -59,13 +59,14 @@ class Orders extends RequestBase {
 			return $order;
 		}
 
-		if ( is_wp_error( $this->get_auth_token() ) ) {
-			return $this->get_auth_token();
+		$token = $this->get_auth_token();
+		if ( is_wp_error( $token ) ) {
+			return $token;
 		}
 
 		$response = wp_remote_post( $this->get_api_url(), array(
 			'headers' => array(
-				'Authorization' => 'Bearer ' . $this->get_auth_token(),
+				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
 			'body'    => json_encode( $order ),
@@ -80,7 +81,7 @@ class Orders extends RequestBase {
 		$body = wp_remote_retrieve_body( $response );
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_orders_error', 'Failed to create order: ' . $body );
+			return new \WP_Error( 'sst_v3_orders_error', 'Failed to create order: ' . $body );
 		}
 
 		return json_decode( $body, true );
@@ -91,7 +92,7 @@ class Orders extends RequestBase {
 	 *
 	 * @param array $args Request arguments.
 	 *
-	 * @return array|WP_Error Prepared item on success, WP_Error on failure.
+	 * @return array|\WP_Error Prepared item on success, WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public function prepare_item_for_request( $args ) {
@@ -109,9 +110,13 @@ class Orders extends RequestBase {
 		if ( isset( $args['lineItems'] ) && ! empty( $args['lineItems'] ) ) {
 			foreach ( $args['lineItems'] as $lineItem ) {
 				// Round the tax amount to 2 decimal places
-				$lineItem['tax']['amount'] = round( $lineItem['tax']['amount'], 2 );
+				if ( isset( $lineItem['tax']['amount'] ) ) {
+					$lineItem['tax']['amount'] = round( $lineItem['tax']['amount'], 2 );
+				}
 				// Round the tax rate to 2 decimal places
-				$lineItem['tax']['rate'] = round( $lineItem['tax']['rate'], 2 );
+				if ( isset( $lineItem['tax']['rate'] ) ) {
+					$lineItem['tax']['rate'] = round( $lineItem['tax']['rate'], 2 );
+				}
 				
 				$lineItems[] = new CartItem( $lineItem );
 			}
@@ -158,13 +163,12 @@ class Orders extends RequestBase {
 	 *
 	 * @param string $order_id Order ID.
 	 *
-	 * @return array|WP_Error Order array on success, WP_Error on failure.
+	 * @return array|\WP_Error Order array on success, WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public function get_order( $order_id ) {
-		$token = self::get_auth_token();
+		$token = $this->get_auth_token();
 		
-
 		if ( is_wp_error( $token ) ) {
 			return $token;
 		}
@@ -185,7 +189,7 @@ class Orders extends RequestBase {
 		$body = wp_remote_retrieve_body( $response );
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_orders_error', 'Failed to retrieve order: ' . $body );
+			return new \WP_Error( 'sst_v3_orders_error', 'Failed to retrieve order: ' . $body );
 		}
 
 		return json_decode( $body, true );
