@@ -114,7 +114,7 @@ abstract class RequestBase {
 		}
 
 		if ( ! empty( $data['connection_id'] ) && strlen( $data['connection_id'] ) > 10 ) {
-			SST_Settings::set( 'tc_connection_id', $data['connection_id'] );
+			SST_Settings::set( 'tc_integration_id', $data['connection_id'] ); // Set integration id which returns from taxcloud
 		}
 
 		error_log( print_r( $data, true ) );

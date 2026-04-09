@@ -112,7 +112,7 @@ class SST_Settings {
 				'desc_tip'    => true,
 				'default'     => '',
 			),
-			// 'tc_connection_id'            => array(
+			// 'tc_integration_id'            => array(
 			// 	'title'       => __( 'TaxCloud Connection ID', 'simple-sales-tax' ),
 			// 	'type'        => 'text',
 			// 	'description' => __(
