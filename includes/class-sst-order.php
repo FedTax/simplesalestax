@@ -741,6 +741,10 @@ class SST_Order extends SST_Abstract_Cart {
 			return true;
 		}
 
+		if ( sst_get_api_version() === 'v3' ) {
+			return $this->capture_order_v3( $packages, $order );
+		}
+
 		// Logging
 		SST_Logger::order_log( __( 'Capturing order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
 
@@ -1142,7 +1146,7 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
-	 * Create order in TaxCloud.
+	 * Create order in TaxCloud using direct V3 Orders API.
 	 *
 	 * @param array    $packages Packages.
 	 * @param WC_Order $order    Order.
@@ -1191,6 +1195,39 @@ class SST_Order extends SST_Abstract_Cart {
 				return false;
 			}
 		}
+
+		return true;
+	}
+
+	/**
+	 * Capture order in TaxCloud using V3 Carts/Orders API.
+	 *
+	 * @param array    $packages Packages.
+	 * @param WC_Order $order    Order.
+	 *
+	 * @return bool True on success, false on failure.
+	 * @since 8.4.7
+	 */
+	protected function capture_order_v3( $packages, $order ) {
+		$carts_api = new TaxCloud_V3\Carts();
+
+		foreach ( $packages as $key => $package ) {
+			$order_id = $this->get_package_order_id( $key, $package );
+			$cart_id  = $order_id; // Using same ID as requested in lookup
+
+			$response = $carts_api->create_order( $cart_id, $order_id, true );
+
+			if ( is_wp_error( $response ) ) {
+				SST_Logger::order_log( __( 'Failed to create order from cart in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $response->get_error_message() );
+				return false;
+			}
+
+			$this->update_meta( 'status', 'captured' );
+			SST_Logger::order_log( __( 'Order status updated to captured (V3).', 'simple-sales-tax' ), $order->get_id() );
+			$order->save();
+		}
+
+		return true;
 	}
 
 }

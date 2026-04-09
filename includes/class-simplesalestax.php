@@ -145,8 +145,10 @@ final class SimpleSalesTax {
 		 * TaxCloud v3 API.
 		 * @since 8.4.1
 		 */
-		require_once __DIR__ . '/class-sst-taxcloud-v3-api.php';
-		require_once __DIR__ . '/class-sst-taxcloud-v3.php';
+		require_once __DIR__ . '/v3/Orders.php';
+		require_once __DIR__ . '/v3/Carts.php';
+		require_once __DIR__ . '/v3/Refunds.php';
+		require_once __DIR__ . '/v3/Exemptions.php';
 
 		/**
 		 * Third party integrations.
