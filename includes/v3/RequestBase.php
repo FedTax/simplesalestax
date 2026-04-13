@@ -117,8 +117,6 @@ abstract class RequestBase {
 			SST_Settings::set( 'tc_integration_id', $data['connection_id'] ); // Set integration id which returns from taxcloud
 		}
 
-		error_log( print_r( $data, true ) );
-
 		return $data['access_token'];
 	}
 

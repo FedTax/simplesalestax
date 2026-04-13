@@ -78,8 +78,6 @@ class SST_TaxCloud_V3_API {
 		$body = wp_remote_retrieve_body( $response );
 		$data = json_decode( $body, true );
 
-		error_log(print_r( $data, true ));
-
 		if ( $code >= 400 ) {
 			return new WP_Error( 'sst_v3_auth_error', 'Failed to authenticate with TaxCloud v3 API: ' . ( isset( $data['message'] ) ? $data['message'] : $body ) );
 		}
