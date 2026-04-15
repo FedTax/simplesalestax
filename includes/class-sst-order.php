@@ -1221,11 +1221,12 @@ class SST_Order extends SST_Abstract_Cart {
 				SST_Logger::order_log( __( 'Failed to create order from cart in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $response->get_error_message() );
 				return false;
 			}
-
-			$this->update_meta( 'status', 'captured' );
-			SST_Logger::order_log( __( 'Order status updated to captured (V3).', 'simple-sales-tax' ), $order->get_id() );
-			$order->save();
 		}
+
+		// Update TaxCloud Order Status
+		$this->update_meta( 'status', 'captured' );
+		SST_Logger::order_log( __( 'Order status updated to captured (V3).', 'simple-sales-tax' ), $order->get_id() );
+		$order->save();
 
 		return true;
 	}
