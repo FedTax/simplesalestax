@@ -19,36 +19,75 @@ class SST_Composite_Products {
 	}
 
 	/**
-	 * Sets the taxable price for composite products to zero to avoid overcalculation of tax.
+	 * Adjusts the taxable price for composite product items to avoid
+	 * overcalculation or undercalculation of tax.
 	 *
-	 * If this is not done, tax will be calculated for each of the individual products that comprise the composite
-	 * product AND for the composite product itself.
+	 * When a composite uses aggregate pricing (priced_individually = no),
+	 * the parent carries the full price and children should be $0.
+	 *
+	 * When a composite uses per-item pricing (priced_individually = yes),
+	 * each child carries its own price and the parent is $0 — children
+	 * must keep their prices so tax is calculated correctly.
 	 *
 	 * @param float      $price   Taxable price for product.
 	 * @param WC_Product $product WooCommerce product instance.
+	 * @param array      $item    Cart/order item data.
 	 *
 	 * @return float
 	 */
 	public function filter_composite_product_price( $price, $product, $item ) {
 
-		/**
-		 * Get the order item ID.
-		 */
 		$order_item_id = isset( $item['key'] ) ? intval( $item['key'] ) : 0;
 
-		/**
-		 * Check if this item has a composite parent.
-		 */
-		$composite_parent = wc_get_order_item_meta( $order_item_id, '_composite_parent', true );
-
-		/**
-		 * If this item has a composite parent, set its taxable price to zero.
-		 */
-		if ( ! empty( $composite_parent ) ) {
-			$price = 0.0;
+		if ( ! $order_item_id ) {
+			return $price;
 		}
 
-		return $price;
+		/* Not a composite child, skip. */
+		$composite_parent = wc_get_order_item_meta( $order_item_id, '_composite_parent', true );
+
+		if ( empty( $composite_parent ) ) {
+			return $price;
+		}
+
+		/*
+		 * Composites have two pricing modes. With aggregate pricing the parent
+		 * holds the total and children are $0. With per-item pricing each child
+		 * carries its own price and the parent is $0. We only zero children out
+		 * for aggregate pricing — otherwise tax gets lost entirely.
+		 */
+
+		/* Check the order item meta that WC Composite Products stores. */
+		$priced_individually = wc_get_order_item_meta( $order_item_id, '_component_priced_individually', true );
+
+		if ( 'yes' === $priced_individually ) {
+			return $price;
+		}
+
+		/* Meta not set — load the composite product and check the component. */
+		if ( '' === $priced_individually ) {
+			$composite_id = wc_get_order_item_meta( $order_item_id, '_composite_item', true );
+			$composite    = $composite_id ? wc_get_product( $composite_id ) : null;
+
+			if ( ! $composite || ! is_callable( array( $composite, 'get_component' ) ) ) {
+				return 0.0;
+			}
+
+			/* Meta key changed between CP versions. */
+			$component_id = wc_get_order_item_meta( $order_item_id, '_composite_cart_key', true );
+			if ( ! $component_id ) {
+				$component_id = wc_get_order_item_meta( $order_item_id, '_composite_component', true );
+			}
+
+			$component = $component_id ? $composite->get_component( $component_id ) : null;
+
+			if ( $component && is_callable( array( $component, 'is_priced_individually' ) ) && $component->is_priced_individually() ) {
+				return $price;
+			}
+		}
+
+		/* Aggregate pricing — parent has the total, zero the child. */
+		return 0.0;
 	}
 
 }
