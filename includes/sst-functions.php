@@ -591,3 +591,69 @@ function sst_integration_mode() {
 function sst_get_api_version() {
 	return 'v3';
 }
+
+/**
+ * Get the User-Agent string for API requests.
+ *
+ * @since 8.4.8
+ * @return string User-Agent string
+ */
+function sst_get_user_agent() {
+	$plugin_version = SST()->version;
+	$woo_version    = defined( 'WC_VERSION' ) ? WC_VERSION : '';
+	$php_version    = phpversion();
+
+	return sprintf(
+		'TaxCloud-WooCommerce/%s (WooCommerce %s; PHP %s)',
+		$plugin_version,
+		$woo_version,
+		$php_version
+	);
+}
+
+/**
+ * Adds the custom User-Agent to all TaxCloud API requests.
+ *
+ * @since 8.4.8
+ * @param array  $parsed_args Request arguments.
+ * @param string $url         Request URL.
+ * @return array
+ */
+function sst_add_user_agent_to_api_requests( $parsed_args, $url ) {
+	if ( strpos( $url, 'taxcloud.net' ) !== false || strpos( $url, 'taxcloud.com' ) !== false || strpos( $url, 'taxcloudapi' ) !== false ) {
+		$parsed_args['user-agent'] = sst_get_user_agent();
+	}
+	return $parsed_args;
+}
+add_filter( 'http_request_args', 'sst_add_user_agent_to_api_requests', 10, 2 );
+
+/**
+ * Injects the custom User-Agent into the TaxCloud v1 API client.
+ *
+ * @since 8.4.8
+ */
+function sst_inject_v1_user_agent() {
+	if ( ! class_exists( '\TaxCloud\Client' ) ) {
+		return;
+	}
+
+	$user_agent = sst_get_user_agent();
+	$header     = 'User-Agent: ' . $user_agent;
+
+	$injector = function() use ( $header ) {
+		foreach ( static::$headers as $key => $value ) {
+			if ( stripos( $value, 'User-Agent:' ) === 0 ) {
+				unset( static::$headers[ $key ] );
+			}
+		}
+		// Reset keys
+		static::$headers = array_values( static::$headers );
+		static::$headers[] = $header;
+	};
+
+	$bound_injector = Closure::bind( $injector, null, '\TaxCloud\Client' );
+	if ( $bound_injector ) {
+		$bound_injector();
+	}
+}
+add_action( 'init', 'sst_inject_v1_user_agent' );
