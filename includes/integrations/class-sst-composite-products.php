@@ -39,6 +39,11 @@ class SST_Composite_Products {
 
 		$order_item_id = isset( $item['key'] ) ? intval( $item['key'] ) : 0;
 
+		/* 
+		 * Cart Context: If this evaluates to 0, it means we are in the Cart. 
+		 * WooCommerce natively sets line_total to 0 for aggregate components in the cart, 
+		 * so we can safely return the already calculated $price without further checks.
+		 */
 		if ( ! $order_item_id ) {
 			return $price;
 		}
@@ -67,9 +72,14 @@ class SST_Composite_Products {
 		/* Meta not set — load the composite product and check the component. */
 		if ( '' === $priced_individually ) {
 			$composite_id = wc_get_order_item_meta( $order_item_id, '_composite_item', true );
-			$composite    = $composite_id ? wc_get_product( $composite_id ) : null;
+			
+			static $loaded_composites = array();
+			if ( $composite_id && ! isset( $loaded_composites[ $composite_id ] ) ) {
+				$loaded_composites[ $composite_id ] = wc_get_product( $composite_id );
+			}
+			$composite = $composite_id ? $loaded_composites[ $composite_id ] : null;
 
-			if ( ! $composite || ! is_callable( array( $composite, 'get_component' ) ) ) {
+			if ( ! is_a( $composite, 'WC_Product_Composite' ) ) {
 				return 0.0;
 			}
 
