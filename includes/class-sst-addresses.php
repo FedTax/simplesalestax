@@ -209,8 +209,32 @@ class SST_Addresses {
 							$location->getZip4()
 						);
 					}
-				} catch ( \TaxCloud\GetLocationsException $ex ) {
-					SST_Logger::add( 'GetLocations request failed. Error was: ' . $ex->getMessage() );
+				} catch ( \TaxCloud\Exceptions\GetLocationsException $ex ) {
+					if ( function_exists( 'wc_get_logger' ) ) {
+						wc_get_logger()->error(
+							sprintf(
+								'TaxCloud GetLocations API failed: %s (code: %d). Using cached addresses.',
+								$ex->getMessage(),
+								$ex->getCode()
+							),
+							array( 'source' => 'taxcloud' )
+						);
+					} else {
+						SST_Logger::add( 'GetLocations request failed. Error was: ' . $ex->getMessage() );
+					}
+
+					foreach ( $saved_addresses as $address ) {
+						$addresses[ $address->ID ] = new SST_Origin_Address(
+							$address->ID,
+							$address->Default,
+							$address->Address1,
+							$address->Address2,
+							$address->City,
+							$address->State,
+							$address->Zip5,
+							$address->Zip4
+						);
+					}
 				}
 			}
 		} else {

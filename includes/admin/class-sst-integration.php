@@ -387,7 +387,29 @@ class SST_Integration extends WC_Integration {
 
 		// Refresh addresses.
 		$default_origins = SST_Settings::get( 'default_origin_addresses', array() );
-		$addresses       = SST_Addresses::get_origin_addresses( true );
+
+		try {
+			$addresses = SST_Addresses::get_origin_addresses( true );
+		} catch ( \Exception $e ) {
+			if ( function_exists( 'wc_get_logger' ) ) {
+				wc_get_logger()->error(
+					sprintf(
+						'Failed to refresh origin addresses from TaxCloud: %s',
+						$e->getMessage()
+					),
+					array( 'source' => 'taxcloud' )
+				);
+			}
+
+			WC_Admin_Settings::add_error(
+				__(
+					'Unable to refresh origin addresses from TaxCloud. Your other settings have been saved. Please try again later or contact TaxCloud support if the issue persists.',
+					'simple-sales-tax'
+				)
+			);
+
+			return;
+		}
 
 		foreach ( $addresses as $address ) {
 			$address->setDefault( in_array( $address->getID(), $default_origins ) );
