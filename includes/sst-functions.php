@@ -631,29 +631,22 @@ add_filter( 'http_request_args', 'sst_add_user_agent_to_api_requests', 10, 2 );
  * Injects the custom User-Agent into the TaxCloud v1 API client.
  *
  * @since 8.4.8
+ * @param array $headers Array of HTTP headers.
+ * @return array
  */
-function sst_inject_v1_user_agent() {
-	if ( ! class_exists( '\TaxCloud\Client' ) ) {
-		return;
-	}
-
+function sst_add_user_agent_to_v1_api_requests( $headers ) {
 	$user_agent = sst_get_user_agent();
-	$header     = 'User-Agent: ' . $user_agent;
-
-	$injector = function() use ( $header ) {
-		foreach ( static::$headers as $key => $value ) {
-			if ( stripos( $value, 'User-Agent:' ) === 0 ) {
-				unset( static::$headers[ $key ] );
-			}
+	
+	// Remove any existing User-Agent headers to avoid duplicates
+	foreach ( $headers as $key => $value ) {
+		if ( stripos( $value, 'User-Agent:' ) === 0 ) {
+			unset( $headers[ $key ] );
 		}
-		// Reset keys
-		static::$headers = array_values( static::$headers );
-		static::$headers[] = $header;
-	};
-
-	$bound_injector = Closure::bind( $injector, null, '\TaxCloud\Client' );
-	if ( $bound_injector ) {
-		$bound_injector();
 	}
+	
+	$headers = array_values( $headers );
+	$headers[] = 'User-Agent: ' . $user_agent;
+	
+	return $headers;
 }
-add_action( 'init', 'sst_inject_v1_user_agent' );
+add_filter( 'taxcloud_api_headers', 'sst_add_user_agent_to_v1_api_requests' );
