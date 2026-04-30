@@ -600,11 +600,11 @@ function sst_get_api_version() {
  */
 function sst_get_user_agent() {
 	$plugin_version = SST()->version;
-	$woo_version    = defined( 'WC_VERSION' ) ? WC_VERSION : '';
+	$woo_version    = defined( 'WC_VERSION' ) ? WC_VERSION : 'Unknown';
 	$php_version    = phpversion();
 
 	return sprintf(
-		'TaxCloud-WooCommerce/%s (WooCommerce %s; PHP %s)',
+		'TaxCloud-WooCommerce/%s WooCommerce/%s PHP/%s',
 		$plugin_version,
 		$woo_version,
 		$php_version
