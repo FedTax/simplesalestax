@@ -300,16 +300,32 @@ abstract class SST_Abstract_Cart {
 	 * @since 8.4.7
 	 */
 	protected function get_v3_lookup_for_package( $package, $key ) {
-		$cart_id = $this->get_package_order_id( $key, $package );
-		$items   = array();
-		$index   = 0;
+		$cart_id  = $this->get_package_order_id( $key, $package );
+		$items    = array();
+		$index    = 0;
+		$based_on = SST_Settings::get( 'tax_based_on' );
 
 		foreach ( $package['contents'] as $item ) {
+			$line_total = $item['line_total'];
+			$qty        = $item['quantity'];
+
+			/* Mirror the tax_based_on logic from the v1 lookup path. */
+			if ( 'line-subtotal' === $based_on ) {
+				$price    = $line_total;
+				$quantity = 1;
+			} else {
+				/* Guard against division-by-zero (PHP 8 throws DivisionByZeroError). */
+				$price    = $qty > 0 ? round( $line_total / $qty, wc_get_price_decimals() ) : 0.0;
+				$quantity = $qty;
+			}
+
+			$price = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
+
 			$items[] = array(
 				'index'    => $index++,
 				'itemId'   => (string) ( $item['variation_id'] ? $item['variation_id'] : $item['product_id'] ),
-				'price'    => (float) apply_filters( 'wootax_product_price', $item['line_total'] / $item['quantity'], $item['data'], $item ),
-				'quantity' => (float) $item['quantity'],
+				'price'    => (float) $price,
+				'quantity' => (float) $quantity,
 				'tic'      => (int) SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
 			);
 		}
