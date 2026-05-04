@@ -340,7 +340,11 @@ abstract class SST_Abstract_Cart {
 			);
 		}
 
+		$local_delivery = false;
+
 		if ( ! is_null( $package['shipping'] ) ) {
+			$local_delivery = SST_Shipping::is_local_delivery( $package['shipping']->method_id );
+
 			$items[] = array(
 				'index'    => $index++,
 				'itemId'   => SST_SHIPPING_ITEM,
@@ -351,22 +355,23 @@ abstract class SST_Abstract_Cart {
 		}
 
 		$cart = array(
-			'cartId'     => $cart_id,
-			'customerId' => 'customer-' . $package['user']['ID'],
-			'currencyCode' => get_woocommerce_currency(),
-			'destination' => array(
+			'cartId'           => $cart_id,
+			'customerId'       => 'customer-' . $package['user']['ID'],
+			'currencyCode'     => get_woocommerce_currency(),
+			'deliveredBySeller' => $local_delivery,
+			'destination'      => array(
 				'city'  => $package['destination']->getCity(),
 				'line1' => $package['destination']->getAddress1(),
 				'state' => $package['destination']->getState(),
 				'zip'   => $package['destination']->getZip5(),
 			),
-			'origin' => array(
+			'origin'           => array(
 				'city'  => $package['origin']->getCity(),
 				'line1' => $package['origin']->getAddress1(),
 				'state' => $package['origin']->getState(),
 				'zip'   => $package['origin']->getZip5(),
 			),
-			'lineItems' => $items,
+			'lineItems'        => $items,
 		);
 
 		if ( ! is_null( $package['certificate'] ) ) {
