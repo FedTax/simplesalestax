@@ -589,7 +589,7 @@ function sst_integration_mode() {
  * @return string API version
  */
 function sst_get_api_version() {
-	return 'v3';
+	return SST_Settings::get( 'api_version', 'v1' );
 }
 
 /**
