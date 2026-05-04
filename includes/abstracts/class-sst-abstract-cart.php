@@ -308,7 +308,7 @@ abstract class SST_Abstract_Cart {
 			$items[] = array(
 				'index'    => $index++,
 				'itemId'   => (string) ( $item['variation_id'] ? $item['variation_id'] : $item['product_id'] ),
-				'price'    => (float) $item['line_total'] / $item['quantity'],
+				'price'    => (float) apply_filters( 'wootax_product_price', $item['line_total'] / $item['quantity'], $item['data'], $item ),
 				'quantity' => (float) $item['quantity'],
 				'tic'      => (int) SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
 			);
@@ -318,7 +318,7 @@ abstract class SST_Abstract_Cart {
 			$items[] = array(
 				'index'    => $index++,
 				'itemId'   => (string) $fee->id,
-				'price'    => (float) $fee->amount,
+				'price'    => (float) apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
 				'quantity' => 1.0,
 				'tic'      => (int) apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
 			);
@@ -328,7 +328,7 @@ abstract class SST_Abstract_Cart {
 			$items[] = array(
 				'index'    => $index++,
 				'itemId'   => SST_SHIPPING_ITEM,
-				'price'    => (float) $package['shipping']->cost,
+				'price'    => (float) apply_filters( 'wootax_shipping_price', $package['shipping']->cost, $package['shipping'] ),
 				'quantity' => 1.0,
 				'tic'      => (int) sst_get_shipping_tic( $package['shipping']->method_id ),
 			);
