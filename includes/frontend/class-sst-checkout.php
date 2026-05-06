@@ -1162,7 +1162,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 */
 	public function handle_checkout( $order, $request ) {
 		$extension_data = $request->get_param( 'extensions' );
-		$data           = $extension_data['simple-sales-tax'];
+		$data           = isset( $extension_data['simple-sales-tax'] ) ? $extension_data['simple-sales-tax'] : array();
+
+		if ( ! is_array( $data ) ) {
+			$data = array();
+		}
 
 		$error = new WP_Error();
 		$this->validate_checkout( $data, $error );

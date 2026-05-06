@@ -44,6 +44,8 @@ class SST_Order_Controller {
 			'woocommerce_order_hide_zero_taxes',
 			array( $this, 'filter_hide_zero_taxes' )
 		);
+		add_action( 'woocommerce_order_actions', array( $this, 'add_order_actions' ) );
+		add_action( 'woocommerce_order_action_sst_sync_to_taxcloud', array( $this, 'process_sync_to_taxcloud' ) );
 	}
 
 	/**
@@ -283,6 +285,44 @@ class SST_Order_Controller {
 	 */
 	public function filter_hide_zero_taxes() {
 		return 'true' !== SST_Settings::get( 'order_show_zero_tax', 'true' );
+	}
+
+	/**
+	 * Add custom order actions.
+	 *
+	 * @param array $actions Order actions.
+	 *
+	 * @return array
+	 * @since 8.4.4
+	 */
+	public function add_order_actions( $actions ) {
+		$actions['sst_sync_to_taxcloud'] = __( 'Sync to TaxCloud', 'simple-sales-tax' );
+		return $actions;
+	}
+
+	/**
+	 * Process the manual Sync to TaxCloud action.
+	 *
+	 * @param WC_Order $order WooCommerce order object.
+	 *
+	 * @since 8.4.4
+	 */
+	public function process_sync_to_taxcloud( $order ) {
+		$sst_order = new SST_Order( $order );
+
+		// Temporarily set status back to pending to bypass "Order already captured" check
+		$sst_order->update_meta( 'status', 'pending' );
+
+		try {
+			$result = $sst_order->do_capture();
+			if ( $result ) {
+				$order->add_order_note( __( 'Order successfully synced to TaxCloud manually.', 'simple-sales-tax' ) );
+			} else {
+				$order->add_order_note( __( 'Failed to sync order to TaxCloud manually. Please check logs for details.', 'simple-sales-tax' ) );
+			}
+		} catch ( Exception $ex ) {
+			$order->add_order_note( sprintf( __( 'Error syncing to TaxCloud: %s', 'simple-sales-tax' ), $ex->getMessage() ) );
+		}
 	}
 
 }
