@@ -446,13 +446,38 @@ class SST_Certificates {
 					$states[] = array( 'abbreviation' => $state->getStateAbbr() );
 				}
 
+				// Map v1 exemption reason names to v3 API enum values.
+				$v1_to_v3_reason_map = array(
+					'FederalGovernmentDepartment'         => 'FederalGovernment',
+					'StateOrLocalGovernmentName'          => 'StateOrLocalGovernment',
+					'TribalGovernmentName'                => 'TribalGovernment',
+					'ForeignDiplomat'                     => 'ForeignDiplomat',
+					'CharitableOrganization'              => 'CharitableOrganization',
+					'ReligiousOrEducationalOrganization'  => 'ReligiousOrganization',
+					'Resale'                              => 'Resale',
+					'AgriculturalProduction'              => 'AgriculturalProduction',
+					'IndustrialProductionOrManufacturing' => 'IndustrialProductionOrManufacturing',
+					'DirectPayPermit'                     => 'DirectPayPermit',
+					'DirectMail'                          => 'DirectMail',
+					'Other'                               => 'Other',
+				);
+
+				$v1_reason = $detail->getPurchaserExemptionReason() ?: 'Other';
+				$v3_reason = isset( $v1_to_v3_reason_map[ $v1_reason ] ) ? $v1_to_v3_reason_map[ $v1_reason ] : 'Other';
+
+				// v3 API enforces a strict 20-character limit on reasonDescription.
+				$reason_description = $detail->getPurchaserExemptionReasonValue();
+				if ( strlen( $reason_description ) > 20 ) {
+					$reason_description = substr( $reason_description, 0, 20 );
+				}
+
 				$v3_args = array(
 					'customerId'           => (string) $user->ID,
 					'customerName'         => trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() ),
 					'customerBusinessType' => $detail->getPurchaserBusinessType() ?: 'Other',
 					'customerBusinessDescription' => $detail->getPurchaserBusinessTypeOtherValue(),
-					'reason'               => $detail->getPurchaserExemptionReason() ?: 'Other',
-					'reasonDescription'    => $detail->getPurchaserExemptionReasonValue(),
+					'reason'               => $v3_reason,
+					'reasonDescription'    => $reason_description,
 					'address'              => array(
 						'line1' => $detail->getPurchaserAddress1(),
 						'line2' => $detail->getPurchaserAddress2(),
@@ -461,6 +486,12 @@ class SST_Certificates {
 						'zip'   => substr( $detail->getPurchaserZip(), 0, 5 ),
 					),
 					'states' => $states
+				);
+
+				// Log the payload for debugging certificate creation issues.
+				SST_Logger::add(
+					__( 'V3 exemption certificate payload:', 'simple-sales-tax' ),
+					$v3_args
 				);
 
 				$v3_exemptions = new \TaxCloud_V3\Exemptions();
