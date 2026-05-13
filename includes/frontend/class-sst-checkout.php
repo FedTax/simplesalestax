@@ -831,6 +831,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 			$order->update_taxes();
 			$order->calculate_totals( false );
 		}
+
+		$order->save();
 	}
 
 	/**
