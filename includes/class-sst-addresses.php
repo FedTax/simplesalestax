@@ -209,8 +209,8 @@ class SST_Addresses {
 							$location->getZip4()
 						);
 					}
-				} catch ( \TaxCloud\GetLocationsException $ex ) {
-					SST_Logger::add( 'GetLocations request failed. Error was: ' . $ex->getMessage() );
+				} catch ( \TaxCloud\Exceptions\GetLocationsException $ex ) {
+					SST_Logger::error( 'GetLocations request failed. Error was: ' . $ex->getMessage() );
 				}
 			}
 		} else {

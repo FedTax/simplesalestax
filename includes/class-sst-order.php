@@ -765,7 +765,7 @@ class SST_Order extends SST_Abstract_Cart {
 				);
 
 				// Logging
-				SST_Logger::order_log( __( 'Sending AuthorizedWithCapture request.', 'simple-sales-tax' ), $order->get_id(), $request );
+				SST_Logger::order_log( __( 'Sending AuthorizedWithCapture request.', 'simple-sales-tax' ), $order->get_id(), wp_json_encode( $request ) );
 
 				TaxCloud()->AuthorizedWithCapture( $request );
 
@@ -1169,7 +1169,7 @@ class SST_Order extends SST_Abstract_Cart {
 			$order_id = $this->get_package_order_id( $key, $package );
 
 			// Create order in TaxCloud.
-			$order_response = $txc_order->create_order([
+			$payload = [
 				'completedDate' => $now,
 				'customerId' => 'customer-' . $package['customer_id'],
 				'destination' => $package['destination'],
@@ -1178,7 +1178,11 @@ class SST_Order extends SST_Abstract_Cart {
 				'origin' => $package['origin'],
 				'transactionDate' => $now,
 				'currencyCode' => $order->get_currency(),
-			]);
+			];
+
+			SST_Logger::order_log( __( 'Sending Create Order request to TaxCloud v3.', 'simple-sales-tax' ), $order->get_id(), wp_json_encode( $payload ) );
+
+			$order_response = $txc_order->create_order($payload);
 
 			// Check error.
 			if( !is_wp_error( $order_response ) ) {
