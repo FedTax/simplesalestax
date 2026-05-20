@@ -642,6 +642,11 @@ class SST_Order extends SST_Abstract_Cart {
 	/**
 	 * Get order id for given package.
 	 *
+	 * Note: This overrides SST_Abstract_Cart::get_package_order_id().
+	 * Cart-side lookup uses the MD5-hash version, while order-side capture
+	 * uses this override returning '{order_id}_{key}'. This works because
+	 * $package['cart_id'] is preserved through compress_package_data.
+	 *
 	 * @param string $package_key Package key.
 	 * @param array  $package     Package (default: array()).
 	 *

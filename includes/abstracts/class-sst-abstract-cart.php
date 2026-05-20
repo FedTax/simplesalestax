@@ -435,6 +435,12 @@ abstract class SST_Abstract_Cart {
 	/**
 	 * Get a unique ID for a package for use as a CartID in TaxCloud.
 	 *
+	 * Note: SST_Order overrides this method to return '{order_id}_{key}'
+	 * instead of an MD5 hash of the package contents and destination.
+	 * The cart-side lookup uses this MD5-based version, whereas the order-side
+	 * capture uses the override. This works properly because $package['cart_id']
+	 * is preserved through compress_package_data.
+	 *
 	 * @param mixed $key     Package key.
 	 * @param array $package Package data.
 	 * @return string ID.
