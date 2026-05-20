@@ -375,8 +375,31 @@ abstract class SST_Abstract_Cart {
 		);
 
 		if ( ! is_null( $package['certificate'] ) ) {
+			$certificate = $package['certificate'];
+			$certificate_id = $certificate->getCertificateID();
+
+			if ( empty( $certificate_id ) && is_a( $certificate, 'TaxCloud\ExemptionCertificate' ) ) {
+				try {
+					$user_id = isset( $package['user']['ID'] ) ? $package['user']['ID'] : 0;
+					$certificate_id = SST_Certificates::add_certificate_object( $certificate, $user_id );
+
+					if ( ! empty( $certificate_id ) ) {
+						$ref_prop = new \ReflectionProperty( 'TaxCloud\ExemptionCertificateBase', 'CertificateID' );
+						$ref_prop->setAccessible( true );
+						$ref_prop->setValue( $certificate, $certificate_id );
+
+						if ( is_a( $this, 'SST_Order' ) ) {
+							$this->set_single_purchase_certificate( $certificate );
+							$this->save();
+						}
+					}
+				} catch ( Exception $ex ) {
+					SST_Logger::add( 'Failed to register single-purchase certificate in V3: ' . $ex->getMessage() );
+				}
+			}
+
 			$cart['exemption'] = array(
-				'exemptionId' => $package['certificate']->getCertificateID(),
+				'exemptionId' => $certificate_id,
 			);
 		}
 
