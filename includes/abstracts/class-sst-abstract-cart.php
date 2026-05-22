@@ -384,6 +384,10 @@ abstract class SST_Abstract_Cart {
 					$certificate_id = SST_Certificates::add_certificate_object( $certificate, $user_id );
 
 					if ( ! empty( $certificate_id ) ) {
+						if ( ! property_exists( 'TaxCloud\ExemptionCertificateBase', 'CertificateID' ) ) {
+							throw new Exception( 'TaxCloud\ExemptionCertificateBase::CertificateID property is not available.' );
+						}
+
 						$ref_prop = new \ReflectionProperty( 'TaxCloud\ExemptionCertificateBase', 'CertificateID' );
 						$ref_prop->setAccessible( true );
 						$ref_prop->setValue( $certificate, $certificate_id );
@@ -398,9 +402,13 @@ abstract class SST_Abstract_Cart {
 				}
 			}
 
-			$cart['exemption'] = array(
-				'exemptionId' => $certificate_id,
-			);
+			if ( ! empty( $certificate_id ) ) {
+				$cart['exemption'] = array(
+					'exemptionId' => $certificate_id,
+				);
+			} else {
+				SST_Logger::add( 'Skipping V3 exemption payload because certificate ID is empty.' );
+			}
 		}
 
 		return array(
@@ -447,7 +455,30 @@ abstract class SST_Abstract_Cart {
 	 * @since 8.4.7
 	 */
 	protected function get_package_order_id( $key, $package ) {
-		return md5( serialize( $package['contents'] ) . serialize( $package['destination'] ) );
+		$certificate_id = '';
+		if ( isset( $package['certificate'] ) && is_object( $package['certificate'] ) && method_exists( $package['certificate'], 'getCertificateID' ) ) {
+			$certificate_id = $package['certificate']->getCertificateID();
+
+			if ( empty( $certificate_id ) && method_exists( $package['certificate'], 'getDetail' ) ) {
+				$certificate_id = md5( wp_json_encode( $package['certificate']->getDetail() ) );
+			}
+		} else if ( isset( $package['certificate_id'] ) ) {
+			$certificate_id = $package['certificate_id'];
+		}
+
+		$session_customer_id = '';
+		if ( function_exists( 'WC' ) && WC()->session && method_exists( WC()->session, 'get_customer_id' ) ) {
+			$session_customer_id = WC()->session->get_customer_id();
+		}
+
+		return md5(
+			serialize( $package['contents'] ) .
+			serialize( $package['destination'] ) .
+			serialize( $key ) .
+			serialize( isset( $package['user']['ID'] ) ? $package['user']['ID'] : 0 ) .
+			serialize( $certificate_id ) .
+			serialize( $session_customer_id )
+		);
 	}
 
 	/**
