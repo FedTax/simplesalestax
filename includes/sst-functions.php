@@ -589,5 +589,64 @@ function sst_integration_mode() {
  * @return string API version
  */
 function sst_get_api_version() {
-	return 'v3';
+	return SST_Settings::get( 'api_version', 'v1' );
 }
+
+/**
+ * Get the User-Agent string for API requests.
+ *
+ * @since 8.4.8
+ * @return string User-Agent string
+ */
+function sst_get_user_agent() {
+	$plugin_version = SST()->version;
+	$woo_version    = defined( 'WC_VERSION' ) ? WC_VERSION : 'Unknown';
+	$php_version    = phpversion();
+
+	return sprintf(
+		'TaxCloud-WooCommerce/%s WooCommerce/%s PHP/%s',
+		$plugin_version,
+		$woo_version,
+		$php_version
+	);
+}
+
+/**
+ * Adds the custom User-Agent to all TaxCloud API requests.
+ *
+ * @since 8.4.8
+ * @param array  $parsed_args Request arguments.
+ * @param string $url         Request URL.
+ * @return array
+ */
+function sst_add_user_agent_to_api_requests( $parsed_args, $url ) {
+	if ( strpos( $url, 'taxcloud.net' ) !== false || strpos( $url, 'taxcloud.com' ) !== false || strpos( $url, 'taxcloudapi' ) !== false ) {
+		$parsed_args['user-agent'] = sst_get_user_agent();
+	}
+	return $parsed_args;
+}
+add_filter( 'http_request_args', 'sst_add_user_agent_to_api_requests', 10, 2 );
+
+/**
+ * Injects the custom User-Agent into the TaxCloud v1 API client.
+ *
+ * @since 8.4.8
+ * @param array $headers Array of HTTP headers.
+ * @return array
+ */
+function sst_add_user_agent_to_v1_api_requests( $headers ) {
+	$user_agent = sst_get_user_agent();
+	
+	// Remove any existing User-Agent headers to avoid duplicates
+	foreach ( $headers as $key => $value ) {
+		if ( stripos( $value, 'User-Agent:' ) === 0 ) {
+			unset( $headers[ $key ] );
+		}
+	}
+	
+	$headers = array_values( $headers );
+	$headers[] = 'User-Agent: ' . $user_agent;
+	
+	return $headers;
+}
+add_filter( 'taxcloud_api_headers', 'sst_add_user_agent_to_v1_api_requests' );

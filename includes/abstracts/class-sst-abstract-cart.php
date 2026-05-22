@@ -300,16 +300,32 @@ abstract class SST_Abstract_Cart {
 	 * @since 8.4.7
 	 */
 	protected function get_v3_lookup_for_package( $package, $key ) {
-		$cart_id = $this->get_package_order_id( $key, $package );
-		$items   = array();
-		$index   = 0;
+		$cart_id  = $this->get_package_order_id( $key, $package );
+		$items    = array();
+		$index    = 0;
+		$based_on = SST_Settings::get( 'tax_based_on' );
 
 		foreach ( $package['contents'] as $item ) {
+			$line_total = $item['line_total'];
+			$qty        = $item['quantity'];
+
+			/* Mirror the tax_based_on logic from the v1 lookup path. */
+			if ( 'line-subtotal' === $based_on ) {
+				$price    = $line_total;
+				$quantity = 1;
+			} else {
+				/* Guard against division-by-zero (PHP 8 throws DivisionByZeroError). */
+				$price    = $qty > 0 ? round( $line_total / $qty, wc_get_price_decimals() ) : 0.0;
+				$quantity = $qty;
+			}
+
+			$price = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
+
 			$items[] = array(
 				'index'    => $index++,
 				'itemId'   => (string) ( $item['variation_id'] ? $item['variation_id'] : $item['product_id'] ),
-				'price'    => (float) $item['line_total'] / $item['quantity'],
-				'quantity' => (float) $item['quantity'],
+				'price'    => (float) $price,
+				'quantity' => (float) $quantity,
 				'tic'      => (int) SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
 			);
 		}
@@ -318,44 +334,72 @@ abstract class SST_Abstract_Cart {
 			$items[] = array(
 				'index'    => $index++,
 				'itemId'   => (string) $fee->id,
-				'price'    => (float) $fee->amount,
+				'price'    => (float) apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
 				'quantity' => 1.0,
 				'tic'      => (int) apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
 			);
 		}
 
+		$local_delivery = false;
+
 		if ( ! is_null( $package['shipping'] ) ) {
+			$local_delivery = SST_Shipping::is_local_delivery( $package['shipping']->method_id );
+
 			$items[] = array(
 				'index'    => $index++,
 				'itemId'   => SST_SHIPPING_ITEM,
-				'price'    => (float) $package['shipping']->cost,
+				'price'    => (float) apply_filters( 'wootax_shipping_price', $package['shipping']->cost, $package['shipping'] ),
 				'quantity' => 1.0,
 				'tic'      => (int) sst_get_shipping_tic( $package['shipping']->method_id ),
 			);
 		}
 
 		$cart = array(
-			'cartId'     => $cart_id,
-			'customerId' => 'customer-' . $package['user']['ID'],
-			'currencyCode' => get_woocommerce_currency(),
-			'destination' => array(
+			'cartId'           => $cart_id,
+			'customerId'       => 'customer-' . $package['user']['ID'],
+			'currencyCode'     => get_woocommerce_currency(),
+			'deliveredBySeller' => $local_delivery,
+			'destination'      => array(
 				'city'  => $package['destination']->getCity(),
 				'line1' => $package['destination']->getAddress1(),
 				'state' => $package['destination']->getState(),
 				'zip'   => $package['destination']->getZip5(),
 			),
-			'origin' => array(
+			'origin'           => array(
 				'city'  => $package['origin']->getCity(),
 				'line1' => $package['origin']->getAddress1(),
 				'state' => $package['origin']->getState(),
 				'zip'   => $package['origin']->getZip5(),
 			),
-			'lineItems' => $items,
+			'lineItems'        => $items,
 		);
 
 		if ( ! is_null( $package['certificate'] ) ) {
+			$certificate = $package['certificate'];
+			$certificate_id = $certificate->getCertificateID();
+
+			if ( empty( $certificate_id ) && is_a( $certificate, 'TaxCloud\ExemptionCertificate' ) ) {
+				try {
+					$user_id = isset( $package['user']['ID'] ) ? $package['user']['ID'] : 0;
+					$certificate_id = SST_Certificates::add_certificate_object( $certificate, $user_id );
+
+					if ( ! empty( $certificate_id ) ) {
+						$ref_prop = new \ReflectionProperty( 'TaxCloud\ExemptionCertificateBase', 'CertificateID' );
+						$ref_prop->setAccessible( true );
+						$ref_prop->setValue( $certificate, $certificate_id );
+
+						if ( is_a( $this, 'SST_Order' ) ) {
+							$this->set_single_purchase_certificate( $certificate );
+							$this->save();
+						}
+					}
+				} catch ( Exception $ex ) {
+					SST_Logger::add( 'Failed to register single-purchase certificate in V3: ' . $ex->getMessage() );
+				}
+			}
+
 			$cart['exemption'] = array(
-				'exemptionId' => $package['certificate']->getCertificateID(),
+				'exemptionId' => $certificate_id,
 			);
 		}
 
@@ -390,6 +434,12 @@ abstract class SST_Abstract_Cart {
 
 	/**
 	 * Get a unique ID for a package for use as a CartID in TaxCloud.
+	 *
+	 * Note: SST_Order overrides this method to return '{order_id}_{key}'
+	 * instead of an MD5 hash of the package contents and destination.
+	 * The cart-side lookup uses this MD5-based version, whereas the order-side
+	 * capture uses the override. This works properly because $package['cart_id']
+	 * is preserved through compress_package_data.
 	 *
 	 * @param mixed $key     Package key.
 	 * @param array $package Package data.
