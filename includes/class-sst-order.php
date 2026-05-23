@@ -642,6 +642,11 @@ class SST_Order extends SST_Abstract_Cart {
 	/**
 	 * Get order id for given package.
 	 *
+	 * Note: This overrides SST_Abstract_Cart::get_package_order_id().
+	 * Cart-side lookup uses the MD5-hash version, while order-side capture
+	 * uses this override returning '{order_id}_{key}'. This works because
+	 * $package['cart_id'] is preserved through compress_package_data.
+	 *
 	 * @param string $package_key Package key.
 	 * @param array  $package     Package (default: array()).
 	 *
@@ -739,6 +744,10 @@ class SST_Order extends SST_Abstract_Cart {
 			SST_Logger::order_log( __( 'Data Mover Mode enabled. Creating order in TaxCloud.', 'simple-sales-tax' ), $order->get_id() );
 			$created_order = $this->create_order_in_taxcloud( $packages, $order );
 			return true;
+		}
+
+		if ( sst_get_api_version() === 'v3' ) {
+			return $this->capture_order_v3( $packages, $order );
 		}
 
 		// Logging
@@ -1142,7 +1151,7 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
-	 * Create order in TaxCloud.
+	 * Create order in TaxCloud using direct V3 Orders API.
 	 *
 	 * @param array    $packages Packages.
 	 * @param WC_Order $order    Order.
@@ -1195,6 +1204,40 @@ class SST_Order extends SST_Abstract_Cart {
 				return false;
 			}
 		}
+
+		return true;
+	}
+
+	/**
+	 * Capture order in TaxCloud using V3 Carts/Orders API.
+	 *
+	 * @param array    $packages Packages.
+	 * @param WC_Order $order    Order.
+	 *
+	 * @return bool True on success, false on failure.
+	 * @since 8.4.7
+	 */
+	protected function capture_order_v3( $packages, $order ) {
+		$carts_api = new TaxCloud_V3\Carts();
+
+		foreach ( $packages as $key => $package ) {
+			$order_id = $this->get_package_order_id( $key, $package );
+			$cart_id  = isset( $package['cart_id'] ) ? $package['cart_id'] : $order_id;
+
+			$response = $carts_api->create_order( $cart_id, $order_id, true );
+
+			if ( is_wp_error( $response ) ) {
+				SST_Logger::order_log( __( 'Failed to create order from cart in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $response->get_error_message() );
+				return false;
+			}
+		}
+
+		// Update TaxCloud Order Status
+		$this->update_meta( 'status', 'captured' );
+		SST_Logger::order_log( __( 'Order status updated to captured (V3).', 'simple-sales-tax' ), $order->get_id() );
+		$order->save();
+
+		return true;
 	}
 
 }

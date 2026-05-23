@@ -112,7 +112,7 @@ class SST_Settings {
 				'desc_tip'    => true,
 				'default'     => '',
 			),
-			// 'tc_connection_id'            => array(
+			// 'tc_integration_id'            => array(
 			// 	'title'       => __( 'TaxCloud Connection ID', 'simple-sales-tax' ),
 			// 	'type'        => 'text',
 			// 	'description' => __(
@@ -370,6 +370,20 @@ class SST_Settings {
 				'default'     => 'item-price',
 				'description' => __(
 					'"Item Price": TaxCloud determines the taxable amount for a line item by multiplying the item price by its quantity. "Line Subtotal": the taxable amount is determined by the line subtotal. Useful in instances where rounding becomes an issue.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
+			'api_version'                 => array(
+				'title'       => __( 'API Version', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'v1' => __( 'V1 (Legacy)', 'simple-sales-tax' ),
+					'v3' => __( 'V3', 'simple-sales-tax' ),
+				),
+				'default'     => 'v1',
+				'description' => __(
+					'Select the TaxCloud API version to use for tax lookups. V1 is the legacy API. V3 is the latest version with improved features. Only switch to V3 if advised by TaxCloud support.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,

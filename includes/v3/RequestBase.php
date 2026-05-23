@@ -74,10 +74,7 @@ abstract class RequestBase {
 	/**
 	 * Exchange v1 credentials for v3 Bearer token.
 	 *
-	 * @param string|null $api_login_id TaxCloud API Login ID.
-	 * @param string|null $api_key      TaxCloud API Key.
-	 *
-	 * @return string|WP_Error Access token on success, WP_Error on failure.
+	 * @return string|\WP_Error Access token on success, WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public function get_auth_token( $api_login_id = null, $api_key = null ) {
@@ -89,35 +86,35 @@ abstract class RequestBase {
 
 		// TODO: Implement caching & refresh token
 
-		$response = wp_remote_post( self::get_auth_url(), array(
+		$response = \wp_remote_post( self::get_auth_url(), array(
 			'headers' => array(
 				'Content-Type' => 'application/json',
 			),
-			'body'    => json_encode( array(
+			'body'    => \json_encode( array(
 				'apiLoginID' => $api_login_id,
 				'apiKey'     => $api_key,
 			) ),
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
+		if ( \is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
+		$code = \wp_remote_retrieve_response_code( $response );
+		$body = \wp_remote_retrieve_body( $response );
+		$data = \json_decode( $body, true );
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_auth_error', 'Failed to authenticate with TaxCloud v3 API: ' . ( isset( $data['message'] ) ? $data['message'] : $body ) );
+			return new \WP_Error( 'sst_v3_auth_error', 'Failed to authenticate with TaxCloud v3 API: ' . ( isset( $data['message'] ) ? $data['message'] : $body ) );
 		}
 
 		if ( empty( $data['access_token'] ) ) {
-			return new WP_Error( 'sst_v3_auth_error', 'No access token received from TaxCloud v3 API.' );
+			return new \WP_Error( 'sst_v3_auth_error', 'No access token received from TaxCloud v3 API.' );
 		}
 
 		if ( ! empty( $data['connection_id'] ) && strlen( $data['connection_id'] ) > 10 ) {
-			SST_Settings::set( 'tc_connection_id', $data['connection_id'] );
+			SST_Settings::set( 'tc_integration_id', $data['connection_id'] ); // Set integration id which returns from taxcloud
 		}
 
 		return $data['access_token'];
@@ -126,16 +123,15 @@ abstract class RequestBase {
 	/**
 	 * Get connection settings using Bearer token.
 	 *
-	 * @param string $api_key      TaxCloud API Key (used as connection ID).
 	 * @param string $access_token Bearer token.
 	 *
-	 * @return array|WP_Error Settings array on success, WP_Error on failure.
+	 * @return array|\WP_Error Settings array on success, \WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public static function get_connection_settings( $api_key, $access_token ) {
 		$url = self::get_mgmt_url() . '/connections/' . $api_key;
 
-		$response = wp_remote_get( $url, array(
+		$response = \wp_remote_get( $url, array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $access_token,
 				'Content-Type'  => 'application/json',
@@ -143,12 +139,12 @@ abstract class RequestBase {
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
+		if ( \is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
+		$code = \wp_remote_retrieve_response_code( $response );
+		$body = \wp_remote_retrieve_body( $response );
 
 		if ( $code === 404 ) {
 			// Connection settings don't exist yet, which is normal for new connections.
@@ -157,7 +153,7 @@ abstract class RequestBase {
 		}
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_settings_error', 'Failed to retrieve connection settings: ' . $body );
+			return new \WP_Error( 'sst_v3_settings_error', 'Failed to retrieve connection settings: ' . $body );
 		}
 
 		return json_decode( $body, true );
@@ -168,7 +164,7 @@ abstract class RequestBase {
 	 *
 	 * @param array $args Request arguments.
 	 *
-	 * @return array|WP_Error Response object on success, or WP_Error object on failure.
+	 * @return array|\WP_Error Response object on success, or WP_Error object on failure.
 	 * @since 8.4.1
 	 */
 	public function prepare_item_for_request( $args ) {

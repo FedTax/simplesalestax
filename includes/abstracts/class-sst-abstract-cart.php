@@ -162,7 +162,7 @@ abstract class SST_Abstract_Cart {
 		$packages = array();
 		$data_mover = SST_Settings::get( 'data_mover' );
 
-		foreach ( $this->create_packages() as $package ) {
+		foreach ( $this->create_packages() as $key => $package ) {
 			if ( ! $this->should_do_lookup( $package ) ) {
 				continue;
 			}
@@ -192,7 +192,7 @@ abstract class SST_Abstract_Cart {
 
 			if ( 'yes' === $force_tax_lookup || false === $saved_package ) {
 				$saved_package = $this->compress_package_data(
-					$this->do_package_lookup( $package )
+					$this->do_package_lookup( $package, $key )
 				);
 
 				if ( $saved_package ) {
@@ -218,10 +218,11 @@ abstract class SST_Abstract_Cart {
 	 * Perform a tax lookup for a shipping package.
 	 *
 	 * @param array $package Package to perform tax lookup for.
+	 * @param mixed $key     Package key.
 	 *
 	 * @return array Updated package.
 	 */
-	protected function do_package_lookup( $package ) {
+	protected function do_package_lookup( $package, $key = null ) {
 		// Skip lookup if real-time tax calculation is disabled. [Data Import Mode]
 		if ( 'data_mover' === sst_integration_mode() ) {
 			SST_Logger::add( __( 'Real-time tax calculation is disabled. Skipping lookup.', 'simple-sales-tax' ) );
@@ -233,6 +234,10 @@ abstract class SST_Abstract_Cart {
 		if ( $rate_limit->limit_reached() ) {
 			$rate_limit->log_limit_reached();
 			return $package;
+		}
+
+		if ( sst_get_api_version() === 'v3' ) {
+			return $this->do_v3_package_lookup( $package, $key, $rate_limit );
 		}
 
 		try {
@@ -249,6 +254,231 @@ abstract class SST_Abstract_Cart {
 		}
 
 		return $package;
+	}
+
+	/**
+	 * Perform a V3 tax lookup for a shipping package.
+	 *
+	 * @param array          $package    Package to perform tax lookup for.
+	 * @param mixed          $key        Package key.
+	 * @param SST_Rate_Limit $rate_limit Rate limit object.
+	 *
+	 * @return array Updated package.
+	 * @since 8.4.7
+	 */
+	protected function do_v3_package_lookup( $package, $key, $rate_limit ) {
+		$carts_api = new TaxCloud_V3\Carts();
+		$request   = $this->get_v3_lookup_for_package( $package, $key );
+
+		try {
+			$response = $carts_api->calculate_tax( $request );
+
+			if ( is_wp_error( $response ) ) {
+				$package['response'] = $response;
+			} else {
+				$package['response'] = $this->prepare_v3_response( $response );
+				$package['cart_id']  = key( $package['response'] );
+				$rate_limit->increment_count();
+			}
+
+			SST_Logger::debug( __( 'TaxCloud V3 lookup response:', 'simple-sales-tax' ), $package );
+		} catch ( Exception $ex ) {
+			$package['response'] = new WP_Error( 'lookup_error', $ex->getMessage() );
+			SST_Logger::debug( __( 'TaxCloud V3 lookup failed. Exception:', 'simple-sales-tax' ), $ex );
+		}
+
+		return $package;
+	}
+
+	/**
+	 * Generate a V3 Lookup request for a given package.
+	 *
+	 * @param array $package Package to construct Lookup request for.
+	 * @param mixed $key     Package key.
+	 *
+	 * @return array
+	 * @since 8.4.7
+	 */
+	protected function get_v3_lookup_for_package( $package, $key ) {
+		$cart_id  = $this->get_package_order_id( $key, $package );
+		$items    = array();
+		$index    = 0;
+		$based_on = SST_Settings::get( 'tax_based_on' );
+
+		foreach ( $package['contents'] as $item ) {
+			$line_total = $item['line_total'];
+			$qty        = $item['quantity'];
+
+			/* Mirror the tax_based_on logic from the v1 lookup path. */
+			if ( 'line-subtotal' === $based_on ) {
+				$price    = $line_total;
+				$quantity = 1;
+			} else {
+				/* Guard against division-by-zero (PHP 8 throws DivisionByZeroError). */
+				$price    = $qty > 0 ? round( $line_total / $qty, wc_get_price_decimals() ) : 0.0;
+				$quantity = $qty;
+			}
+
+			$price = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
+
+			$items[] = array(
+				'index'    => $index++,
+				'itemId'   => (string) ( $item['variation_id'] ? $item['variation_id'] : $item['product_id'] ),
+				'price'    => (float) $price,
+				'quantity' => (float) $quantity,
+				'tic'      => (int) SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
+			);
+		}
+
+		foreach ( $package['fees'] as $fee ) {
+			$items[] = array(
+				'index'    => $index++,
+				'itemId'   => (string) $fee->id,
+				'price'    => (float) apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
+				'quantity' => 1.0,
+				'tic'      => (int) apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
+			);
+		}
+
+		$local_delivery = false;
+
+		if ( ! is_null( $package['shipping'] ) ) {
+			$local_delivery = SST_Shipping::is_local_delivery( $package['shipping']->method_id );
+
+			$items[] = array(
+				'index'    => $index++,
+				'itemId'   => SST_SHIPPING_ITEM,
+				'price'    => (float) apply_filters( 'wootax_shipping_price', $package['shipping']->cost, $package['shipping'] ),
+				'quantity' => 1.0,
+				'tic'      => (int) sst_get_shipping_tic( $package['shipping']->method_id ),
+			);
+		}
+
+		$cart = array(
+			'cartId'           => $cart_id,
+			'customerId'       => 'customer-' . $package['user']['ID'],
+			'currencyCode'     => get_woocommerce_currency(),
+			'deliveredBySeller' => $local_delivery,
+			'destination'      => array(
+				'city'  => $package['destination']->getCity(),
+				'line1' => $package['destination']->getAddress1(),
+				'state' => $package['destination']->getState(),
+				'zip'   => $package['destination']->getZip5(),
+			),
+			'origin'           => array(
+				'city'  => $package['origin']->getCity(),
+				'line1' => $package['origin']->getAddress1(),
+				'state' => $package['origin']->getState(),
+				'zip'   => $package['origin']->getZip5(),
+			),
+			'lineItems'        => $items,
+		);
+
+		if ( ! is_null( $package['certificate'] ) ) {
+			$certificate = $package['certificate'];
+			$certificate_id = $certificate->getCertificateID();
+
+			if ( empty( $certificate_id ) && is_a( $certificate, 'TaxCloud\ExemptionCertificate' ) ) {
+				try {
+					$user_id = isset( $package['user']['ID'] ) ? $package['user']['ID'] : 0;
+					$certificate_id = SST_Certificates::add_certificate_object( $certificate, $user_id );
+
+					if ( ! empty( $certificate_id ) ) {
+						if ( ! property_exists( 'TaxCloud\ExemptionCertificateBase', 'CertificateID' ) ) {
+							throw new Exception( 'TaxCloud\ExemptionCertificateBase::CertificateID property is not available.' );
+						}
+
+						$ref_prop = new \ReflectionProperty( 'TaxCloud\ExemptionCertificateBase', 'CertificateID' );
+						$ref_prop->setAccessible( true );
+						$ref_prop->setValue( $certificate, $certificate_id );
+
+						if ( is_a( $this, 'SST_Order' ) ) {
+							$this->set_single_purchase_certificate( $certificate );
+							$this->save();
+						}
+					}
+				} catch ( Exception $ex ) {
+					SST_Logger::add( 'Failed to register single-purchase certificate in V3: ' . $ex->getMessage() );
+				}
+			}
+
+			if ( ! empty( $certificate_id ) ) {
+				$cart['exemption'] = array(
+					'exemptionId' => $certificate_id,
+				);
+			} else {
+				SST_Logger::add( 'Skipping V3 exemption payload because certificate ID is empty.' );
+			}
+		}
+
+		return array(
+			'items' => array( $cart ),
+		);
+	}
+
+	/**
+	 * Prepare V3 response for use by calculate_taxes.
+	 *
+	 * @param array $response V3 API response.
+	 *
+	 * @return array
+	 * @since 8.4.7
+	 */
+	protected function prepare_v3_response( $response ) {
+		$formatted_response = array();
+
+		if ( isset( $response['items'] ) ) {
+			foreach ( $response['items'] as $cart ) {
+				$tax_amounts = array();
+				foreach ( $cart['lineItems'] as $item ) {
+					$tax_amounts[ $item['index'] ] = $item['tax']['amount'];
+				}
+				$formatted_response[ $cart['cartId'] ] = $tax_amounts;
+			}
+		}
+
+		return $formatted_response;
+	}
+
+	/**
+	 * Get a unique ID for a package for use as a CartID in TaxCloud.
+	 *
+	 * Note: SST_Order overrides this method to return '{order_id}_{key}'
+	 * instead of an MD5 hash of the package contents and destination.
+	 * The cart-side lookup uses this MD5-based version, whereas the order-side
+	 * capture uses the override. This works properly because $package['cart_id']
+	 * is preserved through compress_package_data.
+	 *
+	 * @param mixed $key     Package key.
+	 * @param array $package Package data.
+	 * @return string ID.
+	 * @since 8.4.7
+	 */
+	protected function get_package_order_id( $key, $package ) {
+		$certificate_id = '';
+		if ( isset( $package['certificate'] ) && is_object( $package['certificate'] ) && method_exists( $package['certificate'], 'getCertificateID' ) ) {
+			$certificate_id = $package['certificate']->getCertificateID();
+
+			if ( empty( $certificate_id ) && method_exists( $package['certificate'], 'getDetail' ) ) {
+				$certificate_id = md5( wp_json_encode( $package['certificate']->getDetail() ) );
+			}
+		} else if ( isset( $package['certificate_id'] ) ) {
+			$certificate_id = $package['certificate_id'];
+		}
+
+		$session_customer_id = '';
+		if ( function_exists( 'WC' ) && WC()->session && method_exists( WC()->session, 'get_customer_id' ) ) {
+			$session_customer_id = WC()->session->get_customer_id();
+		}
+
+		return md5(
+			serialize( $package['contents'] ) .
+			serialize( $package['destination'] ) .
+			serialize( $key ) .
+			serialize( isset( $package['user']['ID'] ) ? $package['user']['ID'] : 0 ) .
+			serialize( $certificate_id ) .
+			serialize( $session_customer_id )
+		);
 	}
 
 	/**

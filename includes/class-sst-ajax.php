@@ -85,7 +85,7 @@ class SST_Ajax {
 				SST_TaxCloud_V3_API::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
 
 				wp_send_json_success( array(
-					'connection_id' => SST_Settings::get( 'tc_connection_id' ),
+					'tc_integration_id' => SST_Settings::get( 'tc_integration_id' ),
 				) );
 			} catch ( Exception $ex ) {
 				wp_send_json_error( $ex->getMessage() );
@@ -379,7 +379,7 @@ class SST_Ajax {
 		wp_send_json_success( [
 			'integration_mode' => $integration_mode,
 			'data_mover'       => $data_mover,
-			'connection_id'    => SST_Settings::get( 'tc_connection_id' ),
+			'tc_integration_id'    => SST_Settings::get( 'tc_integration_id' ),
 		] );
 	}
 
