@@ -255,6 +255,11 @@ function sst_output_tic_select_field( $args = array() ) {
 		'api_version'            => sst_get_api_version(),
 		'ajaxurl'                => admin_url( 'admin-ajax.php' ),
 		'search_tics_nonce'      => wp_create_nonce( 'sst_tic_search_nonce' ),
+		'strings'                => array(
+			'search_title' => __( 'Search Taxability Information Codes (TIC)', 'simple-sales-tax' ),
+			'search_desc'  => __( 'Find the correct taxability codes for your products using natural language product descriptions, category names, or search terms. The search matches descriptions to help you easily classify your products.', 'simple-sales-tax' ),
+			'search_tips'  => __( '<strong>Search Tips:</strong> Include specific context for the best results. For example, <em>"Women\'s Running Shoes"</em> works better than <em>"shoes"</em>, and <em>"Ceramic & Pottery Kilns"</em> works better than <em>"kilns"</em>.', 'simple-sales-tax' ),
+		),
 	);
 	wp_localize_script( 'sst-tic-select', 'ticSelectLocalizeScript', $script_data );
 	wp_enqueue_script( 'sst-tic-select' );

@@ -73,13 +73,13 @@
                                 'font-size: 16px;' +
                                 'font-weight: 600;' +
                                 'color: #2d3748;' +
-                            '">Search Taxability Information Codes (TIC)</h3>' +
+                            '">' + _.escape( data.strings.search_title ) + '</h3>' +
                             '<p style="' +
                                 'margin: 0 0 16px 0;' +
                                 'font-size: 13px;' +
                                 'color: #4a5568;' +
                                 'line-height: 1.5;' +
-                            '">Find the correct taxability codes for your products using natural language product descriptions, category names, or search terms. The search matches descriptions to help you easily classify your products.</p>' +
+                            '">' + _.escape( data.strings.search_desc ) + '</p>' +
                             '<div class="sst-tic-tips" style="' +
                                 'border-top: 1px dashed #e2e8f0;' +
                                 'padding-top: 14px;' +
@@ -87,7 +87,7 @@
                                 'color: #718096;' +
                                 'line-height: 1.5;' +
                             '">' +
-                                '<strong>Search Tips:</strong> Include specific context for the best results. For example, <em>"Women\'s Running Shoes"</em> works better than <em>"shoes"</em>, and <em>"Ceramic & Pottery Kilns"</em> works better than <em>"kilns"</em>.' +
+                                data.strings.search_tips +
                             '</div>' +
                         '</div>' +
                     '</td></tr>';
