@@ -188,7 +188,15 @@ function TaxCloud() {
  */
 function sst_get_tics() {
 	if ( sst_get_api_version() === 'v3' ) {
-		return array();
+		$cached = get_transient( 'sst_tic_descriptions_v3' );
+		if ( false === $cached ) {
+			$cached = array();
+		}
+		$tics   = array();
+		foreach ( $cached as $id => $description ) {
+			$tics[ (int) $id ] = new SST_TIC( $id, $description );
+		}
+		return $tics;
 	}
 
 	$tics = get_transient( 'sst_tics' );

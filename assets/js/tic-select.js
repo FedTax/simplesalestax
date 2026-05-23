@@ -7,7 +7,6 @@
                 input: null,
                 readout: null,
                 initialize: function() {
-                    console.log('SST TIC Select: initialize() view created for button:', this.$el);
                     this.input             = this.$el.siblings( '.sst-tic-input' );
                     this.readout           = this.$el.siblings( '.sst-selected-tic' );
                     
@@ -29,7 +28,6 @@
                     this.selectTIC( this.input.val() );
                 },
                 bindEvents: function() {
-                    console.log('SST TIC Select: bindEvents() attaching event handlers to document.body');
                     $( document.body ).on( 'click', '.sst-select-done', this.updateSelection );
                     $( document.body ).on( 'wc_backbone_modal_response', this.completeSelection );
                     $( document.body ).on( 'click', '.sst-tic-load-more', this.loadMoreResults );
@@ -37,7 +35,6 @@
                     $( document.body ).on( 'wc_backbone_modal_removed', this.handleModalClose );
                 },
                 unbindEvents: function() {
-                    console.log('SST TIC Select: unbindEvents() removing event handlers from document.body');
                     $( document.body ).off( 'click', '.sst-select-done', this.updateSelection );
                     $( document.body ).off( 'wc_backbone_modal_response', this.completeSelection );
                     $( document.body ).off( 'click', '.sst-tic-load-more', this.loadMoreResults );
@@ -46,7 +43,6 @@
                 },
                 openModal: function( event ) {
                     event.preventDefault();
-                    console.log('SST TIC Select: openModal() clicked on button:', this.$el);
                     
                     this.$el.SSTBackboneModal( {
                         'template': 'sst-tic-select-modal',
@@ -83,7 +79,7 @@
                                 'font-size: 13px;' +
                                 'color: #4a5568;' +
                                 'line-height: 1.5;' +
-                            '">Find the correct taxability codes for your products using natural language product descriptions, category names, or search terms. TaxCloud uses semantic search to match meaning and context, ranking the most relevant matches first.</p>' +
+                            '">Find the correct taxability codes for your products using natural language product descriptions, category names, or search terms. The search matches descriptions to help you easily classify your products.</p>' +
                             '<div class="sst-tic-tips" style="' +
                                 'border-top: 1px dashed #e2e8f0;' +
                                 'padding-top: 14px;' +
@@ -98,14 +94,28 @@
                     $( '.sst-tic-list' ).html( html );
                 },
                 initModal: function( event ) {
-                    console.log('SST TIC Select: initModal() called. Initializing states and loading helper view.');
                     this.currentQuery = '';
                     this.nextCursor   = '';
                     this.isLoading    = false;
                     this.xhr          = null;
                     this.timer        = null;
 
-                    this.renderInitialMessage();
+                    var tic_id = this.input.val();
+                    if ( tic_id ) {
+                        var tic = data.tic_list[ parseInt( tic_id ) ];
+                        var initial_query = '';
+                        if ( tic && tic['description'] ) {
+                            initial_query = tic['description'] + ' (' + tic_id + ')';
+                        } else {
+                            initial_query = tic_id;
+                        }
+                        
+                        $( '.sst-tic-search' ).val( initial_query );
+                        this.currentQuery = initial_query;
+                        this.performSearch( initial_query, false );
+                    } else {
+                        this.renderInitialMessage();
+                    }
                 },
                 handleSearchInput: function( event ) {
                     var $target = $( event.target ),
@@ -114,8 +124,6 @@
                     if ( query === this.currentQuery ) {
                         return;
                     }
-
-                    console.log('SST TIC Select: handleSearchInput() text typed:', query);
 
                     if ( this.timer ) {
                         clearTimeout( this.timer );
@@ -144,11 +152,8 @@
                         $list = $( '.sst-tic-list' );
 
                     if ( view.isLoading ) {
-                        console.log('SST TIC Select: performSearch() blocked - already loading results');
                         return;
                     }
-
-                    console.log('SST TIC Select: performSearch() firing AJAX request. Query:', query, 'append:', append, 'cursor:', view.nextCursor);
 
                     if ( ! append ) {
                         $list.html( '<tr><td colspan="2" style="text-align: center; padding: 20px;"><span class="spinner is-active" style="float: none; margin: 0 auto; display: inline-block;"></span> Searching...</td></tr>' );
@@ -169,7 +174,6 @@
                             cursor: view.nextCursor
                         },
                         success: function( response ) {
-                            console.log('SST TIC Select: AJAX search success. Response:', response);
                             view.isLoading = false;
                             $( '.sst-tic-load-more-row' ).remove();
 
@@ -192,11 +196,9 @@
                                 }
 
                                 if ( view.nextCursor ) {
-                                    console.log('SST TIC Select: next page cursor exists, rendering Load More button');
                                     $list.append( '<tr class="sst-tic-load-more-row"><td colspan="2" style="text-align: center; padding: 15px;"><button type="button" class="button sst-tic-load-more">Load More</button></td></tr>' );
                                 }
                             } else {
-                                console.log('SST TIC Select: AJAX returned error message:', response.data);
                                 if ( ! append ) {
                                     $list.html( '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #dc3232;">' + _.escape( response.data ) + '</td></tr>' );
                                 } else {
@@ -207,22 +209,18 @@
                         error: function( jqXHR, textStatus, errorThrown ) {
                             view.isLoading = false;
                             if ( textStatus !== 'abort' ) {
-                                console.log('SST TIC Select: AJAX request failed. Status:', textStatus, 'Error:', errorThrown);
                                 $( '.sst-tic-load-more-row' ).remove();
                                 if ( ! append ) {
                                     $list.html( '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #dc3232;">Error searching TICs. Please try again.</td></tr>' );
                                 } else {
                                     alert( 'Error loading more TICs. Please try again.' );
                                 }
-                            } else {
-                                console.log('SST TIC Select: Previous AJAX request aborted due to a newer typed input.');
                             }
                         }
                     } );
                 },
                 loadMoreResults: function( event ) {
                     event.preventDefault();
-                    console.log('SST TIC Select: loadMoreResults() clicked. Current query:', this.currentQuery);
                     this.performSearch( this.currentQuery, true );
                 },
                 updateSelection: function( event ) {
@@ -232,59 +230,99 @@
                     var id          = $tr.data( 'id' );
                     var description = $tr.data( 'description' );
 
-                    console.log('SST TIC Select: updateSelection() row selected. ID:', id, 'Description:', description);
-
-                    if ( id && description && !data.tic_list[ parseInt( id ) ] ) {
-                        data.tic_list[ parseInt( id ) ] = {
-                            id: id,
-                            description: description
-                        };
+                    if ( id && description ) {
+                        var parsed_id = parseInt( id );
+                        if ( !data.tic_list[ parsed_id ] || !data.tic_list[ parsed_id ].description ) {
+                            data.tic_list[ parsed_id ] = {
+                                id: id,
+                                description: description
+                            };
+                        }
                     }
 
                     $( 'input[name="tic"]' ).val( id );
                     $( '#btn-ok' ).trigger( 'click' );
                 },
                 completeSelection: function( event, target, posted ) {
-                    console.log('SST TIC Select: completeSelection() responding for modal target:', target, 'Posted data:', posted);
                     if ( 'sst-tic-select-modal' === target ) {
                         this.selectTIC( posted['tic'] );
                         this.unbindEvents();
                     }
                 },
                 handleModalClose: function( event, target ) {
-                    console.log('SST TIC Select: handleModalClose() triggered for target:', target);
                     if ( 'sst-tic-select-modal' === target ) {
                         this.unbindEvents();
                     }
                 },
                 selectTIC: function( tic_id ) {
-                    console.log('SST TIC Select: selectTIC() setting input value to:', tic_id);
                     this.input.val( tic_id ).trigger( 'change' );
                 },
                 handleInputChange: function() {
                     var tic_id = this.input.val();
-                    console.log('SST TIC Select: handleInputChange() displaying readout for TIC ID:', tic_id);
 
                     if ( '' == tic_id ) {
                         this.readout.text( this.readout.data( 'default' ) );
                     } else {
-                        var tic = data.tic_list[ parseInt( tic_id ) ];
+                        var parsed_id = parseInt( tic_id );
+                        var tic = data.tic_list[ parsed_id ];
                         if ( tic ) {
-                            this.readout.text( tic['description'] + ' (' + tic['id'] + ')' );
+                            if ( tic.description ) {
+                                this.readout.text( tic['description'] + ' (' + tic['id'] + ')' );
+                            } else {
+                                this.readout.text( 'TIC ' + tic_id );
+                            }
                         } else {
                             this.readout.text( 'TIC ' + tic_id );
+
+                            // Mark as loading to prevent duplicate background requests
+                            data.tic_list[ parsed_id ] = {
+                                id: tic_id,
+                                description: '',
+                                loading: true
+                            };
+
+                            var view = this;
+                            $.ajax( {
+                                url: data.ajaxurl,
+                                type: 'POST',
+                                dataType: 'json',
+                                data: {
+                                    action: 'sst_search_tics',
+                                    nonce: data.search_tics_nonce,
+                                    query: tic_id
+                                },
+                                success: function( response ) {
+                                    if ( response.success && response.data.results && response.data.results.length > 0 ) {
+                                        var match = _.find( response.data.results, function( r ) {
+                                            return parseInt( r.id ) === parsed_id;
+                                        } );
+                                        if ( match ) {
+                                            data.tic_list[ parsed_id ] = {
+                                                id: match.id,
+                                                description: match.description
+                                            };
+                                            
+                                            // Update all readout fields with this matching TIC ID
+                                            $( '.sst-tic-input' ).each( function() {
+                                                var $input = $( this );
+                                                if ( parseInt( $input.val() ) === parsed_id ) {
+                                                    $input.trigger( 'change' );
+                                                }
+                                            } );
+                                        }
+                                    }
+                                }
+                            } );
                         }
                     }
                 },
                 remove: function() {
-                    console.log('SST TIC Select: remove() cleaning up input listener');
                     Backbone.View.prototype.remove.call(this);
                     this.input.off( 'change' );
                 },
             } );
 
         function initialize() {
-            console.log('SST TIC Select: initialize() searching for sst-select-tic buttons...');
             $( '.sst-select-tic:not(.initialized)' ).each( function() {
                 var selectView = new SelectView( {
                     el: $( this ),
@@ -299,7 +337,6 @@
         initialize();
 
         $( document.body ).on( data.tic_select_init_events, function() {
-            console.log('SST TIC Select: initialization trigger event fired:', data.tic_select_init_events);
             initialize();
         } );
     });

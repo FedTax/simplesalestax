@@ -410,11 +410,29 @@ class SST_Ajax {
 		$next_cursor = $response['nextCursor'] ?? '';
 
 		$formatted_results = array();
+		$cached            = get_transient( 'sst_tic_descriptions_v3' );
+		if ( false === $cached ) {
+			$cached = array();
+		}
+		$updated           = false;
+
 		foreach ( $results as $result ) {
+			$id          = str_pad( $result['ticId'], 5, '0' );
+			$description = $result['description'];
+
 			$formatted_results[] = array(
-				'id'          => str_pad( $result['ticId'], 5, '0' ),
-				'description' => $result['description'],
+				'id'          => $id,
+				'description' => $description,
 			);
+
+			if ( ! isset( $cached[ $id ] ) || $cached[ $id ] !== $description ) {
+				$cached[ $id ] = $description;
+				$updated       = true;
+			}
+		}
+
+		if ( $updated ) {
+			set_transient( 'sst_tic_descriptions_v3', $cached, 2 * WEEK_IN_SECONDS );
 		}
 
 		wp_send_json_success( array(
