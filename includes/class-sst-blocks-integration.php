@@ -1,4 +1,9 @@
 <?php
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface;
 
 /**
@@ -21,7 +26,7 @@ class SST_Blocks_Integration implements IntegrationInterface {
 	public function initialize() {
 		$this->register_frontend_scripts();
 		$this->register_editor_scripts();
-		$this->register_editor_styles();
+		$this->register_block_styles();
 
 		add_filter(
 			'the_content',
@@ -76,7 +81,11 @@ class SST_Blocks_Integration implements IntegrationInterface {
 		);
 	}
 
-	public function register_editor_styles() {
+	public function register_block_styles() {
+		add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_styles' ) );
+	}
+
+	public function enqueue_block_styles() {
 		$style_path = 'build/style-tax-exemption-block.css';
 		$style_url  = SST()->url( $style_path );
 
