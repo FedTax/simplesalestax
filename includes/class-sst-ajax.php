@@ -30,6 +30,7 @@ class SST_Ajax {
 		'sst_dismiss_taxcloud_notice'	=> false,
 		'sst_get_order_log'						=> false,
 		'sst_update_data_mover'				=> false,
+		'sst_search_tics'             => false,
 	);
 
 	/**
@@ -381,6 +382,45 @@ class SST_Ajax {
 			'data_mover'       => $data_mover,
 			'tc_integration_id'    => SST_Settings::get( 'tc_integration_id' ),
 		] );
+	}
+
+	/**
+	 * Search TICs via TaxCloud v3 API.
+	 *
+	 * @since 8.4.9
+	 */
+	public static function search_tics() {
+		check_ajax_referer( 'sst_tic_search_nonce', 'nonce' );
+
+		$query  = sanitize_text_field( wp_unslash( $_POST['query'] ?? '' ) );
+		$cursor = sanitize_text_field( wp_unslash( $_POST['cursor'] ?? '' ) );
+
+		if ( empty( $query ) ) {
+			wp_send_json_error( __( 'Query cannot be empty.', 'simple-sales-tax' ) );
+		}
+
+		$utilities = new \TaxCloud_V3\Utilities();
+		$response  = $utilities->search_tics( $query, 20, $cursor );
+
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_error( $response->get_error_message() );
+		}
+
+		$results     = $response['results'] ?? array();
+		$next_cursor = $response['nextCursor'] ?? '';
+
+		$formatted_results = array();
+		foreach ( $results as $result ) {
+			$formatted_results[] = array(
+				'id'          => str_pad( $result['ticId'], 5, '0' ),
+				'description' => $result['description'],
+			);
+		}
+
+		wp_send_json_success( array(
+			'results'     => $formatted_results,
+			'next_cursor' => $next_cursor,
+		) );
 	}
 
 }

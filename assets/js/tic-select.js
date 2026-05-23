@@ -7,82 +7,284 @@
                 input: null,
                 readout: null,
                 initialize: function() {
+                    console.log('SST TIC Select: initialize() view created for button:', this.$el);
                     this.input             = this.$el.siblings( '.sst-tic-input' );
                     this.readout           = this.$el.siblings( '.sst-selected-tic' );
+                    
+                    // Bind all methods to the view instance context
                     this.handleInputChange = this.handleInputChange.bind( this );
+                    this.openModal         = this.openModal.bind( this );
+                    this.bindEvents        = this.bindEvents.bind( this );
+                    this.unbindEvents      = this.unbindEvents.bind( this );
+                    this.handleSearchInput = this.handleSearchInput.bind( this );
+                    this.loadMoreResults   = this.loadMoreResults.bind( this );
+                    this.updateSelection   = this.updateSelection.bind( this );
+                    this.completeSelection = this.completeSelection.bind( this );
+                    this.handleModalClose  = this.handleModalClose.bind( this );
 
-                    // todo: refactor so we can use backbone.view.events.
-                    this.$el.on( 'click', { view: this }, this.openModal );
+                    this.$el.on( 'click', this.openModal );
                     this.input.on( 'change', this.handleInputChange );
                 },
                 render: function() {
                     this.selectTIC( this.input.val() );
                 },
                 bindEvents: function() {
-                    $( document.body ).on( 'click', '.sst-select-done', { view: this }, this.updateSelection );
-                    $( document.body ).on( 'wc_backbone_modal_response', { view: this }, this.completeSelection );
+                    console.log('SST TIC Select: bindEvents() attaching event handlers to document.body');
+                    $( document.body ).on( 'click', '.sst-select-done', this.updateSelection );
+                    $( document.body ).on( 'wc_backbone_modal_response', this.completeSelection );
+                    $( document.body ).on( 'click', '.sst-tic-load-more', this.loadMoreResults );
+                    $( document.body ).on( 'keyup input', '.sst-tic-search', this.handleSearchInput );
+                    $( document.body ).on( 'wc_backbone_modal_removed', this.handleModalClose );
                 },
                 unbindEvents: function() {
+                    console.log('SST TIC Select: unbindEvents() removing event handlers from document.body');
                     $( document.body ).off( 'click', '.sst-select-done', this.updateSelection );
                     $( document.body ).off( 'wc_backbone_modal_response', this.completeSelection );
+                    $( document.body ).off( 'click', '.sst-tic-load-more', this.loadMoreResults );
+                    $( document.body ).off( 'keyup input', '.sst-tic-search', this.handleSearchInput );
+                    $( document.body ).off( 'wc_backbone_modal_removed', this.handleModalClose );
                 },
                 openModal: function( event ) {
-                    var view = event.data.view;
-
                     event.preventDefault();
+                    console.log('SST TIC Select: openModal() clicked on button:', this.$el);
                     
-                    $( this ).SSTBackboneModal( {
+                    this.$el.SSTBackboneModal( {
                         'template': 'sst-tic-select-modal',
                     } );
 
-                    view.bindEvents();
-                    view.initModal();
+                    this.bindEvents();
+                    this.initModal();
+                },
+                renderInitialMessage: function() {
+                    var html = '<tr><td colspan="2" style="padding: 30px 15px; border: none;">' +
+                        '<div class="sst-tic-info-card" style="' +
+                            'background: #f8fafc;' +
+                            'border: 1px solid #e2e8f0;' +
+                            'border-radius: 8px;' +
+                            'padding: 24px;' +
+                            'text-align: center;' +
+                            'box-shadow: 0 1px 3px rgba(0,0,0,0.05);' +
+                            'max-width: 500px;' +
+                            'margin: 20px auto;' +
+                        '">' +
+                            '<div class="sst-tic-info-icon" style="' +
+                                'font-size: 36px;' +
+                                'margin-bottom: 12px;' +
+                                'color: #3182ce;' +
+                            '">🔍</div>' +
+                            '<h3 style="' +
+                                'margin: 0 0 10px 0;' +
+                                'font-size: 16px;' +
+                                'font-weight: 600;' +
+                                'color: #2d3748;' +
+                            '">Search Taxability Information Codes (TIC)</h3>' +
+                            '<p style="' +
+                                'margin: 0 0 16px 0;' +
+                                'font-size: 13px;' +
+                                'color: #4a5568;' +
+                                'line-height: 1.5;' +
+                            '">Find the correct taxability codes for your products using natural language product descriptions, category names, or search terms. TaxCloud uses semantic search to match meaning and context, ranking the most relevant matches first.</p>' +
+                            '<div class="sst-tic-tips" style="' +
+                                'border-top: 1px dashed #e2e8f0;' +
+                                'padding-top: 14px;' +
+                                'font-size: 12px;' +
+                                'color: #718096;' +
+                                'line-height: 1.5;' +
+                            '">' +
+                                '<strong>Search Tips:</strong> Include specific context for the best results. For example, <em>"Women\'s Running Shoes"</em> works better than <em>"shoes"</em>, and <em>"Ceramic & Pottery Kilns"</em> works better than <em>"kilns"</em>.' +
+                            '</div>' +
+                        '</div>' +
+                    '</td></tr>';
+                    $( '.sst-tic-list' ).html( html );
                 },
                 initModal: function( event ) {
+                    console.log('SST TIC Select: initModal() called. Initializing states and loading helper view.');
+                    this.currentQuery = '';
+                    this.nextCursor   = '';
+                    this.isLoading    = false;
+                    this.xhr          = null;
+                    this.timer        = null;
+
+                    this.renderInitialMessage();
+                },
+                handleSearchInput: function( event ) {
+                    var $target = $( event.target ),
+                        query = $target.val().trim();
+
+                    if ( query === this.currentQuery ) {
+                        return;
+                    }
+
+                    console.log('SST TIC Select: handleSearchInput() text typed:', query);
+
+                    if ( this.timer ) {
+                        clearTimeout( this.timer );
+                    }
+                    if ( this.xhr ) {
+                        this.xhr.abort();
+                    }
+
+                    if ( '' === query ) {
+                        this.currentQuery = '';
+                        this.nextCursor   = '';
+                        this.renderInitialMessage();
+                        return;
+                    }
+
+                    this.currentQuery = query;
+                    this.nextCursor   = '';
+
+                    var view = this;
+                    this.timer = setTimeout( function() {
+                        view.performSearch( query, false );
+                    }, 300 );
+                },
+                performSearch: function( query, append ) {
                     var view  = this,
                         $list = $( '.sst-tic-list' );
 
-                    $list.empty();
+                    if ( view.isLoading ) {
+                        console.log('SST TIC Select: performSearch() blocked - already loading results');
+                        return;
+                    }
 
-                    _.each( data.tic_list, function( rowData, id ) {
-                        $list.append( view.rowTemplate( rowData ) );
+                    console.log('SST TIC Select: performSearch() firing AJAX request. Query:', query, 'append:', append, 'cursor:', view.nextCursor);
+
+                    if ( ! append ) {
+                        $list.html( '<tr><td colspan="2" style="text-align: center; padding: 20px;"><span class="spinner is-active" style="float: none; margin: 0 auto; display: inline-block;"></span> Searching...</td></tr>' );
+                    } else {
+                        $( '.sst-tic-load-more-row' ).html( '<td colspan="2" style="text-align: center; padding: 15px;"><span class="spinner is-active" style="float: none; margin: 0 auto; display: inline-block;"></span> Loading more...</td>' );
+                    }
+
+                    view.isLoading = true;
+
+                    view.xhr = $.ajax( {
+                        url: data.ajaxurl,
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            action: 'sst_search_tics',
+                            nonce: data.search_tics_nonce,
+                            query: query,
+                            cursor: view.nextCursor
+                        },
+                        success: function( response ) {
+                            console.log('SST TIC Select: AJAX search success. Response:', response);
+                            view.isLoading = false;
+                            $( '.sst-tic-load-more-row' ).remove();
+
+                            if ( response.success ) {
+                                if ( ! append ) {
+                                    $list.empty();
+                                }
+
+                                var results = response.data.results || [];
+                                view.nextCursor = response.data.next_cursor || '';
+
+                                if ( results.length === 0 ) {
+                                    if ( ! append ) {
+                                        $list.append( '<tr><td colspan="2" style="text-align: center; padding: 20px;">No TICs found matching the query.</td></tr>' );
+                                    }
+                                } else {
+                                    _.each( results, function( rowData ) {
+                                        $list.append( view.rowTemplate( rowData ) );
+                                    } );
+                                }
+
+                                if ( view.nextCursor ) {
+                                    console.log('SST TIC Select: next page cursor exists, rendering Load More button');
+                                    $list.append( '<tr class="sst-tic-load-more-row"><td colspan="2" style="text-align: center; padding: 15px;"><button type="button" class="button sst-tic-load-more">Load More</button></td></tr>' );
+                                }
+                            } else {
+                                console.log('SST TIC Select: AJAX returned error message:', response.data);
+                                if ( ! append ) {
+                                    $list.html( '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #dc3232;">' + _.escape( response.data ) + '</td></tr>' );
+                                } else {
+                                    alert( _.escape( response.data ) );
+                                }
+                            }
+                        },
+                        error: function( jqXHR, textStatus, errorThrown ) {
+                            view.isLoading = false;
+                            if ( textStatus !== 'abort' ) {
+                                console.log('SST TIC Select: AJAX request failed. Status:', textStatus, 'Error:', errorThrown);
+                                $( '.sst-tic-load-more-row' ).remove();
+                                if ( ! append ) {
+                                    $list.html( '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #dc3232;">Error searching TICs. Please try again.</td></tr>' );
+                                } else {
+                                    alert( 'Error loading more TICs. Please try again.' );
+                                }
+                            } else {
+                                console.log('SST TIC Select: Previous AJAX request aborted due to a newer typed input.');
+                            }
+                        }
                     } );
-
-                    $( '.sst-tic-search' ).hideseek();
+                },
+                loadMoreResults: function( event ) {
+                    event.preventDefault();
+                    console.log('SST TIC Select: loadMoreResults() clicked. Current query:', this.currentQuery);
+                    this.performSearch( this.currentQuery, true );
                 },
                 updateSelection: function( event ) {
                     var $target = $( event.target ),
                         $tr     = $target.closest( 'tr' );
 
-                    $( 'input[name="tic"]' ).val( $tr.data( 'id' ) );
+                    var id          = $tr.data( 'id' );
+                    var description = $tr.data( 'description' );
+
+                    console.log('SST TIC Select: updateSelection() row selected. ID:', id, 'Description:', description);
+
+                    if ( id && description && !data.tic_list[ parseInt( id ) ] ) {
+                        data.tic_list[ parseInt( id ) ] = {
+                            id: id,
+                            description: description
+                        };
+                    }
+
+                    $( 'input[name="tic"]' ).val( id );
                     $( '#btn-ok' ).trigger( 'click' );
                 },
                 completeSelection: function( event, target, posted ) {
+                    console.log('SST TIC Select: completeSelection() responding for modal target:', target, 'Posted data:', posted);
                     if ( 'sst-tic-select-modal' === target ) {
-                        event.data.view.selectTIC( posted['tic'] );
-                        event.data.view.unbindEvents();
+                        this.selectTIC( posted['tic'] );
+                        this.unbindEvents();
+                    }
+                },
+                handleModalClose: function( event, target ) {
+                    console.log('SST TIC Select: handleModalClose() triggered for target:', target);
+                    if ( 'sst-tic-select-modal' === target ) {
+                        this.unbindEvents();
                     }
                 },
                 selectTIC: function( tic_id ) {
+                    console.log('SST TIC Select: selectTIC() setting input value to:', tic_id);
                     this.input.val( tic_id ).trigger( 'change' );
                 },
                 handleInputChange: function() {
                     var tic_id = this.input.val();
+                    console.log('SST TIC Select: handleInputChange() displaying readout for TIC ID:', tic_id);
 
                     if ( '' == tic_id ) {
                         this.readout.text( this.readout.data( 'default' ) );
                     } else {
                         var tic = data.tic_list[ parseInt( tic_id ) ];
-                        this.readout.text( tic['description'] + ' (' + tic['id'] + ')' );
+                        if ( tic ) {
+                            this.readout.text( tic['description'] + ' (' + tic['id'] + ')' );
+                        } else {
+                            this.readout.text( 'TIC ' + tic_id );
+                        }
                     }
                 },
                 remove: function() {
+                    console.log('SST TIC Select: remove() cleaning up input listener');
                     Backbone.View.prototype.remove.call(this);
                     this.input.off( 'change' );
                 },
             } );
 
         function initialize() {
+            console.log('SST TIC Select: initialize() searching for sst-select-tic buttons...');
             $( '.sst-select-tic:not(.initialized)' ).each( function() {
                 var selectView = new SelectView( {
                     el: $( this ),
@@ -96,6 +298,9 @@
 
         initialize();
 
-        $( document.body ).on( data.tic_select_init_events, initialize );
+        $( document.body ).on( data.tic_select_init_events, function() {
+            console.log('SST TIC Select: initialization trigger event fired:', data.tic_select_init_events);
+            initialize();
+        } );
     });
 })(jQuery, ticSelectLocalizeScript);

@@ -187,6 +187,10 @@ function TaxCloud() {
  * @since 5.9
  */
 function sst_get_tics() {
+	if ( sst_get_api_version() === 'v3' ) {
+		return array();
+	}
+
 	$tics = get_transient( 'sst_tics' );
 
 	if ( false === $tics ) {
@@ -240,6 +244,9 @@ function sst_output_tic_select_field( $args = array() ) {
 	$script_data = array(
 		'tic_list'               => sst_get_tics(),
 		'tic_select_init_events' => sst_get_tic_select_init_events(),
+		'api_version'            => sst_get_api_version(),
+		'ajaxurl'                => admin_url( 'admin-ajax.php' ),
+		'search_tics_nonce'      => wp_create_nonce( 'sst_tic_search_nonce' ),
 	);
 	wp_localize_script( 'sst-tic-select', 'ticSelectLocalizeScript', $script_data );
 	wp_enqueue_script( 'sst-tic-select' );
