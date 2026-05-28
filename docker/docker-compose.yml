@@ -4,6 +4,8 @@ services:
       context: ./
       args:
         PHP_VERSION: ${PHP_VERSION}
+        WP_VERSION: ${WP_VERSION:-7.0}
+        WP_SHA1: ${WP_SHA1:-e50bb75667ecaa0eac0694fb3c7b024afc96fde0}
     restart: always
     ports:
       - 8080:80
