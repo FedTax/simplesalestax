@@ -9,7 +9,6 @@ Fixed:
 
 Changed:
 - WordPress Tested up to: 7.0
-- WC tested up to: 10.8.1
 
 
 - [8.4.9] - 2026-05-13 =

@@ -80,7 +80,7 @@ Yes! TaxCloud for WooCommerce is fully compatible with the official WooCommerce 
 
 = What versions of WooCommerce and WordPress are supported? =
 
-TaxCloud for WooCommerce supports WooCommerce 7.0 to 10.8.1 and WordPress 6.0+.
+TaxCloud for WooCommerce supports WooCommerce 7.0 to 10.7.0 and WordPress 6.0+.
 
 = Can I assign different tax codes (TICs) to my products? = 
 
