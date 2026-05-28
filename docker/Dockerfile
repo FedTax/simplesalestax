@@ -1,9 +1,8 @@
 # Copy of https://github.com/docker-library/wordpress/blob/4b4966247eb33c6c219cf682f1750ed5685d21c9/latest/php8.0/apache/Dockerfile but with build arg to specify PHP version.
 
-FROM php:${PHP_VERSION}-apache
+ARG PHP_VERSION=8.0
 
-ARG WP_VERSION=7.0
-ARG WP_SHA1=e50bb75667ecaa0eac0694fb3c7b024afc96fde0
+FROM php:${PHP_VERSION}-apache
 
 # persistent dependencies
 RUN set -eux; \
@@ -120,8 +119,11 @@ RUN set -eux; \
     find /etc/apache2 -type f -name '*.conf' -exec sed -ri 's/([[:space:]]*LogFormat[[:space:]]+"[^"]*)%h([^"]*")/\1%a\2/g' '{}' +
 
 RUN set -eux; \
-    curl -o wordpress.tar.gz -fL "https://wordpress.org/wordpress-$WP_VERSION.tar.gz"; \
-    echo "$WP_SHA1 *wordpress.tar.gz" | sha1sum -c -; \
+    version='6.8'; \
+    sha1='c4d8b210decd86dc1bf5deecb3a4a2e1b70024f6'; \
+    \
+    curl -o wordpress.tar.gz -fL "https://wordpress.org/wordpress-$version.tar.gz"; \
+    echo "$sha1 *wordpress.tar.gz" | sha1sum -c -; \
     \
 # upstream tarballs include ./wordpress/ so this gives us /usr/src/wordpress
     tar -xzf wordpress.tar.gz -C /usr/src/; \
