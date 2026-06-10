@@ -59,7 +59,7 @@ class SST_TaxCloud_V3_API {
 	public static function get_auth_token( $api_login_id, $api_key ) {
 		$url = self::get_auth_url();
 
-		$response = wp_remote_post( $url, array(
+		$response = \TaxCloud_V3\HttpClient::post( $url, array(
 			'headers' => array(
 				'Content-Type' => 'application/json',
 			),
@@ -67,7 +67,6 @@ class SST_TaxCloud_V3_API {
 				'apiLoginID' => $api_login_id,
 				'apiKey'     => $api_key,
 			) ),
-			'timeout' => 30,
 		) );
 
 		if ( is_wp_error( $response ) ) {
@@ -103,12 +102,11 @@ class SST_TaxCloud_V3_API {
 	public static function get_connection_settings( $api_key, $access_token ) {
 		$url = self::get_mgmt_url() . '/connections/' . $api_key;
 
-		$response = wp_remote_get( $url, array(
+		$response = \TaxCloud_V3\HttpClient::get( $url, array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $access_token,
 				'Content-Type'  => 'application/json',
 			),
-			'timeout' => 30,
 		) );
 
 		if ( is_wp_error( $response ) ) {

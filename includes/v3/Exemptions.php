@@ -59,13 +59,13 @@ class Exemptions extends RequestBase {
 			return $this->get_auth_token();
 		}
 
-		$response = wp_remote_post( $this->get_api_url(), array(
+		$response = HttpClient::post( $this->get_api_url(), array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $this->get_auth_token(),
 				'Content-Type'  => 'application/json',
 			),
-			'body'    => wp_json_encode( $args ),
-			'timeout' => 30,
+			'body'      => wp_json_encode( $args ),
+			'sst_retry' => false,
 		) );
 
 		if ( is_wp_error( $response ) ) {
@@ -102,12 +102,11 @@ class Exemptions extends RequestBase {
 			$url = add_query_arg( $args, $url );
 		}
 
-		$response = wp_remote_get( $url, array(
+		$response = HttpClient::get( $url, array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
-			'timeout' => 30,
 		) );
 
 		if ( is_wp_error( $response ) ) {
@@ -141,12 +140,11 @@ class Exemptions extends RequestBase {
 
 		$url = $this->get_fetch_api_url() . '/' . $certificate_id;
 
-		$response = wp_remote_get( $url, array(
+		$response = HttpClient::get( $url, array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
-			'timeout' => 30,
 		) );
 
 		if ( is_wp_error( $response ) ) {
@@ -177,13 +175,13 @@ class Exemptions extends RequestBase {
 
 		$url = $this->get_api_url() . '/' . $certificate_id;
 
-		$response = wp_remote_request( $url, array(
+		$response = HttpClient::request( 'DELETE', $url, array(
 			'method'  => 'DELETE',
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
-			'timeout' => 30,
+			'sst_retry' => false,
 		) );
 
 		if ( is_wp_error( $response ) ) {

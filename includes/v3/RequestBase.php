@@ -89,7 +89,7 @@ abstract class RequestBase {
 
 		// TODO: Implement caching & refresh token
 
-		$response = wp_remote_post( self::get_auth_url(), array(
+		$response = HttpClient::post( self::get_auth_url(), array(
 			'headers' => array(
 				'Content-Type' => 'application/json',
 			),
@@ -97,7 +97,6 @@ abstract class RequestBase {
 				'apiLoginID' => $api_login_id,
 				'apiKey'     => $api_key,
 			) ),
-			'timeout' => 30,
 		) );
 
 		if ( is_wp_error( $response ) ) {
@@ -135,12 +134,11 @@ abstract class RequestBase {
 	public static function get_connection_settings( $api_key, $access_token ) {
 		$url = self::get_mgmt_url() . '/connections/' . $api_key;
 
-		$response = wp_remote_get( $url, array(
+		$response = HttpClient::get( $url, array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $access_token,
 				'Content-Type'  => 'application/json',
 			),
-			'timeout' => 30,
 		) );
 
 		if ( is_wp_error( $response ) ) {

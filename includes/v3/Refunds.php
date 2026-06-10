@@ -59,13 +59,13 @@ class Refunds extends RequestBase {
 			return $this->get_auth_token();
 		}
 
-		$response = wp_remote_post( $this->get_api_url( $order_id ), array(
+		$response = HttpClient::post( $this->get_api_url( $order_id ), array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $this->get_auth_token(),
 				'Content-Type'  => 'application/json',
 			),
-			'body'    => json_encode( $refund ),
-			'timeout' => 30,
+			'body'      => json_encode( $refund ),
+			'sst_retry' => false,
 		) );
 
 		if ( is_wp_error( $response ) ) {

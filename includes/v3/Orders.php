@@ -63,13 +63,13 @@ class Orders extends RequestBase {
 			return $this->get_auth_token();
 		}
 
-		$response = wp_remote_post( $this->get_api_url(), array(
+		$response = HttpClient::post( $this->get_api_url(), array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $this->get_auth_token(),
 				'Content-Type'  => 'application/json',
 			),
-			'body'    => json_encode( $order ),
-			'timeout' => 30,
+			'body'      => json_encode( $order ),
+			'sst_retry' => false,
 		) );
 
 		if ( is_wp_error( $response ) ) {
@@ -169,12 +169,11 @@ class Orders extends RequestBase {
 			return $token;
 		}
 
-		$response = wp_remote_get( $this->get_api_url($order_id), array(
+		$response = HttpClient::get( $this->get_api_url($order_id), array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
-			'timeout' => 30,
 		) );
 
 		if ( is_wp_error( $response ) ) {
