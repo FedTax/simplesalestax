@@ -898,9 +898,17 @@ class SST_Order extends SST_Abstract_Cart {
 					continue;
 				}
 
-				$refund_qty = min(
-					$cart_item['qty'],
-					$refund_amount / $cart_item['price']
+				$refund_qty = $this->calculate_refund_quantity( $refund_amount, $cart_item );
+
+				SST_Logger::order_log(
+					sprintf(
+						'Calculated refund quantity: %s for Item ID %s (Refund Amount: %s, Item Price: %s)',
+						$refund_qty,
+						$item_id,
+						$refund_amount,
+						$cart_item['price']
+					),
+					$order->get_id()
 				);
 
 				// Handle v3
@@ -1002,6 +1010,34 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Calculate the TaxCloud quantity needed to refund a WooCommerce amount.
+	 *
+	 * TaxCloud refunds are quantity-based. For fixed-dollar partial refunds,
+	 * low-precision quantities can materially change the returned subtotal
+	 * when TaxCloud multiplies the original item price by the returned
+	 * quantity. Keep enough precision for currency rounding while still
+	 * avoiding unbounded float serialization noise.
+	 *
+	 * @param float $refund_amount Refund amount for the item.
+	 * @param array $cart_item     Stored package cart item.
+	 *
+	 * @return float Refund quantity.
+	 */
+	protected function calculate_refund_quantity( $refund_amount, $cart_item ) {
+		$price = isset( $cart_item['price'] ) ? (float) $cart_item['price'] : 0.0;
+		$qty   = isset( $cart_item['qty'] ) ? (float) $cart_item['qty'] : 0.0;
+
+		if ( $refund_amount <= 0 || $price <= 0 || $qty <= 0 ) {
+			return 0.0;
+		}
+
+		$precision = (int) apply_filters( 'wootax_refund_quantity_precision', 12, $refund_amount, $cart_item );
+		$precision = max( wc_get_price_decimals(), min( 12, $precision ) );
+
+		return round( min( $qty, (float) $refund_amount / $price ), $precision );
 	}
 
 	/**
