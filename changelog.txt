@@ -2,6 +2,12 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [Unreleased] =
+
+Added:
+- [DEV-8214] - Improved resilience to transient network errors during checkout by adding TaxCloud request connect timeouts, safe request retries, and cURL timing telemetry.
+
+
 - [8.4.10] - 2026-05-29 =
 
 Fixed:

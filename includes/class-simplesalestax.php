@@ -124,6 +124,7 @@ final class SimpleSalesTax {
 		 */
 		require_once __DIR__ . '/sst-functions.php';
 		require_once __DIR__ . '/sst-compatibility-functions.php';
+		require_once __DIR__ . '/class-sst-taxcloud-client.php';
 		require_once __DIR__ . '/class-sst-install.php';
 		require_once __DIR__ . '/class-sst-settings.php';
 		require_once __DIR__ . '/class-sst-logger.php';

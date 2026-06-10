@@ -176,7 +176,7 @@ function sst_unslash( $value ) {
  * @since 5.0
  */
 function TaxCloud() {
-	return new TaxCloud\Client();
+	return new SST_TaxCloud_Client();
 }
 
 /**
