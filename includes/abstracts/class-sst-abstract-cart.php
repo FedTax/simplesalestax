@@ -358,12 +358,13 @@ abstract class SST_Abstract_Cart {
 
 		if ( ! is_null( $shipping_rate ) ) {
 			$local_delivery = SST_Shipping::is_local_delivery( $shipping_rate->method_id );
+			$shipping_price = (float) apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate );
 
 			$cart_items[]     = new TaxCloud\CartItem(
 				count( $cart_items ),
 				SST_SHIPPING_ITEM,
 				sst_get_shipping_tic( $shipping_rate->method_id ),
-				apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
+				$shipping_price,
 				1
 			);
 
@@ -372,7 +373,7 @@ abstract class SST_Abstract_Cart {
 				$v3_data = new TaxCloud_V3\Model\CartItem( array(
 					'index' => count( $cart_items ),
 					'itemId' => SST_SHIPPING_ITEM,
-					'price' => apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
+					'price' => $shipping_price,
 					'quantity' => 1,
 					'tax' => array(
 						'amount' => 0,
