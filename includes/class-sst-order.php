@@ -469,7 +469,7 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		if ( $cert_id === SST_SINGLE_PURCHASE_CERT_ID ) {
-			return $this->get_single_purchase_certificate();
+			return $this->get_single_purchase_certificate_data();
 		} else {
 			return new \TaxCloud_V3\Model\Exemption( $cert_id );
 		}
@@ -494,13 +494,13 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
-	 * Get the single-purchase exemption certificate for the order.
+	 * Get the saved single-purchase exemption certificate data for the order.
 	 *
-	 * @return object|array|null
+	 * @return array|null
 	 *
 	 * @since 8.0.0
 	 */
-	public function get_single_purchase_certificate() {
+	public function get_single_purchase_certificate_data() {
 		$cert = $this->get_meta( 'single_purchase_cert' );
 
 		if ( ! $cert ) {
