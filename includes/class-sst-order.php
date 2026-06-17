@@ -4,6 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
+use \TaxCloud\ExemptionCertificate;
+
 /**
  * Order.
  *
@@ -458,7 +460,7 @@ class SST_Order extends SST_Abstract_Cart {
 	/**
 	 * Get the exemption certificate to apply for this order.
 	 *
-	 * @return TaxCloud_V3\Model\Exemption|null
+	 * @return TaxCloud_V3\Model\Exemption|TaxCloud\ExemptionCertificate|null
 	 * @since 7.0.0
 	 */
 	public function get_certificate() {
@@ -469,7 +471,7 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		if ( $cert_id === SST_SINGLE_PURCHASE_CERT_ID ) {
-			return $this->get_single_purchase_certificate_data();
+			return $this->get_single_purchase_certificate();
 		} else {
 			return new \TaxCloud_V3\Model\Exemption( $cert_id );
 		}
@@ -494,13 +496,13 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
-	 * Get the saved single-purchase exemption certificate data for the order.
+	 * Get the single-purchase exemption certificate for the order.
 	 *
-	 * @return array|null
+	 * @return TaxCloud\ExemptionCertificate|null
 	 *
 	 * @since 8.0.0
 	 */
-	public function get_single_purchase_certificate_data() {
+	public function get_single_purchase_certificate() {
 		$cert = $this->get_meta( 'single_purchase_cert' );
 
 		if ( ! $cert ) {
@@ -509,7 +511,9 @@ class SST_Order extends SST_Abstract_Cart {
 
 		$decoded_cert = json_decode( $cert, true );
 
-		return is_array( $decoded_cert ) ? $decoded_cert : null;
+		return is_array( $decoded_cert )
+			? ExemptionCertificate::fromArray( $decoded_cert )
+			: null;
 	}
 
 	/**

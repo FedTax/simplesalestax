@@ -403,7 +403,7 @@ function sst_get_order_shipping_address( $order ) {
  */
 function sst_render_tax_meta_box( $order ) {
 	$status      = $order->get_taxcloud_status( 'view' );
-	$certificate = $order->get_single_purchase_certificate_data();
+	$certificate = $order->get_single_purchase_certificate();
 
 	if ( $certificate instanceof ExemptionCertificate ) {
 		$certificate = SST_Certificates::format_certificate( $certificate );
