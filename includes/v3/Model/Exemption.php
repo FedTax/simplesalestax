@@ -48,4 +48,15 @@ class Exemption extends Serializable {
 		$this->exemptionId = is_null( $data ) ? null : (string) $data;
 		$this->isExempt    = is_null( $isExempt ) ? null : (bool) $isExempt;
 	}
+
+	/**
+	 * Get exemption certificate ID.
+	 *
+	 * @return string|null
+	 * @since 8.4.10
+	 */
+	public function getCertificateID() {
+		return $this->exemptionId;
+	}
+
 }

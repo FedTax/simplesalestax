@@ -4,9 +4,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-use \TaxCloud\ExemptionCertificateBase;
-use \TaxCloud\ExemptionCertificate;
-
 /**
  * Abstract Cart.
  *
@@ -184,8 +181,6 @@ abstract class SST_Abstract_Cart {
 				continue;
 			}
 
-			$package['request'] = $this->get_lookup_for_package( $package );
-
 			$hash          		= $this->get_package_hash( $package );
 			$saved_package 		= $this->get_saved_package( $hash );
 			$force_tax_lookup	= SST_Settings::get( 'force_tax_lookup' );
@@ -236,24 +231,7 @@ abstract class SST_Abstract_Cart {
 			return $package;
 		}
 
-		if ( sst_get_api_version() === 'v3' ) {
-			return $this->do_v3_package_lookup( $package, $key, $rate_limit );
-		}
-
-		try {
-			$package['response'] = TaxCloud()->Lookup( $package['request'] );
-			$package['cart_id']  = key( $package['response'] );
-
-			$rate_limit->increment_count();
-
-			SST_Logger::debug( __( 'Tax lookup response:', 'simple-sales-tax' ), $package );
-		} catch ( Exception $ex ) {
-			$package['response'] = new WP_Error( 'lookup_error', $ex->getMessage() );
-			// Logging.
-			SST_Logger::debug( __( 'Tax lookup failed. Exception:', 'simple-sales-tax' ), $ex );
-		}
-
-		return $package;
+		return $this->do_v3_package_lookup( $package, $key, $rate_limit );
 	}
 
 	/**
@@ -375,27 +353,25 @@ abstract class SST_Abstract_Cart {
 		);
 
 		if ( ! is_null( $package['certificate'] ) ) {
-			$certificate = $package['certificate'];
-			$certificate_id = $certificate->getCertificateID();
+			$certificate    = $package['certificate'];
+			$certificate_id = '';
 
-			if ( empty( $certificate_id ) && is_a( $certificate, 'TaxCloud\ExemptionCertificate' ) ) {
+			if ( is_object( $certificate ) && method_exists( $certificate, 'getCertificateID' ) ) {
+				$certificate_id = $certificate->getCertificateID();
+			} elseif ( is_object( $certificate ) && method_exists( $certificate, 'getCertificateId' ) ) {
+				$certificate_id = $certificate->getCertificateId();
+			} elseif ( is_array( $certificate ) && ! empty( $certificate['exemptionId'] ) ) {
+				$certificate_id = $certificate['exemptionId'];
+			}
+
+			if ( empty( $certificate_id ) && is_object( $certificate ) && method_exists( $certificate, 'getDetail' ) ) {
 				try {
 					$user_id = isset( $package['user']['ID'] ) ? $package['user']['ID'] : 0;
 					$certificate_id = SST_Certificates::add_certificate_object( $certificate, $user_id );
 
-					if ( ! empty( $certificate_id ) ) {
-						if ( ! property_exists( 'TaxCloud\ExemptionCertificateBase', 'CertificateID' ) ) {
-							throw new Exception( 'TaxCloud\ExemptionCertificateBase::CertificateID property is not available.' );
-						}
-
-						$ref_prop = new \ReflectionProperty( 'TaxCloud\ExemptionCertificateBase', 'CertificateID' );
-						$ref_prop->setAccessible( true );
-						$ref_prop->setValue( $certificate, $certificate_id );
-
-						if ( is_a( $this, 'SST_Order' ) ) {
-							$this->set_single_purchase_certificate( $certificate );
-							$this->save();
-						}
+					if ( ! empty( $certificate_id ) && is_a( $this, 'SST_Order' ) ) {
+						$this->set_single_purchase_certificate( $certificate );
+						$this->save();
 					}
 				} catch ( Exception $ex ) {
 					SST_Logger::add( 'Failed to register single-purchase certificate in V3: ' . $ex->getMessage() );
@@ -482,176 +458,6 @@ abstract class SST_Abstract_Cart {
 	}
 
 	/**
-	 * Generate a Lookup request for a given package.
-	 *
-	 * @param array $package Package to construct Lookup request for.
-	 *
-	 * @return TaxCloud\Request\Lookup
-	 * @since 5.0
-	 */
-	protected function get_lookup_for_package( &$package ) {
-		$cart_items = array();
-		$based_on   = SST_Settings::get( 'tax_based_on' );
-		// V3: Data Mover Mode.
-		$data_mover = SST_Settings::get( 'data_mover', false );
-		$v3_data    = array();
-
-		/* Add products */
-		foreach ( $package['contents'] as $cart_id => $item ) {
-			$line_total       = $item['line_total'];
-			$discounted_price = round( $line_total / $item['quantity'], wc_get_price_decimals() );
-
-			/* Set quantity and price according to 'Tax Based On' setting. */
-			if ( 'line-subtotal' === $based_on ) {
-				$quantity = 1;
-				$price    = $line_total;
-			} else {
-				$quantity = $item['quantity'];
-				$price    = $discounted_price;
-			}
-
-			/* Give devs a chance to change the taxable product price. */
-			$price = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
-
-			$tic = SST_Product::get_tic( $item['product_id'], $item['variation_id'] );
-
-			$cart_items[]     = new TaxCloud\CartItem(
-				count( $cart_items ),
-				$item['variation_id'] ? $item['variation_id'] : $item['product_id'],
-				$tic,
-				$price,
-				$quantity
-			);
-
-			// V3: Data Mover Mode.
-			if( $data_mover ) {
-				// Calculate tax rate
-				$tax_rate = $item['line_tax'] / $price;
-
-				$v3_data = new TaxCloud_V3\Model\CartItem( array(
-					'index' => count( $cart_items ),
-					'itemId' => $item['variation_id'] ? $item['variation_id'] : $item['product_id'],
-					'price' => $price,
-					'quantity' => $quantity,
-					'tax' => array(
-						'amount' => number_format( $item['line_tax'], 2 ),
-						'rate' => number_format( $tax_rate, 2 )
-					),
-					'tic' => $tic,
-				) );
-			}
-
-			$package['map'][] = array(
-				'type'    => 'line_item',
-				'id'      => $item['data']->get_id(),
-				'cart_id' => isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'],
-				'v3_data' => $v3_data
-			);
-		}
-
-		/* Add fees */
-		foreach ( $package['fees'] as $cart_id => $fee ) {
-			$cart_items[]     = new TaxCloud\CartItem(
-				count( $cart_items ),
-				$fee->id,
-				apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
-				apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
-				1
-			);
-
-			// V3: Data Mover Mode.
-			if( $data_mover ) {
-				$v3_data = new TaxCloud_V3\Model\CartItem( array(
-					'index' => count( $cart_items ),
-					'itemId' => $fee->id,
-					'price' => apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
-					'quantity' => 1,
-					'tax' => array(
-						'amount' => 0,
-						'rate' => 0
-					),
-					'tic' => apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
-				) );
-			}
-
-			$package['map'][] = array(
-				'type'    => 'fee',
-				'id'      => $fee->id,
-				'cart_id' => $cart_id,
-				'v3_data' => $v3_data
-			);
-		}
-
-		/* Add shipping */
-		$shipping_rate  = $package['shipping'];
-		$local_delivery = false;
-
-		if ( ! is_null( $shipping_rate ) ) {
-			$local_delivery = SST_Shipping::is_local_delivery( $shipping_rate->method_id );
-
-			$cart_items[]     = new TaxCloud\CartItem(
-				count( $cart_items ),
-				SST_SHIPPING_ITEM,
-				sst_get_shipping_tic( $shipping_rate->method_id ),
-				apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
-				1
-			);
-
-			// V3: Data Mover Mode.
-			if( $data_mover ) {
-				$v3_data = new TaxCloud_V3\Model\CartItem( array(
-					'index' => count( $cart_items ),
-					'itemId' => SST_SHIPPING_ITEM,
-					'price' => apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
-					'quantity' => 1,
-					'tax' => array(
-						'amount' => 0,
-						'rate' => 0
-					),
-					'tic' => sst_get_shipping_tic( $shipping_rate->method_id ),
-				) );
-			}
-
-			$package['map'][] = array(
-				'type'    => 'shipping',
-				'id'      => SST_SHIPPING_ITEM,
-				'cart_id' => $shipping_rate->id,
-				'v3_data' => $v3_data
-			);
-		}
-
-		/* Build Lookup */
-		if( $data_mover ) {
-			/**
-			 * V3: Data Mover Mode - Prepare request as array.
-			 * @since 8.4.1
-			 */
-			$request = array(
-				'customerId' => $package['user']['ID'],
-				'cartItems' => $cart_items,
-				'origin' => $package['origin'],
-				'destination' => $package['destination'],
-				'localDelivery' => $local_delivery,
-				'certificate' => $package['certificate']
-			);
-		} else {
-			$request = new TaxCloud\Request\Lookup(
-					$this->api_id,
-					$this->api_key,
-					$package['user']['ID'],
-					null,
-					$cart_items,
-					$package['origin'],
-					$package['destination'],
-					$local_delivery,
-					$package['certificate']
-			);
-		}
-
-		return $request;
-	}
-
-	/**
 	 * Split package into one or more subpackages, one for each product
 	 * origin address.
 	 *
@@ -667,12 +473,15 @@ abstract class SST_Abstract_Cart {
 
 		// Convert destination address to Address object.
 		try {
-			$destination = new TaxCloud\Address(
-				isset( $package['destination']['address_1'] ) ? $package['destination']['address_1'] : $package['destination']['address'],
-				$package['destination']['address_2'],
-				$package['destination']['city'],
-				$package['destination']['state'],
-				substr( $package['destination']['postcode'], 0, 5 )
+			$destination = new \TaxCloud_V3\Model\Address(
+				array(
+					'city'        => $package['destination']['city'],
+					'countryCode' => isset( $package['destination']['country'] ) ? $package['destination']['country'] : 'US',
+					'line1'       => isset( $package['destination']['address_1'] ) ? $package['destination']['address_1'] : $package['destination']['address'],
+					'line2'       => isset( $package['destination']['address_2'] ) ? $package['destination']['address_2'] : '',
+					'state'       => $package['destination']['state'],
+					'zip'         => $package['destination']['postcode'],
+				)
 			);
 			SST_Logger::add( __( 'Shipping destination verifying', 'simple-sales-tax' ), $destination );
 			// TODO: substr sometimes include trailing dash, e.g. 12345-
@@ -791,8 +600,8 @@ abstract class SST_Abstract_Cart {
 	 *  2) If there are multiple shipment origins, use one in the customer's state.
 	 *  3) If there are no origins in the customers state, use the first  origin.
 	 *
-	 * @param array            $item        Associative array with details about product.
-	 * @param TaxCloud\Address $destination Shipping destination address.
+	 * @param array  $item        Associative array with details about product.
+	 * @param object $destination Shipping destination address.
 	 *
 	 * @return SST_Origin_Address
 	 * @since 5.0
@@ -824,6 +633,8 @@ abstract class SST_Abstract_Cart {
 	 * @since 7.0.2
 	 */
 	protected function is_origin_valid( $package ) {
+		$is_address_object = isset( $package['origin'] ) && SST_Addresses::is_address_object( $package['origin'] );
+
 		// Debug: Check if valid origin
 		SST_Logger::add(
 			__(
@@ -831,17 +642,13 @@ abstract class SST_Abstract_Cart {
 				'simple-sales-tax'
 			),
 			array(
-				'isset' => isset( $package['origin'] ),
-				'type'  => is_a( $package['origin'], 'TaxCloud\Address' ),
-				'instanceof' => isset( $package['origin'] ) && $package['origin'] instanceof TaxCloud\Address,
+				'isset'             => isset( $package['origin'] ),
+				'type'              => isset( $package['origin'] ) && is_object( $package['origin'] ) ? get_class( $package['origin'] ) : null,
+				'is_address_object' => $is_address_object,
 			)
 		);
 
-		// Return
-		return (
-			isset( $package['origin'] ) &&
-			$package['origin'] instanceof TaxCloud\Address
-		);
+		return $is_address_object;
 	}
 
 	/**
@@ -931,13 +738,13 @@ abstract class SST_Abstract_Cart {
 			$package['shipping_cost']   = $package['shipping']->cost;
 		}
 
-		if ( is_a( $package['origin'], 'TaxCloud\Address' ) ) {
+		if ( isset( $package['origin'] ) && SST_Addresses::is_address_object( $package['origin'] ) ) {
 			$package['origin_address'] = SST_Addresses::format(
 				$package['origin']
 			);
 		}
 
-		if ( is_a( $package['destination'], 'TaxCloud\Address' ) ) {
+		if ( isset( $package['destination'] ) && SST_Addresses::is_address_object( $package['destination'] ) ) {
 			$package['destination_address'] = SST_Addresses::format(
 				$package['destination']
 			);
@@ -945,15 +752,15 @@ abstract class SST_Abstract_Cart {
 
 		$certificate = $package['certificate'];
 
-		if ( $certificate instanceof ExemptionCertificate ) {
+		if ( is_object( $certificate ) && method_exists( $certificate, 'getDetail' ) ) {
 			// Single-purchase certificate without an ID. Use a stable hash of the certificate detail object as the ID.
 			$detail       = $certificate->getDetail();
 			$detail_array = json_decode( wp_json_encode( $detail ), true );
 			unset( $detail_array['CreatedDate'] );
 			$package['certificate_id'] = md5( wp_json_encode( $detail_array ) );
-		} else if ( $certificate instanceof ExemptionCertificateBase ) {
+		} elseif ( is_object( $certificate ) && method_exists( $certificate, 'getCertificateId' ) ) {
 			// Entity-based exemption certificate with ID
-			$package['certificate_id'] = $package['certificate']->getCertificateId();
+			$package['certificate_id'] = $certificate->getCertificateId();
 		}
 
 		// Remove keys not required to set tax amounts or capture/refund orders.
@@ -983,18 +790,56 @@ abstract class SST_Abstract_Cart {
 	 * @since 7.0.0
 	 */
 	protected function get_package_cart_items( $package ) {
-		$map        = $package['map'];
 		$cart_items = array();
+		$based_on   = SST_Settings::get( 'tax_based_on' );
 
-		foreach ( $package['request']->getCartItems() as $key => $item ) {
-			$map_entry    = $package['map'][ $key ];
-			$cart_items[] = array_merge(
-				$map_entry,
-				array(
-					'qty'   => $item->getQty(),
-					'tic'   => $item->getTIC(),
-					'price' => $item->getPrice(),
-				)
+		foreach ( $package['contents'] as $item ) {
+			$line_total = $item['line_total'];
+			$qty        = $item['quantity'];
+
+			if ( 'line-subtotal' === $based_on ) {
+				$price    = $line_total;
+				$quantity = 1;
+			} else {
+				$price    = $qty > 0 ? round( $line_total / $qty, wc_get_price_decimals() ) : 0.0;
+				$quantity = $qty;
+			}
+
+			$price   = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
+			$item_id = (string) ( $item['variation_id'] ? $item['variation_id'] : $item['product_id'] );
+
+			$cart_items[] = array(
+				'type'    => 'line_item',
+				'id'      => $item['data']->get_id(),
+				'cart_id' => isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'],
+				'itemId'  => $item_id,
+				'qty'     => $quantity,
+				'tic'     => (int) SST_Product::get_tic( $item['product_id'], $item['variation_id'] ),
+				'price'   => (float) $price,
+			);
+		}
+
+		foreach ( $package['fees'] as $cart_id => $fee ) {
+			$cart_items[] = array(
+				'type'    => 'fee',
+				'id'      => $fee->id,
+				'cart_id' => $cart_id,
+				'itemId'  => (string) $fee->id,
+				'qty'     => 1,
+				'tic'     => (int) apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
+				'price'   => (float) apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
+			);
+		}
+
+		if ( ! empty( $package['shipping'] ) ) {
+			$cart_items[] = array(
+				'type'    => 'shipping',
+				'id'      => SST_SHIPPING_ITEM,
+				'cart_id' => $package['shipping']->id,
+				'itemId'  => SST_SHIPPING_ITEM,
+				'qty'     => 1,
+				'tic'     => (int) sst_get_shipping_tic( $package['shipping']->method_id ),
+				'price'   => (float) apply_filters( 'wootax_shipping_price', $package['shipping']->cost, $package['shipping'] ),
 			);
 		}
 
@@ -1077,9 +922,9 @@ abstract class SST_Abstract_Cart {
 	 *      ),
 	 *      'request'       => null,
 	 *      'response'      => null,
-	 *      'origin'        => TaxCloud\Address,
-	 *      'destination'   => TaxCloud\Address,
-	 *      'certificate'   => TaxCloud\ExemptCertificate
+	 *      'origin'        => object,
+	 *      'destination'   => object,
+	 *      'certificate'   => object|null
 	 *  )
 	 *
 	 * @return array
@@ -1151,7 +996,7 @@ abstract class SST_Abstract_Cart {
 	/**
 	 * Get the exemption certificate for the customer.
 	 *
-	 * @return TaxCloud\ExemptionCertificateBase
+	 * @return object|null
 	 * @since 7.0.0
 	 */
 	abstract public function get_certificate();
