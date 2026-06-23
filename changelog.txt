@@ -2,6 +2,15 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [8.4.11] - 2026-06-24 =
+
+Fixed:
+- [DEV-8740] - WooCommerce Exemption Certificate Error
+
+Changed:
+- WC tested up to: 10.8.1
+
+
 - [8.4.10] - 2026-05-29 =
 
 Fixed:
