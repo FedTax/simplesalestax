@@ -428,6 +428,34 @@ class SST_Certificates {
 				$purchaser
 			);
 
+			return self::add_certificate_object( $certificate, $user_id );
+		} catch ( Throwable $ex ) {
+			SST_Logger::add(
+				sprintf(
+					/* translators: 1 - error message */
+					__(
+						'Failed to add exemption certificate. Error was: %1$s',
+						'simple-sales-tax'
+					),
+					$ex->getMessage()
+				)
+			);
+
+			throw $ex;
+		}
+	}
+
+	/**
+	 * Add a pre-built exemption certificate object for a particular user.
+	 *
+	 * @param TaxCloud\ExemptionCertificate $certificate Certificate object.
+	 * @param int                           $user_id     Purchaser user ID (defaults to current user ID).
+	 *
+	 * @return string New certificate ID
+	 * @throws If certificate creation fails
+	 */
+	public static function add_certificate_object( $certificate, $user_id = 0 ) {
+		try {
 			// Validate user permissions
 			$user = $user_id
 				? get_user_by( 'id', $user_id )
@@ -471,21 +499,30 @@ class SST_Certificates {
 					$reason_description = substr( $reason_description, 0, 20 );
 				}
 
+				// Map v1 business type names to v3 API enum values.
+				$v1_to_v3_business_map = array(
+					'Agricultural_Forestry_Fishing_Hunting'   => 'AgriculturalForestryFishingHunting',
+					'Information_PublishingAndCommunications' => 'InformationPublishingAndCommunications',
+				);
+
+				$v1_business = $detail->getPurchaserBusinessType() ?: 'Other';
+				$v3_business = isset( $v1_to_v3_business_map[ $v1_business ] ) ? $v1_to_v3_business_map[ $v1_business ] : $v1_business;
+
 				$v3_args = array(
-					'customerId'           => (string) $user->ID,
-					'customerName'         => trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() ),
-					'customerBusinessType' => $detail->getPurchaserBusinessType() ?: 'Other',
+					'customerId'                  => (string) $user->ID,
+					'customerName'                => trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() ),
+					'customerBusinessType'        => $v3_business,
 					'customerBusinessDescription' => $detail->getPurchaserBusinessTypeOtherValue(),
-					'reason'               => $v3_reason,
-					'reasonDescription'    => $reason_description,
-					'address'              => array(
+					'reason'                      => $v3_reason,
+					'reasonDescription'           => $reason_description,
+					'address'                     => array(
 						'line1' => $detail->getPurchaserAddress1(),
 						'line2' => $detail->getPurchaserAddress2(),
 						'city'  => $detail->getPurchaserCity(),
 						'state' => $detail->getPurchaserState(),
 						'zip'   => substr( $detail->getPurchaserZip(), 0, 5 ),
 					),
-					'states' => $states
+					'states'                      => $states,
 				);
 
 				// Log the payload for debugging certificate creation issues.
@@ -513,8 +550,10 @@ class SST_Certificates {
 				$certificate_id = TaxCloud()->AddExemptCertificate( $request );
 			}
 
-			// Invalidate cached certificates
-			SST_Certificates::delete_certificates( $user->ID );
+			// Invalidate cached certificates if not a single purchase certificate
+			if ( ! $certificate->getDetail()->getSinglePurchase() ) {
+				SST_Certificates::delete_certificates( $user->ID );
+			}
 
 			return $certificate_id;
 		} catch ( Throwable $ex ) {
@@ -522,7 +561,7 @@ class SST_Certificates {
 				sprintf(
 					/* translators: 1 - error message */
 					__(
-						'Failed to add exemption certificate. Error was: %1$s',
+						'Failed to add exemption certificate object. Error was: %1$s',
 						'simple-sales-tax'
 					),
 					$ex->getMessage()

@@ -189,7 +189,12 @@ jQuery( function( $ ) {
 			$.post( script_data.ajaxurl + '?action=sst_add_certificate', requestData )
 				.then( function( response ) {
 					if ( ! response.success ) {
-						throw new Error( response.data );
+						var errorMessage = response.data
+							? script_data.strings.add_failed + ': ' + response.data
+							: script_data.strings.add_failed;
+
+						alert( errorMessage );
+						return;
 					}
 
 					// Re-render
@@ -197,8 +202,16 @@ jQuery( function( $ ) {
 					view.model.set( 'certificates', response.data.certificates );
 					view.model.trigger( 'change:certificates' );
 				} )
-				.fail( function() {
-					alert( script_data.strings.add_failed );
+				.fail( function( jqXHR ) {
+					var errorMessage = script_data.strings.add_failed;
+
+					if ( jqXHR.responseJSON && jqXHR.responseJSON.data ) {
+						errorMessage += ': ' + jqXHR.responseJSON.data;
+					} else if ( jqXHR.responseText ) {
+						errorMessage += ': ' + jqXHR.responseText;
+					}
+
+					alert( errorMessage );
 				} )
 				.always( function() {
 					view.unblock();
