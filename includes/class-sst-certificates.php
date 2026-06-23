@@ -499,23 +499,30 @@ class SST_Certificates {
 					$reason_description = substr( $reason_description, 0, 20 );
 				}
 
+				// Map v1 business type names to v3 API enum values.
+				$v1_to_v3_business_map = array(
+					'Agricultural_Forestry_Fishing_Hunting'   => 'AgriculturalForestryFishingHunting',
+					'Information_PublishingAndCommunications' => 'InformationPublishingAndCommunications',
+				);
+
+				$v1_business = $detail->getPurchaserBusinessType() ?: 'Other';
+				$v3_business = isset( $v1_to_v3_business_map[ $v1_business ] ) ? $v1_to_v3_business_map[ $v1_business ] : $v1_business;
+
 				$v3_args = array(
-					'customerId'                => (string) $user->ID,
-					'customerName'              => trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() ),
-					'customerBusinessType'      => $detail->getPurchaserBusinessType() ?: 'Other',
+					'customerId'                  => (string) $user->ID,
+					'customerName'                => trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() ),
+					'customerBusinessType'        => $v3_business,
 					'customerBusinessDescription' => $detail->getPurchaserBusinessTypeOtherValue(),
-					'reason'                    => $v3_reason,
-					'reasonDescription'         => $reason_description,
-					'address'                   => array(
+					'reason'                      => $v3_reason,
+					'reasonDescription'           => $reason_description,
+					'address'                     => array(
 						'line1' => $detail->getPurchaserAddress1(),
 						'line2' => $detail->getPurchaserAddress2(),
 						'city'  => $detail->getPurchaserCity(),
 						'state' => $detail->getPurchaserState(),
 						'zip'   => substr( $detail->getPurchaserZip(), 0, 5 ),
 					),
-					'states'                    => $states,
-					'singlePurchase'            => (bool) $detail->getSinglePurchase(),
-					'singlePurchaseOrderNumber' => (string) $detail->getSinglePurchaseOrderNumber()
+					'states'                      => $states,
 				);
 
 				// Log the payload for debugging certificate creation issues.
