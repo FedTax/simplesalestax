@@ -313,6 +313,20 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
+			'disable_integration'         => array(
+				'title'       => __( 'Disable Integration', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'no'  => __( 'No', 'simple-sales-tax' ),
+					'yes' => __( 'Yes', 'simple-sales-tax' ),
+				),
+				'default'     => 'no',
+				'description' => __(
+					'If enabled, TaxCloud integration will be disabled for both real-time and data mover.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
 			'force_tax_lookup'						=> array(
 				'title'       => __( 'Force Tax Lookup', 'simple-sales-tax' ),
 				'type'        => 'checkbox',
@@ -348,20 +362,6 @@ class SST_Settings {
 					'completed'        => __( 'Completed order', 'simple-sales-tax' ),
 					'processing'       => __( 'Processing order (paid)', 'simple-sales-tax' ),
 				),
-			),
-			'disable_integration' => array(
-				'title'       => __( 'Disable Integration', 'simple-sales-tax' ),
-				'type'        => 'select',
-				'options'     => array(
-					'no'  => __( 'No', 'simple-sales-tax' ),
-					'yes' => __( 'Yes', 'simple-sales-tax' ),
-				),
-				'default'     => 'no',
-				'description' => __(
-					'If enabled, TaxCloud integration will be disabled for both real-time and data mover.',
-					'simple-sales-tax'
-				),
-				'desc_tip'    => true,
 			),
 			'tax_based_on'                => array(
 				'title'       => __( 'Tax Based On', 'simple-sales-tax' ),
