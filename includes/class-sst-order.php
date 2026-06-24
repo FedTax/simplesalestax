@@ -714,7 +714,7 @@ class SST_Order extends SST_Abstract_Cart {
 			// Logging
 			SST_Logger::order_log( __( 'Order already captured.', 'simple-sales-tax' ), $order->get_id() );
 
-			if ( 'no' === SST_Settings::get( 'capture_immediately' ) ) {
+			if ( 'completed' === SST_Settings::get_capture_trigger() ) {
 				$this->handle_error(
 					sprintf(
 						/* translators: WooCommerce order ID */
