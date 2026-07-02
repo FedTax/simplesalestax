@@ -545,10 +545,11 @@ function sst_is_user_tax_exempt() {
 function sst_should_show_tax_exemption_form() {
 	$restricted = 'yes' === SST_Settings::get( 'restrict_exempt' );
 	$enabled    = 'true' === SST_Settings::get( 'show_exempt' );
+	$realtime   = 'data_mover' !== sst_integration_mode();
 
 	return apply_filters(
 		'sst_show_tax_exemption_form',
-		$enabled && ( ! $restricted || sst_is_user_tax_exempt() )
+		$enabled && $realtime && ( ! $restricted || sst_is_user_tax_exempt() )
 	);
 }
 

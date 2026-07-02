@@ -59,6 +59,16 @@ class SST_Blocks_Integration implements IntegrationInterface {
 	 * @return array
 	 */
 	public function get_script_data() {
+		if ( ! sst_should_show_tax_exemption_form() ) {
+			return array(
+				'showExemptionForm'    => false,
+				'certificateOptions'   => array(),
+				'selectedCertificate'  => '',
+				'isUserLoggedIn'       => is_user_logged_in(),
+				'myAccountEndpointUrl' => '',
+			);
+		}
+
 		$certificates = SST_Certificates::get_certificates_formatted();
 		$options      = array(
 			'new'  => 'Add new certificate',
@@ -217,6 +227,10 @@ class SST_Blocks_Integration implements IntegrationInterface {
 	 * Force exemption block into checkout page markup after payment block.
 	 */
 	public function force_exemption_block( $content ) {
+		if ( ! sst_should_show_tax_exemption_form() ) {
+			return $content;
+		}
+
 		if ( ! has_block( 'woocommerce/checkout' ) ) {
 			return $content;
 		}

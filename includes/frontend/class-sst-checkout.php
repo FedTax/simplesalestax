@@ -547,6 +547,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @return ExemptionCertificateBase
 	 */
 	public function get_certificate() {
+		if ( 'data_mover' === sst_integration_mode() ) {
+			return null;
+		}
+
 		$certificate_id = $this->get_certificate_id();
 
 		if ( $certificate_id && 'none' !== $certificate_id ) {
@@ -583,6 +587,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 */
 	public function init_certificate_id() {
 		if ( ! WC()->session ) {
+			return;
+		}
+
+		if ( 'data_mover' === sst_integration_mode() ) {
+			WC()->session->set( 'sst_certificate_id', '' );
 			return;
 		}
 
@@ -800,8 +809,13 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @param WC_Order $wc_order Order object
 	 */
 	protected function process_checkout( $data, $wc_order ) {
-		$certificate_id = $data['certificate_id'] ?? '';
-		$order          = new SST_Order( $wc_order );
+		$order = new SST_Order( $wc_order );
+
+		if ( 'data_mover' === sst_integration_mode() ) {
+			$certificate_id = '';
+		} else {
+			$certificate_id = $data['certificate_id'] ?? '';
+		}
 
 		if ( 'new' === $certificate_id ) {
 			$this->create_exemption_certificate( $data, $order );
@@ -977,6 +991,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @param WP_Error $errors Checkout errors.
 	 */
 	protected function validate_exemption_certificate( $data, $errors ) {
+		if ( 'data_mover' === sst_integration_mode() ) {
+			return;
+		}
+
 		$certificate_id = $data['certificate_id'] ?? '';
 		$certificate    = $data['certificate'] ?? [];
 
