@@ -91,6 +91,11 @@ class SST_Blocks {
 	 * @param array $data Data payload from `extensionCartUpdate`
 	 */
 	public function handle_cart_update( $data ) {
+		if ( ! sst_should_show_tax_exemption_form() ) {
+			WC()->session->set( 'sst_certificate_id', '' );
+			return;
+		}
+
 		$action = $data['action'] ?? '';
 
 		switch ( $action ) {
