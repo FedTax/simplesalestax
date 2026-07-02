@@ -73,6 +73,19 @@ class SST_Settings {
 	}
 
 	/**
+	 * Check whether Data Import mode is active.
+	 *
+	 * @return bool
+	 */
+	protected static function is_data_mover_mode() {
+		if ( empty( self::$settings ) ) {
+			self::load_settings();
+		}
+
+		return ! empty( self::$settings['data_mover'] );
+	}
+
+	/**
 	 * Get a list of plugin options and their default values.
 	 *
 	 * @since 5.0
@@ -82,6 +95,18 @@ class SST_Settings {
 			self::is_using_cart_block() ||
 			self::is_using_checkout_block()
 		);
+		$disable_exemption_settings = self::is_data_mover_mode();
+		$exemption_description      = __(
+			'If you have tax exempt customers, be sure to enable tax exemptions and enter your company name.',
+			'simple-sales-tax'
+		);
+
+		if ( $disable_exemption_settings ) {
+			$exemption_description .= '<br><strong>' . __(
+				'Tax exemptions are not supported in Data Import mode. These settings are disabled until Integration Mode is switched back to Real Time.',
+				'simple-sales-tax'
+			) . '</strong>';
+		}
 
 		$fields = array(
 			'taxcloud_settings'           => array(
@@ -172,10 +197,7 @@ class SST_Settings {
 			'exemption_settings'          => array(
 				'title'       => __( 'Exemption Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
-				'description' => __(
-					'If you have tax exempt customers, be sure to enable tax exemptions and enter your company name.',
-					'simple-sales-tax'
-				),
+				'description' => $exemption_description,
 			),
 			'show_exempt'                 => array(
 				'title'       => __( 'Enable Tax Exemptions?', 'simple-sales-tax' ),
@@ -187,6 +209,7 @@ class SST_Settings {
 				'default'     => 'false',
 				'description' => __( 'Set this to "Yes" if you have tax exempt customers.', 'simple-sales-tax' ),
 				'desc_tip'    => true,
+				'disabled'    => $disable_exemption_settings,
 			),
 			'company_name'                => array(
 				'title'       => __( 'Company Name', 'simple-sales-tax' ),
@@ -197,6 +220,7 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
+				'disabled'    => $disable_exemption_settings,
 			),
 			'exempt_roles'                => array(
 				'title'       => __( 'Exempt User Roles', 'simple-sales-tax' ),
@@ -209,6 +233,7 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
+				'disabled'    => $disable_exemption_settings,
 			),
 			'restrict_exempt'             => array(
 				'title'       => __( 'Restrict to Exempt Roles', 'simple-sales-tax' ),
@@ -223,6 +248,7 @@ class SST_Settings {
 					'yes' => __( 'Yes', 'simple-sales-tax' ),
 					'no'  => __( 'No', 'simple-sales-tax' ),
 				),
+				'disabled'    => $disable_exemption_settings,
 			),
 			'display_settings'            => array(
 				'title'       => __( 'Display Settings', 'simple-sales-tax' ),
