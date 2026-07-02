@@ -700,12 +700,21 @@ class SST_Order extends SST_Abstract_Cart {
 		$taxcloud_status = $this->get_taxcloud_status();
 		$packages        = $this->get_packages();
 
+		if (
+			'data_mover' !== sst_integration_mode()
+			&& 'pending' === $taxcloud_status
+			&& ! $this->has_capturable_packages( $packages )
+		) {
+			SST_Logger::order_log( __( 'No capturable packages found. Rebuilding packages before capture.', 'simple-sales-tax' ), $order->get_id() );
+			$packages = $this->do_lookup();
+		}
+
 		// Handle error cases.
 		if ( 'captured' === $taxcloud_status ) {
 			// Logging
 			SST_Logger::order_log( __( 'Order already captured.', 'simple-sales-tax' ), $order->get_id() );
 
-			if ( 'no' === SST_Settings::get( 'capture_immediately' ) ) {
+			if ( 'completed' === SST_Settings::get_capture_trigger() ) {
 				$this->handle_error(
 					sprintf(
 						/* translators: WooCommerce order ID */
@@ -738,11 +747,23 @@ class SST_Order extends SST_Abstract_Cart {
 			// Logging
 			SST_Logger::order_log( __( 'Data Mover Mode enabled. Creating order in TaxCloud.', 'simple-sales-tax' ), $order->get_id() );
 			$created_order = $this->create_order_in_taxcloud( $packages, $order );
-			return true;
+			return $created_order;
 		}
 
 		// Logging
 		SST_Logger::order_log( __( 'Capturing order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
+
+		if ( ! $this->has_capturable_packages( $packages ) ) {
+			$this->handle_error(
+				sprintf(
+					/* translators: WooCommerce order ID */
+					__( 'Failed to capture order %d: no TaxCloud lookup packages were found.', 'simple-sales-tax' ),
+					$order->get_id()
+				)
+			);
+
+			return false;
+		}
 
 		// Send AuthorizedWithCapture for all packages.
 		foreach ( $packages as $key => $package ) {
@@ -790,6 +811,31 @@ class SST_Order extends SST_Abstract_Cart {
 		SST_Logger::order_log( __( 'Order status updated to captured.', 'simple-sales-tax' ), $order->get_id() );
 
 		$order->save();
+
+		return true;
+	}
+
+	/**
+	 * Determine whether saved lookup packages contain the data needed to capture.
+	 *
+	 * @param array $packages Saved TaxCloud lookup packages.
+	 *
+	 * @return bool True if all packages can be captured.
+	 */
+	protected function has_capturable_packages( $packages ) {
+		if ( empty( $packages ) || ! is_array( $packages ) ) {
+			return false;
+		}
+
+		foreach ( $packages as $package ) {
+			if (
+				! isset( $package['customer_id'], $package['cart_id'] )
+				|| '' === $package['customer_id']
+				|| '' === $package['cart_id']
+			) {
+				return false;
+			}
+		}
 
 		return true;
 	}
@@ -1153,7 +1199,15 @@ class SST_Order extends SST_Abstract_Cart {
 	protected function create_order_in_taxcloud( $packages, $order ) {
 		// No packages found.
 		if ( empty( $packages ) ) {
-			return;
+			$this->handle_error(
+				sprintf(
+					/* translators: WooCommerce order ID */
+					__( 'Failed to create order %d in TaxCloud: no TaxCloud lookup packages were found.', 'simple-sales-tax' ),
+					$order->get_id()
+				)
+			);
+
+			return false;
 		}
 
 		// Order object.
@@ -1195,6 +1249,8 @@ class SST_Order extends SST_Abstract_Cart {
 				return false;
 			}
 		}
+
+		return true;
 	}
 
 }

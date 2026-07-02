@@ -347,6 +347,20 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
+			'disable_integration'         => array(
+				'title'       => __( 'Disable Integration', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'no'  => __( 'No', 'simple-sales-tax' ),
+					'yes' => __( 'Yes', 'simple-sales-tax' ),
+				),
+				'default'     => 'no',
+				'description' => __(
+					'If enabled, TaxCloud integration will be disabled for both real-time and data mover.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
 			'force_tax_lookup'						=> array(
 				'title'       => __( 'Force Tax Lookup', 'simple-sales-tax' ),
 				'type'        => 'checkbox',
@@ -370,30 +384,19 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
-			'capture_immediately'         => array(
-				'title'       => __( 'Capture Orders Immediately', 'simple-sales-tax' ),
-				'label'       => ' ',
-				'type'        => 'checkbox',
-				'default'     => 'no',
-				'description' => __(
-					'By default, orders are marked as Captured in TaxCloud when they are shipped. Select this option to mark orders as Captured immediately when payment is received. Useful for stores that have items with long lead times.',
-					'simple-sales-tax'
-				),
-				'desc_tip'    => true,
-			),
-			'disable_integration' => array(
-				'title'       => __( 'Disable Integration', 'simple-sales-tax' ),
+			'capture_trigger'             => array(
+				'title'       => __( 'TaxCloud Order Capture Trigger', 'simple-sales-tax' ),
 				'type'        => 'select',
-				'options'     => array(
-					'no'  => __( 'No', 'simple-sales-tax' ),
-					'yes' => __( 'Yes', 'simple-sales-tax' ),
-				),
-				'default'     => 'no',
+				'default'     => self::get_default_capture_trigger(),
 				'description' => __(
-					'If enabled, TaxCloud integration will be disabled for both real-time and data mover.',
+					'Choose when WooCommerce orders should be captured in TaxCloud for reporting and filing.',
 					'simple-sales-tax'
 				),
-				'desc_tip'    => true,
+				'desc_tip'    => false,
+				'options'     => array(
+					'completed'        => __( 'Completed order', 'simple-sales-tax' ),
+					'processing'       => __( 'Processing order (paid)', 'simple-sales-tax' ),
+				),
 			),
 			'tax_based_on'                => array(
 				'title'       => __( 'Tax Based On', 'simple-sales-tax' ),
@@ -555,6 +558,43 @@ class SST_Settings {
 		}
 
 		return apply_filters( 'sst_get_option', self::$settings[ $key ], $key );
+	}
+
+	/**
+	 * Get the default capture trigger from saved settings.
+	 *
+	 * @return string Capture trigger option.
+	 */
+	protected static function get_default_capture_trigger() {
+		if ( empty( self::$settings ) ) {
+			self::load_settings();
+		}
+
+		if ( 'payment_complete' === ( self::$settings['capture_trigger'] ?? '' ) ) {
+			return 'processing';
+		}
+
+		if ( ! empty( self::$settings['capture_trigger'] ) ) {
+			return self::$settings['capture_trigger'];
+		}
+
+		return 'yes' === ( self::$settings['capture_immediately'] ?? '' ) ? 'processing' : 'completed';
+	}
+
+	/**
+	 * Get the order capture trigger.
+	 *
+	 * @return string One of completed or processing.
+	 */
+	public static function get_capture_trigger() {
+		$valid   = array( 'completed', 'processing' );
+		$trigger = self::get_default_capture_trigger();
+
+		if ( in_array( $trigger, $valid, true ) ) {
+			return $trigger;
+		}
+
+		return 'completed';
 	}
 
 	/**
