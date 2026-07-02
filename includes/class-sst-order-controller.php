@@ -22,8 +22,8 @@ class SST_Order_Controller {
 	 */
 	public function __construct() {
 		add_action( 'woocommerce_order_status_completed', array( $this, 'capture_order' ), 10, 2 );
+		add_action( 'woocommerce_order_status_processing', array( $this, 'capture_processing_order' ), 10, 2 );
 		add_action( 'woocommerce_refund_created', array( $this, 'refund_order' ), 10, 2 );
-		add_action( 'woocommerce_payment_complete', array( $this, 'maybe_capture_order' ) );
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hide_order_item_meta' ) );
 		add_filter( 'woocommerce_order_item_get_taxes', array( $this, 'fix_shipping_tax_issue' ), 10, 2 );
 		add_action( 'woocommerce_before_order_object_save', array( $this, 'save_db_version' ) );
@@ -58,6 +58,40 @@ class SST_Order_Controller {
 	 * @since 5.0
 	 */
 	public function capture_order( $_order_id, $order ) {
+		if ( 'completed' !== SST_Settings::get_capture_trigger() ) {
+			return false;
+		}
+
+		return $this->capture_order_for_trigger( $order, __( 'order_status_completed: Capturing order.', 'simple-sales-tax' ) );
+	}
+
+	/**
+	 * When an order is processing, mark it as captured in TaxCloud if configured.
+	 *
+	 * @param int      $_order_id Order ID - unused.
+	 * @param WC_Order $order     Order object.
+	 *
+	 * @return bool True on success, false on failure.
+	 *
+	 * @throws Exception If capture fails.
+	 */
+	public function capture_processing_order( $_order_id, $order ) {
+		if ( 'processing' !== SST_Settings::get_capture_trigger() ) {
+			return false;
+		}
+
+		return $this->capture_order_for_trigger( $order, __( 'order_status_processing: Capturing order.', 'simple-sales-tax' ) );
+	}
+
+	/**
+	 * Capture the order for the selected trigger.
+	 *
+	 * @param WC_Order $order       Order object.
+	 * @param string   $log_message Message to log before capture.
+	 *
+	 * @return bool True on success, false on failure.
+	 */
+	protected function capture_order_for_trigger( $order, $log_message ) {
 		// Disable integration
 		if ( 'yes' === SST_Settings::get( 'disable_integration' ) ) {
 			SST_Logger::order_log( __( 'Integration disabled. Skipping order capture.', 'simple-sales-tax' ), $order->get_id() );
@@ -67,7 +101,7 @@ class SST_Order_Controller {
 		$sst_order = new SST_Order( $order );
 
 		// Logging
-		SST_Logger::order_log( __( 'order_status_completed: Capturing order.', 'simple-sales-tax' ), $order->get_id() );
+		SST_Logger::order_log( $log_message, $order->get_id() );
 
 		return $sst_order->do_capture();
 	}
@@ -105,32 +139,6 @@ class SST_Order_Controller {
 		}
 
 		return $result;
-	}
-
-	/**
-	 * If the "Capture Orders Immediately" option is enabled, capture orders
-	 * when payment is received.
-	 *
-	 * @param int $order_id ID of order for which payment was just received.
-	 *
-	 * @throws Exception If attempt to capture order fails.
-	 * @since 5.0
-	 */
-	public function maybe_capture_order( $order_id ) {
-		// Disable integration
-		if ( 'yes' === SST_Settings::get( 'disable_integration' ) ) {
-			SST_Logger::order_log( __( 'Integration disabled. Skipping order capture.', 'simple-sales-tax' ), $order_id );
-			return;
-		}
-
-		if ( 'yes' === SST_Settings::get( 'capture_immediately' ) ) {
-			$order = new SST_Order( $order_id );
-
-			// Logging
-			SST_Logger::order_log( __( 'payment_complete: Capturing order.', 'simple-sales-tax' ), $order->get_id() );
-
-			$order->do_capture();
-		}
 	}
 
 	/**
