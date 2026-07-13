@@ -42,23 +42,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require __DIR__ . '/includes/vendor/autoload.php';
-
-// Register prepended autoloader to override fragile classes in php-taxcloud library under PHP 8
-spl_autoload_register(function ($class) {
-	$overrides = array(
-		'TaxCloud\\ExemptState'                => '/includes/class-sst-exempt-state.php',
-		'TaxCloud\\TaxID'                      => '/includes/class-sst-tax-id.php',
-		'TaxCloud\\ExemptionCertificateDetail' => '/includes/class-sst-exemption-certificate-detail.php',
-	);
-
-	if ( isset( $overrides[ $class ] ) ) {
-		if ( ! class_exists( 'TaxCloud\Serializable', false ) ) {
-			require_once __DIR__ . '/includes/vendor/fedtax/php-taxcloud/lib/TaxCloud/Serializable.php';
-		}
-		require_once __DIR__ . $overrides[ $class ];
-	}
-}, true, true);
-
 require __DIR__ . '/includes/class-simplesalestax.php';
 
 /**
