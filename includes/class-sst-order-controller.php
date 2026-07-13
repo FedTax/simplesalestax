@@ -58,7 +58,8 @@ class SST_Order_Controller {
 	 * @since 5.0
 	 */
 	public function capture_order( $_order_id, $order ) {
-		if ( 'completed' !== SST_Settings::get_capture_trigger() ) {
+		$trigger = SST_Settings::get_capture_trigger();
+		if ( 'completed' !== $trigger && 'both' !== $trigger ) {
 			return false;
 		}
 
@@ -76,7 +77,8 @@ class SST_Order_Controller {
 	 * @throws Exception If capture fails.
 	 */
 	public function capture_processing_order( $_order_id, $order ) {
-		if ( 'processing' !== SST_Settings::get_capture_trigger() ) {
+		$trigger = SST_Settings::get_capture_trigger();
+		if ( 'processing' !== $trigger && 'both' !== $trigger ) {
 			return false;
 		}
 
