@@ -471,19 +471,21 @@ function sst_render_certificate_table( $user_id = 0, $options = array() ) {
 	);
 
 	$script_data = array(
-		'delete_certificate_nonce' => wp_create_nonce( 'sst_delete_certificate' ),
-		'ajaxurl'                  => admin_url( 'admin-ajax.php' ),
-		'strings'                  => array(
+		'delete_certificate_nonce'  => wp_create_nonce( 'sst_delete_certificate' ),
+		'refresh_certificates_nonce' => wp_create_nonce( 'sst_refresh_certificates' ),
+		'ajaxurl'                    => admin_url( 'admin-ajax.php' ),
+		'strings'                    => array(
 			'delete_failed'      => __( 'Failed to delete certificate', 'simple-sales-tax' ),
 			'add_failed'         => __( 'Failed to add certificate', 'simple-sales-tax' ),
+			'refresh_failed'     => __( 'Failed to refresh certificates', 'simple-sales-tax' ),
 			'delete_certificate' => __(
 				'Are you sure you want to delete this certificate? This action is irreversible.',
 				'simple-sales-tax'
 			),
 		),
-		'user_id'                  => $user_id,
-		'certificates'             => SST_Certificates::get_certificates_formatted( $user_id ),
-		'billing_address'          => $billing_address,
+		'user_id'                    => $user_id,
+		'certificates'               => SST_Certificates::get_certificates_formatted( $user_id ),
+		'billing_address'            => $billing_address,
 	);
 
 	wp_enqueue_style( 'sst-certificate-modal-css' );
