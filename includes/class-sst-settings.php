@@ -396,6 +396,7 @@ class SST_Settings {
 				'options'     => array(
 					'completed'        => __( 'Completed order', 'simple-sales-tax' ),
 					'processing'       => __( 'Processing order (paid)', 'simple-sales-tax' ),
+					'both'             => __( 'Both Processing + Completed', 'simple-sales-tax' ),
 				),
 			),
 			'tax_based_on'                => array(
@@ -587,7 +588,7 @@ class SST_Settings {
 	 * @return string One of completed or processing.
 	 */
 	public static function get_capture_trigger() {
-		$valid   = array( 'completed', 'processing' );
+		$valid   = array( 'completed', 'processing', 'both' );
 		$trigger = self::get_default_capture_trigger();
 
 		if ( in_array( $trigger, $valid, true ) ) {
