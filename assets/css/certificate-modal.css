@@ -5,7 +5,8 @@
     width: 800px;
 }
 
-.sst-view-certificate-modal-content .wc-backbone-modal-main, .sst-select-tic-modal-content .wc-backbone-modal-main {
+.sst-view-certificate-modal-content .wc-backbone-modal-main,
+.sst-select-tic-modal-content .wc-backbone-modal-main {
     padding-bottom: 0;
 }
 
@@ -106,6 +107,7 @@ span.table-action-sep {
     margin: 0 3px;
 }
 
+.select2-container.select2-container--open,
 .sst-select2-dropdown {
-    z-index: 100002;
+    z-index: 100002 !important;
 }
