@@ -26,6 +26,13 @@ jQuery( function( $ ) {
 				{ view: this },
 				this.onAddCertificate
 			);
+
+			$( document.body ).on(
+				'click',
+				'.sst-certificate-refresh',
+				{ view: this },
+				this.onRefreshCertificates
+			);
 		},
 		render: function() {
 			var certificates = _.indexBy( this.model.get( 'certificates' ), 'CertificateID' ),
@@ -152,6 +159,34 @@ jQuery( function( $ ) {
 				address: view.getBillingAddress(),
 				onAddCertificate: view.addCertificateHandler.bind( view ),
 			} );
+		},
+		onRefreshCertificates: function( event ) {
+			var view = event.data.view;
+			event.preventDefault();
+
+			view.block();
+
+			var requestData = {
+				nonce: script_data.refresh_certificates_nonce,
+			};
+
+			if ( view.userId ) {
+				requestData.user_id = view.userId;
+			}
+
+			$.post( script_data.ajaxurl + '?action=sst_refresh_certificates', requestData )
+				.then( function( response ) {
+					if ( ! response.success ) {
+						throw new Error( response.data );
+					}
+					window.location.reload();
+				} )
+				.fail( function() {
+					alert( script_data.strings.refresh_failed || 'Failed to refresh certificates' );
+				} )
+				.always( function() {
+					view.unblock();
+				} );
 		},
 		getBillingAddress: function() {
 			var address = script_data.billing_address;
