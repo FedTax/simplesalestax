@@ -116,6 +116,11 @@ class SST_Settings {
 			) . '</strong>';
 		}
 
+		$disable_exemption_sub_settings = (
+			$disable_data_import_settings ||
+			'false' === self::get( 'show_exempt', 'false' )
+		);
+
 		$fields = array(
 			'taxcloud_settings'           => array(
 				'title'       => __( 'TaxCloud Settings', 'simple-sales-tax' ),
@@ -228,7 +233,7 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
-				'disabled'    => $disable_data_import_settings,
+				'disabled'    => $disable_exemption_sub_settings,
 			),
 			'exempt_roles'                => array(
 				'title'       => __( 'Exempt User Roles', 'simple-sales-tax' ),
@@ -241,7 +246,7 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'desc_tip'    => false,
-				'disabled'    => $disable_data_import_settings,
+				'disabled'    => $disable_exemption_sub_settings,
 			),
 			'restrict_exempt'             => array(
 				'title'       => __( 'Restrict to Exempt Roles', 'simple-sales-tax' ),
@@ -256,7 +261,7 @@ class SST_Settings {
 					'yes' => __( 'Yes', 'simple-sales-tax' ),
 					'no'  => __( 'No', 'simple-sales-tax' ),
 				),
-				'disabled'    => $disable_data_import_settings,
+				'disabled'    => $disable_exemption_sub_settings,
 			),
 			'display_settings'            => array(
 				'title'       => __( 'Display Settings', 'simple-sales-tax' ),
