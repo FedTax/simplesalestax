@@ -218,6 +218,7 @@ class SST_Certificates {
 				array_filter(
 					array(
 						(string) $user->ID,
+						'customer-' . $user->ID,
 						$user->user_login,
 						$user->user_email,
 						$user->user_login . '-' . $user->ID,
@@ -306,8 +307,9 @@ class SST_Certificates {
 		$exempt_states = array();
 		if ( isset( $v3_cert['states'] ) && is_array( $v3_cert['states'] ) ) {
 			foreach ( $v3_cert['states'] as $state ) {
-				$abbr = $state['abbreviation'] ?? '';
-				if ( ! defined( '\TaxCloud\State::' . $abbr ) ) {
+				$abbr       = $state['abbreviation'] ?? '';
+				$const_name = ( 'OR' === $abbr ) ? '_OR' : $abbr;
+				if ( ! defined( '\TaxCloud\State::' . $const_name ) ) {
 					continue; // Skip invalid states
 				}
 
