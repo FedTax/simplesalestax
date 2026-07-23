@@ -103,6 +103,7 @@ class SST_Integration extends WC_Integration {
 			'taxcloud_rate_limit_requests',
 			'taxcloud_rate_limit_scope',
 			'taxcloud_rate_limit_window',
+			'taxcloud_rate_limit_skip_admin',
 			'show_rate_limit_notice',
 		);
 

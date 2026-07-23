@@ -59,6 +59,27 @@ class SST_Rate_Limit {
 	}
 
 	/**
+	 * Check if the current request is exempt from rate limiting.
+	 *
+	 * @return bool
+	 */
+	public function is_exempt() {
+		// Background jobs (cron) should always bypass the limit.
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) {
+			return true;
+		}
+
+		// Admin user exemption check.
+		if ( 'yes' === SST_Settings::get( 'taxcloud_rate_limit_skip_admin', 'yes' ) ) {
+			if ( is_admin() || current_user_can( 'manage_woocommerce' ) || current_user_can( 'manage_options' ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Check if the rate limit has been reached.
 	 *
 	 * @return bool
@@ -69,8 +90,7 @@ class SST_Rate_Limit {
 			return false;
 		}
 
-		// Admin or background jobs (cron) should bypass the limit.
-		if ( is_admin() || ( defined( 'DOING_CRON' ) && DOING_CRON ) ) {
+		if ( $this->is_exempt() ) {
 			return false;
 		}
 
@@ -95,6 +115,10 @@ class SST_Rate_Limit {
 	public function increment_count() {
 		// Rate limiting disabled?
 		if ( 'yes' !== SST_Settings::get( 'enable_taxcloud_rate_limit', 'no' ) ) {
+			return;
+		}
+
+		if ( $this->is_exempt() ) {
 			return;
 		}
 

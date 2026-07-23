@@ -478,6 +478,18 @@ class SST_Settings {
 				),
 				'disabled'    => $disable_data_import_settings,
 			),
+			'taxcloud_rate_limit_skip_admin' => array(
+				'title'       => __( 'Skip Admin Order Rate Limiting', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Exempt admin users and backend order calculations from rate limits', 'simple-sales-tax' ),
+				'default'     => 'yes',
+				'description' => __(
+					'When enabled, TaxCloud rate limits will not apply to orders created or calculated by admin users.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => false,
+				'disabled'    => $disable_data_import_settings,
+			),
 			'show_rate_limit_notice'      => array(
 				'title'       => __( 'Notify Customer When Limited', 'simple-sales-tax' ),
 				'type'        => 'checkbox',
