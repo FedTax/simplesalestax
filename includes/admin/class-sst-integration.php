@@ -64,19 +64,36 @@ class SST_Integration extends WC_Integration {
 	}
 
 	/**
-	 * Preserve settings while their fields are disabled in Data Import mode.
+	 * Preserve settings while their fields are disabled in Data Import mode or when exemptions are disabled.
 	 *
 	 * @param array $settings Sanitized settings.
 	 *
 	 * @return array
 	 */
 	public function preserve_data_import_disabled_settings( $settings ) {
+		$current_settings = get_option( 'woocommerce_wootax_settings', array() );
+
+		// Preserve exemption sub-settings if exemptions are disabled
+		$show_exempt = $settings['show_exempt'] ?? ( $current_settings['show_exempt'] ?? 'false' );
+		if ( 'false' === $show_exempt ) {
+			$exemption_sub_keys = array(
+				'company_name',
+				'exempt_roles',
+				'restrict_exempt',
+			);
+
+			foreach ( $exemption_sub_keys as $key ) {
+				if ( array_key_exists( $key, $current_settings ) ) {
+					$settings[ $key ] = $current_settings[ $key ];
+				}
+			}
+		}
+
 		if ( empty( $settings['data_mover'] ) ) {
 			return $settings;
 		}
 
-		$current_settings = get_option( 'woocommerce_wootax_settings', array() );
-		$disabled_keys    = array(
+		$disabled_keys = array(
 			'show_exempt',
 			'company_name',
 			'exempt_roles',

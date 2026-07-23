@@ -116,6 +116,11 @@ class SST_Settings {
 			) . '</strong>';
 		}
 
+		$disable_exemption_sub_settings = (
+			$disable_data_import_settings ||
+			'false' === self::get( 'show_exempt', 'false' )
+		);
+
 		$fields = array(
 			'taxcloud_settings'           => array(
 				'title'       => __( 'TaxCloud Settings', 'simple-sales-tax' ),
@@ -215,7 +220,7 @@ class SST_Settings {
 					'false' => __( 'No', 'simple-sales-tax' ),
 				),
 				'default'     => 'false',
-				'description' => __( 'Set this to "Yes" if you have tax exempt customers.', 'simple-sales-tax' ),
+				'description' => __( 'Set this to "Yes" to allow customers to apply or create exemption certificates during checkout.', 'simple-sales-tax' ),
 				'desc_tip'    => true,
 				'disabled'    => $disable_data_import_settings,
 			),
@@ -228,7 +233,7 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
-				'disabled'    => $disable_data_import_settings,
+				'disabled'    => $disable_exemption_sub_settings,
 			),
 			'exempt_roles'                => array(
 				'title'       => __( 'Exempt User Roles', 'simple-sales-tax' ),
@@ -237,18 +242,18 @@ class SST_Settings {
 				'options'     => self::get_user_roles(),
 				'default'     => array( 'exempt-customer' ),
 				'description' => __(
-					'When a user with one of these roles shops on your site, WooTax will automatically find and apply the first exemption certificate associated with their account. Convenient if you have repeat exempt customers.',
+					'When a user with one of these roles shops on your site, TaxCloud will automatically find and apply the first exemption certificate associated with their account. Convenient if you have repeat exempt customers.',
 					'simple-sales-tax'
 				),
-				'desc_tip'    => true,
-				'disabled'    => $disable_data_import_settings,
+				'desc_tip'    => false,
+				'disabled'    => $disable_exemption_sub_settings,
 			),
 			'restrict_exempt'             => array(
 				'title'       => __( 'Restrict to Exempt Roles', 'simple-sales-tax' ),
 				'type'        => 'select',
 				'default'     => 'no',
 				'description' => __(
-					'Set this to "Yes" to restrict users aside from those specified above from seeing the exemption form during checkout.',
+					'Set this to "Yes" so only customers assigned to an Exempt User Role can view and use the tax exemption form during checkout.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
@@ -256,7 +261,7 @@ class SST_Settings {
 					'yes' => __( 'Yes', 'simple-sales-tax' ),
 					'no'  => __( 'No', 'simple-sales-tax' ),
 				),
-				'disabled'    => $disable_data_import_settings,
+				'disabled'    => $disable_exemption_sub_settings,
 			),
 			'display_settings'            => array(
 				'title'       => __( 'Display Settings', 'simple-sales-tax' ),

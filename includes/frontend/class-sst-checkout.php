@@ -604,17 +604,25 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 			if ( 'none' === $certificate_id ) {
 				$certificate_id = '';
+				WC()->session->set( 'sst_cert_explicitly_cleared', true );
+			} else {
+				WC()->session->set( 'sst_cert_explicitly_cleared', false );
 			}
 
 			if ( $certificate_id !== WC()->session->get( 'sst_certificate_id' ) ) {
 				WC()->session->set( 'sst_certificate_id', $certificate_id );
 				WC()->session->set( 'sst_packages', array() ); // Clear cache on selection change
 			}
-		} else if ( is_null( WC()->session->sst_certificate_id ) ) {
-			WC()->session->set(
-				'sst_certificate_id',
-				$this->get_default_certificate_id()
-			);
+		} else {
+			$current_cert_id = WC()->session->get( 'sst_certificate_id' );
+			$is_cleared      = (bool) WC()->session->get( 'sst_cert_explicitly_cleared', false );
+
+			if ( ( is_null( $current_cert_id ) || '' === $current_cert_id ) && ! $is_cleared ) {
+				$default_id = $this->get_default_certificate_id();
+				if ( ! empty( $default_id ) ) {
+					WC()->session->set( 'sst_certificate_id', $default_id );
+				}
+			}
 		}
 
 		// Ensure SST packages are initialized in session

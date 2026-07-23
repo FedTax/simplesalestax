@@ -145,5 +145,26 @@
 
     toggleIntegrationDependentSettings();
 
+    // Disable exemption-dependent settings when "Enable Tax Exemptions?" is set to "No".
+    var exemptionSettingSelectors = [
+      '#woocommerce_wootax_company_name',
+      '#woocommerce_wootax_exempt_roles',
+      '#woocommerce_wootax_restrict_exempt',
+    ];
+
+    function toggleExemptionSettings() {
+      var exemptionDisabled = jQuery('#woocommerce_wootax_show_exempt').val() === 'false';
+
+      jQuery.each(exemptionSettingSelectors, function (index, selector) {
+        var $el = jQuery(selector);
+        $el.prop('disabled', exemptionDisabled);
+      });
+    }
+
+    jQuery('#woocommerce_wootax_show_exempt')
+      .on('change', toggleExemptionSettings);
+
+    toggleExemptionSettings();
+
   });
 })(SST);
