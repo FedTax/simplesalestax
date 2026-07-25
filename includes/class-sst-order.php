@@ -162,11 +162,13 @@ class SST_Order extends SST_Abstract_Cart {
 		$packages = array();
 		$items    = $this->transform_items( $this->order->get_items() );
 
-		/* Create a virtual package for all items that don't need shipping */
-		$virtual_package = $this->create_virtual_package( $items );
-		if ( $virtual_package ) {
-			$packages[] = $virtual_package;
-			SST_Logger::order_log( __( 'Virtual package created.', 'simple-sales-tax' ), $this->order->get_id() );
+		/* Create a virtual package for all items that don't need shipping unless virtual split is disabled */
+		if ( 'yes' !== SST_Settings::get( 'disable_virtual_split' ) ) {
+			$virtual_package = $this->create_virtual_package( $items );
+			if ( $virtual_package ) {
+				$packages[] = $virtual_package;
+				SST_Logger::order_log( __( 'Virtual package created.', 'simple-sales-tax' ), $this->order->get_id() );
+			}
 		}
 
 		/* Create an additional package for each shipping method. */
@@ -214,6 +216,11 @@ class SST_Order extends SST_Abstract_Cart {
 					$shippable_items[ $item_id ] = $item;
 				}
 			}
+
+			if ( empty( $shippable_items ) || 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
+				$shippable_items = $items;
+			}
+
 			$packages[] = sst_create_package(
 				array(
 					'contents' => $shippable_items,
@@ -249,10 +256,19 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		if ( ! empty( $virtual_items ) ) {
+			$destination = $this->get_billing_address();
+
+			if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
+				$shipping_address = $this->get_shipping_address();
+				if ( ! empty( $shipping_address['country'] ) && ! empty( $shipping_address['state'] ) ) {
+					$destination = $shipping_address;
+				}
+			}
+
 			return sst_create_package(
 				array(
 					'contents'    => $virtual_items,
-					'destination' => $this->get_billing_address(),
+					'destination' => $destination,
 					'user'        => array(
 						'ID' => $this->order->get_user_id(),
 					),

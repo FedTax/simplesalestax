@@ -122,6 +122,7 @@
     // Hide integration-dependent settings when the integration is disabled.
     var dependentSettingIds = [
       '#woocommerce_wootax_force_tax_lookup',
+      '#woocommerce_wootax_disable_virtual_split',
       '#woocommerce_wootax_capture_orders_in_taxcloud',
       '#woocommerce_wootax_capture_trigger',
       '#woocommerce_wootax_tax_based_on',
