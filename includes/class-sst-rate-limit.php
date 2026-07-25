@@ -23,6 +23,15 @@ class SST_Rate_Limit {
 	private $identifier;
 
 	/**
+	 * Get the customer-facing message shown when tax lookup is skipped.
+	 *
+	 * @return string
+	 */
+	public static function get_notice_message() {
+		return __( 'Tax calculation is temporarily unavailable. Your order will continue without live tax estimation.', 'simple-sales-tax' );
+	}
+
+	/**
 	 * Constructor.
 	 *
 	 * @param string $identifier Identifier for the request (optional).

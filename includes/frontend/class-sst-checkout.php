@@ -7,7 +7,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 use \Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use \TaxCloud\ExemptionCertificate;
 use \TaxCloud\ExemptionCertificateBase;
-use Automattic\WooCommerce\StoreApi\Utilities\NoticeHandler;
 
 /**
  * Checkout.
@@ -59,14 +58,6 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		add_action( 'woocommerce_checkout_create_order_shipping_item', array( $this, 'add_shipping_meta' ), 10, 3 );
-
-		add_action( 'woocommerce_store_api_cart_get_cart', function () {
-		    NoticeHandler::add_notice(
-		        'delivery_info_notice',
-		        'Delivery may take 2–3 extra days for remote areas.',
-		        'notice' // notice | success | error
-		    );
-		});
 
 		parent::__construct();
 
@@ -664,7 +655,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$rate_limit = new SST_Rate_Limit();
 
 		if ( $rate_limit->limit_reached() ) {
-			$message = __( 'Tax calculation is temporarily unavailable. Your order will continue without live tax estimation.', 'simple-sales-tax' );
+			$message = SST_Rate_Limit::get_notice_message();
 
 			if ( ! wc_has_notice( $message, 'notice' ) ) {
 				wc_add_notice( $message, 'notice' );
