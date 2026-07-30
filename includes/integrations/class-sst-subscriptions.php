@@ -82,7 +82,7 @@ class SST_Subscriptions {
 		try {
 			$order->calculate_taxes();
 			$order->calculate_totals( false );
-		} catch ( Exception $ex ) {
+		} catch ( Throwable $ex ) {
 			$order->add_order_note(
 				sprintf(
 					/* translators: 1 - Renewal order ID, 2 - Error message */
@@ -91,6 +91,9 @@ class SST_Subscriptions {
 					$ex->getMessage()
 				)
 			);
+
+			// Logging.
+			SST_Logger::order_log( __( 'Failed to calculate sales tax for renewal order.', 'simple-sales-tax' ), $order->get_id(), $ex->getMessage() );
 		}
 
 		return $renewal_order;
