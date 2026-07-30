@@ -11,6 +11,10 @@ const defaultRules = defaultConfig.module.rules.filter((rule) => {
 module.exports = {
 	...defaultConfig,
 	entry: {
+		'rate-limit-notice': path.resolve(
+			process.cwd(),
+			'assets/js/blocks/rate-limit-notice.js',
+		),
 		'tax-exemption-block': path.resolve(
 			process.cwd(),
 			'assets/js/blocks/tax-exemption/index.js',
