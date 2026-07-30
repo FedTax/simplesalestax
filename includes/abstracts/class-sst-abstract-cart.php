@@ -237,12 +237,19 @@ abstract class SST_Abstract_Cart {
 
 		try {
 			$package['response'] = TaxCloud()->Lookup( $package['request'] );
+
+			if ( ! is_array( $package['response'] ) || empty( $package['response'] ) ) {
+				throw new UnexpectedValueException(
+					__( 'TaxCloud returned an invalid lookup response.', 'simple-sales-tax' )
+				);
+			}
+
 			$package['cart_id']  = key( $package['response'] );
 
 			$rate_limit->increment_count();
 
 			SST_Logger::debug( __( 'Tax lookup response:', 'simple-sales-tax' ), $package );
-		} catch ( Exception $ex ) {
+		} catch ( Throwable $ex ) {
 			$package['response'] = new WP_Error( 'lookup_error', $ex->getMessage() );
 			// Logging.
 			SST_Logger::debug( __( 'Tax lookup failed. Exception:', 'simple-sales-tax' ), $ex );
