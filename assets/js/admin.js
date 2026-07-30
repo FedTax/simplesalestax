@@ -130,6 +130,7 @@
       '#woocommerce_wootax_taxcloud_rate_limit_requests',
       '#woocommerce_wootax_taxcloud_rate_limit_scope',
       '#woocommerce_wootax_taxcloud_rate_limit_window',
+      '#woocommerce_wootax_taxcloud_rate_limit_skip_admin',
       '#woocommerce_wootax_show_rate_limit_notice',
     ];
 
