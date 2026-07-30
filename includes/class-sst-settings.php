@@ -378,6 +378,17 @@ class SST_Settings {
 				'desc_tip'    => true,
 				'disabled'    => $disable_data_import_settings,
 			),
+			'disable_virtual_split'       => array(
+				'title'       => __( 'Do Not Split Virtual Products', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => ' ',
+				'default'     => '',
+				'description' => __(
+					'When checked, virtual products will use the shipping address if available instead of splitting into a separate billing address package.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
 			'capture_orders_in_taxcloud'         => array(
 				'title'       => __( 'Capture Orders in TaxCloud', 'simple-sales-tax' ),
 				'label'       => ' ',
