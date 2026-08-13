@@ -181,6 +181,11 @@ abstract class SST_Abstract_Cart {
 				continue;
 			}
 
+			$data_mover = SST_Settings::get( 'data_mover', false );
+			if ( $data_mover || 'v3' !== sst_get_api_version() ) {
+				$package['request'] = $this->get_lookup_for_package( $package );
+			}
+
 			$hash          		= $this->get_package_hash( $package );
 			$saved_package 		= $this->get_saved_package( $hash );
 			$force_tax_lookup	= SST_Settings::get( 'force_tax_lookup' );
@@ -237,6 +242,7 @@ abstract class SST_Abstract_Cart {
 			return $package;
 		}
 
+		// Can remove below when all integration will use v3 only
 		try {
 			$package['response'] = TaxCloud()->Lookup( $package['request'] );
 
@@ -277,7 +283,11 @@ abstract class SST_Abstract_Cart {
 		try {
 			$response = $carts_api->calculate_tax( $request );
 
-			if ( is_wp_error( $response ) || ! is_array( $response ) || empty( $response ) ) {
+			if ( is_wp_error( $response ) ) {
+				throw new Exception( $response->get_error_message() );
+			}
+
+			if ( ! is_array( $response ) || empty( $response ) ) {
 				throw new UnexpectedValueException(
 					__( 'TaxCloud returned an invalid lookup response.', 'simple-sales-tax' )
 				);
@@ -295,6 +305,177 @@ abstract class SST_Abstract_Cart {
 		}
 
 		return $package;
+	}
+
+	/**
+	 * Generate a Lookup request for a given package.
+	 *
+	 * @param array $package Package to construct Lookup request for.
+	 *
+	 * @return TaxCloud\Request\Lookup|array
+	 * @since 5.0
+	 */
+	protected function get_lookup_for_package( &$package ) {
+		$cart_items = array();
+		$based_on   = SST_Settings::get( 'tax_based_on' );
+		// V3: Data Mover Mode.
+		$data_mover = SST_Settings::get( 'data_mover', false );
+		$v3_data    = array();
+
+		/* Add products */
+		foreach ( $package['contents'] as $cart_id => $item ) {
+			$line_total       = $item['line_total'];
+			$discounted_price = round( $line_total / $item['quantity'], wc_get_price_decimals() );
+
+			/* Set quantity and price according to 'Tax Based On' setting. */
+			if ( 'line-subtotal' === $based_on ) {
+				$quantity = 1;
+				$price    = $line_total;
+			} else {
+				$quantity = $item['quantity'];
+				$price    = $discounted_price;
+			}
+
+			/* Give devs a chance to change the taxable product price. */
+			$price = apply_filters( 'wootax_product_price', $price, $item['data'], $item );
+
+			$tic = SST_Product::get_tic( $item['product_id'], $item['variation_id'] );
+
+			$cart_items[]     = new TaxCloud\CartItem(
+				count( $cart_items ),
+				$item['variation_id'] ? $item['variation_id'] : $item['product_id'],
+				$tic,
+				$price,
+				$quantity
+			);
+
+			// V3: Data Mover Mode.
+			if ( $data_mover ) {
+				// Calculate tax rate
+				$line_tax = isset( $item['line_tax'] ) ? (float) $item['line_tax'] : 0.0;
+				$tax_rate = ( $price > 0 ) ? ( $line_tax / $price ) : 0.0;
+
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index' => count( $cart_items ),
+					'itemId' => $item['variation_id'] ? $item['variation_id'] : $item['product_id'],
+					'price' => $price,
+					'quantity' => $quantity,
+					'tax' => array(
+						'amount' => number_format( $line_tax, 2 ),
+						'rate' => number_format( $tax_rate, 2 )
+					),
+					'tic' => $tic,
+				) );
+			}
+
+			$package['map'][] = array(
+				'type'    => 'line_item',
+				'id'      => $item['data']->get_id(),
+				'cart_id' => isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'],
+				'v3_data' => $v3_data
+			);
+		}
+
+		/* Add fees */
+		foreach ( $package['fees'] as $cart_id => $fee ) {
+			$cart_items[]     = new TaxCloud\CartItem(
+				count( $cart_items ),
+				$fee->id,
+				apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
+				apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
+				1
+			);
+
+			// V3: Data Mover Mode.
+			if ( $data_mover ) {
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index' => count( $cart_items ),
+					'itemId' => $fee->id,
+					'price' => apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
+					'quantity' => 1,
+					'tax' => array(
+						'amount' => 0,
+						'rate' => 0
+					),
+					'tic' => apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
+				) );
+			}
+
+			$package['map'][] = array(
+				'type'    => 'fee',
+				'id'      => $fee->id,
+				'cart_id' => $cart_id,
+				'v3_data' => $v3_data
+			);
+		}
+
+		/* Add shipping */
+		$shipping_rate  = $package['shipping'];
+		$local_delivery = false;
+
+		if ( ! is_null( $shipping_rate ) ) {
+			$local_delivery = SST_Shipping::is_local_delivery( $shipping_rate->method_id );
+
+			$cart_items[]     = new TaxCloud\CartItem(
+				count( $cart_items ),
+				SST_SHIPPING_ITEM,
+				sst_get_shipping_tic( $shipping_rate->method_id ),
+				apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
+				1
+			);
+
+			// V3: Data Mover Mode.
+			if ( $data_mover ) {
+				$v3_data = new TaxCloud_V3\Model\CartItem( array(
+					'index' => count( $cart_items ),
+					'itemId' => SST_SHIPPING_ITEM,
+					'price' => apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
+					'quantity' => 1,
+					'tax' => array(
+						'amount' => 0,
+						'rate' => 0
+					),
+					'tic' => sst_get_shipping_tic( $shipping_rate->method_id ),
+				) );
+			}
+
+			$package['map'][] = array(
+				'type'    => 'shipping',
+				'id'      => SST_SHIPPING_ITEM,
+				'cart_id' => $shipping_rate->id,
+				'v3_data' => $v3_data
+			);
+		}
+
+		/* Build Lookup */
+		if ( $data_mover ) {
+			/**
+			 * V3: Data Mover Mode - Prepare request as array.
+			 * @since 8.4.1
+			 */
+			$request = array(
+				'customerId' => $package['user']['ID'],
+				'cartItems' => $cart_items,
+				'origin' => $package['origin'],
+				'destination' => $package['destination'],
+				'localDelivery' => $local_delivery,
+				'certificate' => $package['certificate']
+			);
+		} else {
+			$request = new TaxCloud\Request\Lookup(
+				$this->api_id,
+				$this->api_key,
+				$package['user']['ID'],
+				null,
+				$cart_items,
+				$package['origin'],
+				$package['destination'],
+				$local_delivery,
+				$package['certificate']
+			);
+		}
+
+		return $request;
 	}
 
 	/**
