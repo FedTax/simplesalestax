@@ -26,6 +26,13 @@ jQuery( function( $ ) {
 				{ view: this },
 				this.onAddCertificate
 			);
+
+			$( document.body ).on(
+				'click',
+				'.sst-certificate-refresh',
+				{ view: this },
+				this.onRefreshCertificates
+			);
 		},
 		render: function() {
 			var certificates = _.indexBy( this.model.get( 'certificates' ), 'CertificateID' ),
@@ -153,6 +160,34 @@ jQuery( function( $ ) {
 				onAddCertificate: view.addCertificateHandler.bind( view ),
 			} );
 		},
+		onRefreshCertificates: function( event ) {
+			var view = event.data.view;
+			event.preventDefault();
+
+			view.block();
+
+			var requestData = {
+				nonce: script_data.refresh_certificates_nonce,
+			};
+
+			if ( view.userId ) {
+				requestData.user_id = view.userId;
+			}
+
+			$.post( script_data.ajaxurl + '?action=sst_refresh_certificates', requestData )
+				.then( function( response ) {
+					if ( ! response.success ) {
+						throw new Error( response.data );
+					}
+					window.location.reload();
+				} )
+				.fail( function() {
+					alert( script_data.strings.refresh_failed || 'Failed to refresh certificates' );
+				} )
+				.always( function() {
+					view.unblock();
+				} );
+		},
 		getBillingAddress: function() {
 			var address = script_data.billing_address;
 			var addressFields = this.addressFields;
@@ -189,7 +224,12 @@ jQuery( function( $ ) {
 			$.post( script_data.ajaxurl + '?action=sst_add_certificate', requestData )
 				.then( function( response ) {
 					if ( ! response.success ) {
-						throw new Error( response.data );
+						var errorMessage = response.data
+							? script_data.strings.add_failed + ': ' + response.data
+							: script_data.strings.add_failed;
+
+						alert( errorMessage );
+						return;
 					}
 
 					// Re-render
@@ -197,8 +237,16 @@ jQuery( function( $ ) {
 					view.model.set( 'certificates', response.data.certificates );
 					view.model.trigger( 'change:certificates' );
 				} )
-				.fail( function() {
-					alert( script_data.strings.add_failed );
+				.fail( function( jqXHR ) {
+					var errorMessage = script_data.strings.add_failed;
+
+					if ( jqXHR.responseJSON && jqXHR.responseJSON.data ) {
+						errorMessage += ': ' + jqXHR.responseJSON.data;
+					} else if ( jqXHR.responseText ) {
+						errorMessage += ': ' + jqXHR.responseText;
+					}
+
+					alert( errorMessage );
 				} )
 				.always( function() {
 					view.unblock();

@@ -73,6 +73,19 @@ class SST_Settings {
 	}
 
 	/**
+	 * Check whether Data Import mode is active.
+	 *
+	 * @return bool
+	 */
+	protected static function is_data_mover_mode() {
+		if ( empty( self::$settings ) ) {
+			self::load_settings();
+		}
+
+		return ! empty( self::$settings['data_mover'] );
+	}
+
+	/**
 	 * Get a list of plugin options and their default values.
 	 *
 	 * @since 5.0
@@ -81,6 +94,31 @@ class SST_Settings {
 		$disable_show_zero_tax = (
 			self::is_using_cart_block() ||
 			self::is_using_checkout_block()
+		);
+		$disable_data_import_settings = self::is_data_mover_mode();
+		$exemption_description        = __(
+			'If you have tax exempt customers, be sure to enable tax exemptions and enter your company name.',
+			'simple-sales-tax'
+		);
+		$rate_limit_description       = __(
+			'Configure rate limiting for TaxCloud tax lookup requests to prevent excessive API calls.',
+			'simple-sales-tax'
+		);
+
+		if ( $disable_data_import_settings ) {
+			$exemption_description .= '<br><strong>' . __(
+				'Tax exemptions are not supported in Data Import mode. These settings are disabled until Integration Mode is switched back to Real Time.',
+				'simple-sales-tax'
+			) . '</strong>';
+			$rate_limit_description .= '<br><strong>' . __(
+				'Real-time TaxCloud lookup requests are not made in Data Import mode. These settings are disabled until Integration Mode is switched back to Real Time.',
+				'simple-sales-tax'
+			) . '</strong>';
+		}
+
+		$disable_exemption_sub_settings = (
+			$disable_data_import_settings ||
+			'false' === self::get( 'show_exempt', 'false' )
 		);
 
 		$fields = array(
@@ -172,10 +210,7 @@ class SST_Settings {
 			'exemption_settings'          => array(
 				'title'       => __( 'Exemption Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
-				'description' => __(
-					'If you have tax exempt customers, be sure to enable tax exemptions and enter your company name.',
-					'simple-sales-tax'
-				),
+				'description' => $exemption_description,
 			),
 			'show_exempt'                 => array(
 				'title'       => __( 'Enable Tax Exemptions?', 'simple-sales-tax' ),
@@ -185,8 +220,9 @@ class SST_Settings {
 					'false' => __( 'No', 'simple-sales-tax' ),
 				),
 				'default'     => 'false',
-				'description' => __( 'Set this to "Yes" if you have tax exempt customers.', 'simple-sales-tax' ),
+				'description' => __( 'Set this to "Yes" to allow customers to apply or create exemption certificates during checkout.', 'simple-sales-tax' ),
 				'desc_tip'    => true,
+				'disabled'    => $disable_data_import_settings,
 			),
 			'company_name'                => array(
 				'title'       => __( 'Company Name', 'simple-sales-tax' ),
@@ -197,6 +233,7 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
+				'disabled'    => $disable_exemption_sub_settings,
 			),
 			'exempt_roles'                => array(
 				'title'       => __( 'Exempt User Roles', 'simple-sales-tax' ),
@@ -205,17 +242,18 @@ class SST_Settings {
 				'options'     => self::get_user_roles(),
 				'default'     => array( 'exempt-customer' ),
 				'description' => __(
-					'When a user with one of these roles shops on your site, WooTax will automatically find and apply the first exemption certificate associated with their account. Convenient if you have repeat exempt customers.',
+					'When a user with one of these roles shops on your site, TaxCloud will automatically find and apply the first exemption certificate associated with their account. Convenient if you have repeat exempt customers.',
 					'simple-sales-tax'
 				),
-				'desc_tip'    => true,
+				'desc_tip'    => false,
+				'disabled'    => $disable_exemption_sub_settings,
 			),
 			'restrict_exempt'             => array(
 				'title'       => __( 'Restrict to Exempt Roles', 'simple-sales-tax' ),
 				'type'        => 'select',
 				'default'     => 'no',
 				'description' => __(
-					'Set this to "Yes" to restrict users aside from those specified above from seeing the exemption form during checkout.',
+					'Set this to "Yes" so only customers assigned to an Exempt User Role can view and use the tax exemption form during checkout.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
@@ -223,6 +261,7 @@ class SST_Settings {
 					'yes' => __( 'Yes', 'simple-sales-tax' ),
 					'no'  => __( 'No', 'simple-sales-tax' ),
 				),
+				'disabled'    => $disable_exemption_sub_settings,
 			),
 			'display_settings'            => array(
 				'title'       => __( 'Display Settings', 'simple-sales-tax' ),
@@ -313,6 +352,20 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
+			'disable_integration'         => array(
+				'title'       => __( 'Disable Integration', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'no'  => __( 'No', 'simple-sales-tax' ),
+					'yes' => __( 'Yes', 'simple-sales-tax' ),
+				),
+				'default'     => 'no',
+				'description' => __(
+					'If enabled, TaxCloud integration will be disabled for both real-time and data mover.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+			),
 			'force_tax_lookup'						=> array(
 				'title'       => __( 'Force Tax Lookup', 'simple-sales-tax' ),
 				'type'        => 'checkbox',
@@ -320,6 +373,18 @@ class SST_Settings {
 				'default'     => '',
 				'description' => __(
 					'When selected, TaxCloud for WooCommerce will force a tax lookup for each order regardless of cached results. This affects on rate limit.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
+				'disabled'    => $disable_data_import_settings,
+			),
+			'disable_virtual_split'       => array(
+				'title'       => __( 'Do Not Split Virtual Products', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => ' ',
+				'default'     => '',
+				'description' => __(
+					'When checked, virtual products will use the shipping address if available instead of splitting into a separate billing address package.',
 					'simple-sales-tax'
 				),
 				'desc_tip'    => true,
@@ -335,30 +400,20 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
-			'capture_immediately'         => array(
-				'title'       => __( 'Capture Orders Immediately', 'simple-sales-tax' ),
-				'label'       => ' ',
-				'type'        => 'checkbox',
-				'default'     => 'no',
-				'description' => __(
-					'By default, orders are marked as Captured in TaxCloud when they are shipped. Select this option to mark orders as Captured immediately when payment is received. Useful for stores that have items with long lead times.',
-					'simple-sales-tax'
-				),
-				'desc_tip'    => true,
-			),
-			'disable_integration' => array(
-				'title'       => __( 'Disable Integration', 'simple-sales-tax' ),
+			'capture_trigger'             => array(
+				'title'       => __( 'TaxCloud Order Capture Trigger', 'simple-sales-tax' ),
 				'type'        => 'select',
-				'options'     => array(
-					'no'  => __( 'No', 'simple-sales-tax' ),
-					'yes' => __( 'Yes', 'simple-sales-tax' ),
-				),
-				'default'     => 'no',
+				'default'     => self::get_default_capture_trigger(),
 				'description' => __(
-					'If enabled, TaxCloud integration will be disabled for both real-time and data mover.',
+					'Choose when WooCommerce orders should be captured in TaxCloud for reporting and filing.',
 					'simple-sales-tax'
 				),
-				'desc_tip'    => true,
+				'desc_tip'    => false,
+				'options'     => array(
+					'completed'        => __( 'Completed order', 'simple-sales-tax' ),
+					'processing'       => __( 'Processing order (paid)', 'simple-sales-tax' ),
+					'both'             => __( 'Both Processing + Completed', 'simple-sales-tax' ),
+				),
 			),
 			'tax_based_on'                => array(
 				'title'       => __( 'Tax Based On', 'simple-sales-tax' ),
@@ -391,10 +446,7 @@ class SST_Settings {
 			'rate_limit_settings'         => array(
 				'title'       => __( 'Rate Limit Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
-				'description' => __(
-					'Configure rate limiting for TaxCloud tax lookup requests to prevent excessive API calls.',
-					'simple-sales-tax'
-				),
+				'description' => $rate_limit_description,
 			),
 			'enable_taxcloud_rate_limit'  => array(
 				'title'       => __( 'Enable TaxCloud Rate Limiting', 'simple-sales-tax' ),
@@ -406,6 +458,7 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'desc_tip'    => false,
+				'disabled'    => $disable_data_import_settings,
 			),
 			'taxcloud_rate_limit_requests' => array(
 				'title'       => __( 'Number of Requests', 'simple-sales-tax' ),
@@ -419,6 +472,7 @@ class SST_Settings {
 				'custom_attributes' => array(
 					'min' => 1,
 				),
+				'disabled'    => $disable_data_import_settings,
 			),
 			'taxcloud_rate_limit_scope'   => array(
 				'title'       => __( 'Apply Rate Limit to', 'simple-sales-tax' ),
@@ -433,6 +487,7 @@ class SST_Settings {
 					'customer' => __( 'Customer / Visitor (per user or session)', 'simple-sales-tax' ),
 					'global'   => __( 'Global (shared across all users)', 'simple-sales-tax' ),
 				),
+				'disabled'    => $disable_data_import_settings,
 			),
 			'taxcloud_rate_limit_window'  => array(
 				'title'       => __( 'Time Window (Minutes)', 'simple-sales-tax' ),
@@ -446,6 +501,19 @@ class SST_Settings {
 				'custom_attributes' => array(
 					'min' => 1,
 				),
+				'disabled'    => $disable_data_import_settings,
+			),
+			'taxcloud_rate_limit_skip_admin' => array(
+				'title'       => __( 'Skip Admin Order Rate Limiting', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Exempt admin users and backend order calculations from rate limits', 'simple-sales-tax' ),
+				'default'     => 'yes',
+				'description' => __(
+					'When enabled, TaxCloud rate limits will not apply to orders created or calculated by admin users.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => false,
+				'disabled'    => $disable_data_import_settings,
 			),
 			'show_rate_limit_notice'      => array(
 				'title'       => __( 'Notify Customer When Limited', 'simple-sales-tax' ),
@@ -457,6 +525,7 @@ class SST_Settings {
 					'simple-sales-tax'
 				),
 				'desc_tip'    => false,
+				'disabled'    => $disable_data_import_settings,
 			),
 			'remove_all_data'             => array(
 				'title'       => __( 'Remove All Data', 'simple-sales-tax' ),
@@ -532,6 +601,43 @@ class SST_Settings {
 		}
 
 		return apply_filters( 'sst_get_option', self::$settings[ $key ], $key );
+	}
+
+	/**
+	 * Get the default capture trigger from saved settings.
+	 *
+	 * @return string Capture trigger option.
+	 */
+	protected static function get_default_capture_trigger() {
+		if ( empty( self::$settings ) ) {
+			self::load_settings();
+		}
+
+		if ( 'payment_complete' === ( self::$settings['capture_trigger'] ?? '' ) ) {
+			return 'processing';
+		}
+
+		if ( ! empty( self::$settings['capture_trigger'] ) ) {
+			return self::$settings['capture_trigger'];
+		}
+
+		return 'yes' === ( self::$settings['capture_immediately'] ?? '' ) ? 'processing' : 'completed';
+	}
+
+	/**
+	 * Get the order capture trigger.
+	 *
+	 * @return string One of completed or processing.
+	 */
+	public static function get_capture_trigger() {
+		$valid   = array( 'completed', 'processing', 'both' );
+		$trigger = self::get_default_capture_trigger();
+
+		if ( in_array( $trigger, $valid, true ) ) {
+			return $trigger;
+		}
+
+		return 'completed';
 	}
 
 	/**

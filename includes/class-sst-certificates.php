@@ -209,18 +209,28 @@ class SST_Certificates {
 			$user = new \WP_User( $user_id );
 		}
 
-		if ( ! isset( $user->ID ) ) {
+		if ( ! isset( $user->ID ) || ! $user->ID ) {
 			return array(); /* Invalid user ID. */
 		}
 
+		$lookup_ids = array_values(
+			array_unique(
+				array_filter(
+					array(
+						(string) $user->ID,
+						'customer-' . $user->ID,
+						$user->user_login,
+						$user->user_email,
+						$user->user_login . '-' . $user->ID,
+					)
+				)
+			)
+		);
+
 		try {
 			if ( sst_get_api_version() === 'v3' ) {
-			
 				$v3_exemptions = new \TaxCloud_V3\Exemptions();
 				$final_certs   = array();
-
-				// Try fetching by ID and Username to catch legacy certificates
-				$lookup_ids = array( (string) $user->ID, $user->user_login );
 
 				foreach ( $lookup_ids as $lookup_id ) {
 					$response = $v3_exemptions->get_certificates( array(
@@ -240,22 +250,26 @@ class SST_Certificates {
 				return $final_certs;
 			}
 
-	
-
-			$request = new \TaxCloud\Request\GetExemptCertificates(
-				SST_Settings::get( 'tc_id' ),
-				SST_Settings::get( 'tc_key' ),
-				$user->ID
-			);
-
-			$certificates = TaxCloud()->GetExemptCertificates( $request );
-
 			$final_certs = array();
 
-			foreach ( $certificates as $certificate ) {
-				$detail = $certificate->getDetail();
-				if ( ! $detail->getSinglePurchase() ) { /* Skip single certs */
-					$final_certs[ $certificate->getCertificateID() ] = $certificate;
+			foreach ( $lookup_ids as $lookup_id ) {
+				try {
+					$request = new \TaxCloud\Request\GetExemptCertificates(
+						SST_Settings::get( 'tc_id' ),
+						SST_Settings::get( 'tc_key' ),
+						$lookup_id
+					);
+
+					$certificates = TaxCloud()->GetExemptCertificates( $request );
+
+					foreach ( $certificates as $certificate ) {
+						$detail = $certificate->getDetail();
+						if ( ! $detail->getSinglePurchase() ) { /* Skip single certs */
+							$final_certs[ $certificate->getCertificateID() ] = $certificate;
+						}
+					}
+				} catch ( \Exception $ex ) {
+					// Ignore exception for individual lookup ID in v1 API.
 				}
 			}
 
@@ -293,8 +307,9 @@ class SST_Certificates {
 		$exempt_states = array();
 		if ( isset( $v3_cert['states'] ) && is_array( $v3_cert['states'] ) ) {
 			foreach ( $v3_cert['states'] as $state ) {
-				$abbr = $state['abbreviation'] ?? '';
-				if ( ! defined( '\TaxCloud\State::' . $abbr ) ) {
+				$abbr       = $state['abbreviation'] ?? '';
+				$const_name = ( 'OR' === $abbr ) ? '_OR' : $abbr;
+				if ( ! defined( '\TaxCloud\State::' . $const_name ) ) {
 					continue; // Skip invalid states
 				}
 

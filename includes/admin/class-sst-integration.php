@@ -34,6 +34,7 @@ class SST_Integration extends WC_Integration {
 		$this->init_form_fields();
 
 		// Register action hooks.
+		add_filter( 'woocommerce_settings_api_sanitized_fields_' . $this->id, array( $this, 'preserve_data_import_disabled_settings' ) );
 		add_action( 'woocommerce_update_options_integration_' . $this->id, array( $this, 'process_admin_options' ) );
 		add_action( 'woocommerce_update_options_integration_' . $this->id, array( $this, 'refresh_origin_address_list' ), 15 );
 		add_action( 'woocommerce_update_options_integration_' . $this->id, array( $this, 'update_data_mover_settings' ), 20 );
@@ -60,6 +61,59 @@ class SST_Integration extends WC_Integration {
 
 		$this->display_errors();
 		parent::admin_options();
+	}
+
+	/**
+	 * Preserve settings while their fields are disabled in Data Import mode or when exemptions are disabled.
+	 *
+	 * @param array $settings Sanitized settings.
+	 *
+	 * @return array
+	 */
+	public function preserve_data_import_disabled_settings( $settings ) {
+		$current_settings = get_option( 'woocommerce_wootax_settings', array() );
+
+		// Preserve exemption sub-settings if exemptions are disabled
+		$show_exempt = $settings['show_exempt'] ?? ( $current_settings['show_exempt'] ?? 'false' );
+		if ( 'false' === $show_exempt ) {
+			$exemption_sub_keys = array(
+				'company_name',
+				'exempt_roles',
+				'restrict_exempt',
+			);
+
+			foreach ( $exemption_sub_keys as $key ) {
+				if ( array_key_exists( $key, $current_settings ) ) {
+					$settings[ $key ] = $current_settings[ $key ];
+				}
+			}
+		}
+
+		if ( empty( $settings['data_mover'] ) ) {
+			return $settings;
+		}
+
+		$disabled_keys = array(
+			'show_exempt',
+			'company_name',
+			'exempt_roles',
+			'restrict_exempt',
+			'force_tax_lookup',
+			'enable_taxcloud_rate_limit',
+			'taxcloud_rate_limit_requests',
+			'taxcloud_rate_limit_scope',
+			'taxcloud_rate_limit_window',
+			'taxcloud_rate_limit_skip_admin',
+			'show_rate_limit_notice',
+		);
+
+		foreach ( $disabled_keys as $key ) {
+			if ( array_key_exists( $key, $current_settings ) ) {
+				$settings[ $key ] = $current_settings[ $key ];
+			}
+		}
+
+		return $settings;
 	}
 
 	/**

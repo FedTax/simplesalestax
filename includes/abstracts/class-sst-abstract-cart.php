@@ -231,36 +231,21 @@ abstract class SST_Abstract_Cart {
 			return $package;
 		}
 
-		return $this->do_v3_package_lookup( $package, $key, $rate_limit );
-	}
-
-	/**
-	 * Perform a V3 tax lookup for a shipping package.
-	 *
-	 * @param array          $package    Package to perform tax lookup for.
-	 * @param mixed          $key        Package key.
-	 * @param SST_Rate_Limit $rate_limit Rate limit object.
-	 *
-	 * @return array Updated package.
-	 * @since 8.4.7
-	 */
-	protected function do_v3_package_lookup( $package, $key, $rate_limit ) {
-		$carts_api = new TaxCloud_V3\Carts();
-		$request   = $this->get_v3_lookup_for_package( $package, $key );
-
 		try {
-			$response = $carts_api->calculate_tax( $request );
+			$package['response'] = TaxCloud()->Lookup( $package['request'] );
 
-			if ( is_wp_error( $response ) ) {
-				$package['response'] = $response;
-			} else {
-				$package['response'] = $this->prepare_v3_response( $response );
-				$package['cart_id']  = key( $package['response'] );
-				$rate_limit->increment_count();
+			if ( ! is_array( $package['response'] ) || empty( $package['response'] ) ) {
+				throw new UnexpectedValueException(
+					__( 'TaxCloud returned an invalid lookup response.', 'simple-sales-tax' )
+				);
 			}
 
-			SST_Logger::debug( __( 'TaxCloud V3 lookup response:', 'simple-sales-tax' ), $package );
-		} catch ( Exception $ex ) {
+			$package['cart_id']  = key( $package['response'] );
+
+			$rate_limit->increment_count();
+
+			SST_Logger::debug( __( 'Tax lookup response:', 'simple-sales-tax' ), $package );
+		} catch ( Throwable $ex ) {
 			$package['response'] = new WP_Error( 'lookup_error', $ex->getMessage() );
 			SST_Logger::debug( __( 'TaxCloud V3 lookup failed. Exception:', 'simple-sales-tax' ), $ex );
 		}

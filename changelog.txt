@@ -2,6 +2,40 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [8.4.13] - 2026-07-31 =
+
+Added:
+- [DEV-9165] - Exemption certificate multiple user identifiers support
+- [DEV-9123] - Exempt admin calculations from rate limiting and surface customer notices
+- [DEV-9251] - Add "Do Not Split Virtual Products" setting
+
+Fixed:
+- Fixed #424: TypeError: key(): Argument #1 ($array) must be of type array, null given in do_package_lookup crashes WooCommerce Subscription renewals on PHP 8.2
+
+
+- [8.4.12] - 2026-07-14 =
+
+Added:
+- [DEV-9028] - Exemption cache clear button
+- Add support for capturing orders on both processing and completed statuses
+
+Changed:
+- [DEV-9028] - PHP 8 Support
+- [DEV-8699] - Lookup validation, Capture status, conditional fields display
+
+Fixed:
+- [DEV-8511] - Hide checkout exemption form/options on Data Import mode
+
+
+- [8.4.11] - 2026-06-24 =
+
+Fixed:
+- [DEV-8740] - WooCommerce Exemption Certificate Error
+
+Changed:
+- WC tested up to: 10.8.1
+
+
 - [8.4.10] - 2026-05-29 =
 
 Fixed:

@@ -33,6 +33,9 @@ $show_inputs = $args['show_inputs'] ?? true;
 			<a href="#" class="button sst-certificate-add">
 				<?php esc_html_e( 'Add Certificate', 'simple-sales-tax' ); ?>
 			</a>
+			<a href="#" class="button sst-certificate-refresh" style="margin-left: 5px;">
+				<?php esc_html_e( 'Refresh Certificates', 'simple-sales-tax' ); ?>
+			</a>
 		</td>
 	</tr>
 	</tfoot>

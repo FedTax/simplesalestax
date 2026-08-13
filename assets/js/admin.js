@@ -119,5 +119,54 @@
         });
     });
 
+    // Hide integration-dependent settings when the integration is disabled.
+    var dependentSettingIds = [
+      '#woocommerce_wootax_force_tax_lookup',
+      '#woocommerce_wootax_disable_virtual_split',
+      '#woocommerce_wootax_capture_orders_in_taxcloud',
+      '#woocommerce_wootax_capture_trigger',
+      '#woocommerce_wootax_tax_based_on',
+      '#woocommerce_wootax_enable_taxcloud_rate_limit',
+      '#woocommerce_wootax_taxcloud_rate_limit_requests',
+      '#woocommerce_wootax_taxcloud_rate_limit_scope',
+      '#woocommerce_wootax_taxcloud_rate_limit_window',
+      '#woocommerce_wootax_taxcloud_rate_limit_skip_admin',
+      '#woocommerce_wootax_show_rate_limit_notice',
+    ];
+
+    function toggleIntegrationDependentSettings() {
+      var integrationDisabled = jQuery('#woocommerce_wootax_disable_integration').val() === 'yes';
+
+      jQuery.each(dependentSettingIds, function (index, selector) {
+        jQuery(selector).closest('tr').toggle(!integrationDisabled);
+      });
+    }
+
+    jQuery('#woocommerce_wootax_disable_integration')
+      .on('change', toggleIntegrationDependentSettings);
+
+    toggleIntegrationDependentSettings();
+
+    // Disable exemption-dependent settings when "Enable Tax Exemptions?" is set to "No".
+    var exemptionSettingSelectors = [
+      '#woocommerce_wootax_company_name',
+      '#woocommerce_wootax_exempt_roles',
+      '#woocommerce_wootax_restrict_exempt',
+    ];
+
+    function toggleExemptionSettings() {
+      var exemptionDisabled = jQuery('#woocommerce_wootax_show_exempt').val() === 'false';
+
+      jQuery.each(exemptionSettingSelectors, function (index, selector) {
+        var $el = jQuery(selector);
+        $el.prop('disabled', exemptionDisabled);
+      });
+    }
+
+    jQuery('#woocommerce_wootax_show_exempt')
+      .on('change', toggleExemptionSettings);
+
+    toggleExemptionSettings();
+
   });
 })(SST);

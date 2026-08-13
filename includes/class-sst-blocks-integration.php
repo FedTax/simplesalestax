@@ -12,6 +12,22 @@ use Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface;
 class SST_Blocks_Integration implements IntegrationInterface {
 
 	/**
+	 * Block context for this integration.
+	 *
+	 * @var string
+	 */
+	protected $block_context;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param string $block_context Block context: cart or checkout.
+	 */
+	public function __construct( $block_context = 'checkout' ) {
+		$this->block_context = $block_context;
+	}
+
+	/**
 	 * The name of the integration.
 	 *
 	 * @return string
@@ -24,6 +40,12 @@ class SST_Blocks_Integration implements IntegrationInterface {
 	 * When called invokes any initialization/setup for the integration.
 	 */
 	public function initialize() {
+		$this->register_rate_limit_notice_script();
+
+		if ( 'checkout' !== $this->block_context ) {
+			return;
+		}
+
 		$this->register_frontend_scripts();
 		$this->register_editor_scripts();
 		$this->register_block_styles();
@@ -41,7 +63,13 @@ class SST_Blocks_Integration implements IntegrationInterface {
 	 * @return string[]
 	 */
 	public function get_script_handles() {
-		return array( 'sst-tax-exemption-block-frontend' );
+		$handles = array( 'sst-rate-limit-notice' );
+
+		if ( 'checkout' === $this->block_context ) {
+			$handles[] = 'sst-tax-exemption-block-frontend';
+		}
+
+		return $handles;
 	}
 
 	/**
@@ -50,6 +78,10 @@ class SST_Blocks_Integration implements IntegrationInterface {
 	 * @return string[]
 	 */
 	public function get_editor_script_handles() {
+		if ( 'checkout' !== $this->block_context ) {
+			return array();
+		}
+
 		return array( 'sst-tax-exemption-block-editor' );
 	}
 
@@ -59,6 +91,20 @@ class SST_Blocks_Integration implements IntegrationInterface {
 	 * @return array
 	 */
 	public function get_script_data() {
+		if ( 'checkout' !== $this->block_context ) {
+			return array();
+		}
+
+		if ( ! sst_should_show_tax_exemption_form() ) {
+			return array(
+				'showExemptionForm'    => false,
+				'certificateOptions'   => array(),
+				'selectedCertificate'  => '',
+				'isUserLoggedIn'       => is_user_logged_in(),
+				'myAccountEndpointUrl' => '',
+			);
+		}
+
 		$certificates = SST_Certificates::get_certificates_formatted();
 		$options      = array(
 			'new'  => 'Add new certificate',
@@ -72,12 +118,41 @@ class SST_Blocks_Integration implements IntegrationInterface {
 			? WC()->session->get( 'sst_certificate_id', '' )
 			: '';
 
+		if ( empty( $selected ) && sst_is_user_tax_exempt() && ! empty( $certificates ) && ! ( WC()->session && WC()->session->get( 'sst_cert_explicitly_cleared' ) ) ) {
+			$selected = current( array_keys( $certificates ) );
+			if ( WC()->session ) {
+				WC()->session->set( 'sst_certificate_id', $selected );
+			}
+		}
+
 		return array(
 			'showExemptionForm'    => sst_should_show_tax_exemption_form(),
 			'certificateOptions'   => $options,
 			'selectedCertificate'  => $selected,
 			'isUserLoggedIn'       => is_user_logged_in(),
 			'myAccountEndpointUrl' => wc_get_account_endpoint_url( 'exemption-certificates' ),
+		);
+	}
+
+	/**
+	 * Register the rate-limit notice frontend script.
+	 */
+	public function register_rate_limit_notice_script() {
+		$script_url        = SST()->url( 'build/rate-limit-notice.js' );
+		$script_asset_path = SST()->path( 'build/rate-limit-notice.asset.php' );
+		$script_asset      = file_exists( $script_asset_path )
+			? require $script_asset_path
+			: array(
+				'dependencies' => array(),
+				'version'      => $this->get_file_version( $script_asset_path ),
+			);
+
+		wp_register_script(
+			'sst-rate-limit-notice',
+			$script_url,
+			$script_asset['dependencies'],
+			$script_asset['version'],
+			true
 		);
 	}
 
@@ -217,6 +292,10 @@ class SST_Blocks_Integration implements IntegrationInterface {
 	 * Force exemption block into checkout page markup after payment block.
 	 */
 	public function force_exemption_block( $content ) {
+		if ( ! sst_should_show_tax_exemption_form() ) {
+			return $content;
+		}
+
 		if ( ! has_block( 'woocommerce/checkout' ) ) {
 			return $content;
 		}

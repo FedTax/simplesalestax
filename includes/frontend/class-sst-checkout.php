@@ -7,7 +7,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 use \Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use \TaxCloud\ExemptionCertificate;
 use \TaxCloud\ExemptionCertificateBase;
-use Automattic\WooCommerce\StoreApi\Utilities\NoticeHandler;
 
 /**
  * Checkout.
@@ -59,14 +58,6 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		add_action( 'woocommerce_checkout_create_order_shipping_item', array( $this, 'add_shipping_meta' ), 10, 3 );
-
-		add_action( 'woocommerce_store_api_cart_get_cart', function () {
-		    NoticeHandler::add_notice(
-		        'delivery_info_notice',
-		        'Delivery may take 2–3 extra days for remote areas.',
-		        'notice' // notice | success | error
-		    );
-		});
 
 		parent::__construct();
 
@@ -307,17 +298,28 @@ class SST_Checkout extends SST_Abstract_Cart {
 		/*
 		 * After WooCommerce 3.0, items that do not need shipping are excluded
 		 * from shipping packages. To ensure that these products are taxed, we
-		 * create a special package for them.
+		 * create a special package for them unless disable_virtual_split is enabled.
 		 */
-		$virtual_package = $this->create_virtual_package();
+		if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) && ! empty( $packages ) ) {
+			$digital_items = $this->get_items_not_needing_shipping();
+			if ( ! empty( $digital_items ) ) {
+				$first_key = key( $packages );
+				$packages[ $first_key ]['contents'] = array_merge(
+					$packages[ $first_key ]['contents'],
+					$digital_items
+				);
+			}
+		} else {
+			$virtual_package = $this->create_virtual_package();
 
-		// Debug Logging
-		if ( empty( $virtual_package ) ) {
-			SST_Logger::add( __( 'Missing virtual packages', 'simple-sales-tax' ) );
-		} 
+			// Debug Logging
+			if ( empty( $virtual_package ) ) {
+				SST_Logger::add( __( 'Missing virtual packages', 'simple-sales-tax' ) );
+			} 
 
-		if ( $virtual_package ) {
-			$packages[] = $virtual_package;
+			if ( $virtual_package ) {
+				$packages[] = $virtual_package;
+			}
 		}
 
 		return $packages;
@@ -332,17 +334,39 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$digital_items = $this->get_items_not_needing_shipping();
 
 		if ( ! empty( $digital_items ) ) {
+			$destination = array(
+				'country'   => WC()->customer->get_billing_country(),
+				'address'   => WC()->customer->get_billing_address(),
+				'address_2' => WC()->customer->get_billing_address_2(),
+				'city'      => WC()->customer->get_billing_city(),
+				'state'     => WC()->customer->get_billing_state(),
+				'postcode'  => WC()->customer->get_billing_postcode(),
+			);
+
+			if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
+				$shipping_country   = WC()->customer->get_shipping_country();
+				$shipping_address   = WC()->customer->get_shipping_address();
+				$shipping_address_2 = WC()->customer->get_shipping_address_2();
+				$shipping_city      = WC()->customer->get_shipping_city();
+				$shipping_state     = WC()->customer->get_shipping_state();
+				$shipping_postcode  = WC()->customer->get_shipping_postcode();
+
+				if ( ! empty( $shipping_country ) && ! empty( $shipping_state ) ) {
+					$destination = array(
+						'country'   => $shipping_country,
+						'address'   => $shipping_address,
+						'address_2' => $shipping_address_2,
+						'city'      => $shipping_city,
+						'state'     => $shipping_state,
+						'postcode'  => $shipping_postcode,
+					);
+				}
+			}
+
 			return sst_create_package(
 				array(
 					'contents'    => $digital_items,
-					'destination' => array(
-						'country'   => WC()->customer->get_billing_country(),
-						'address'   => WC()->customer->get_billing_address(),
-						'address_2' => WC()->customer->get_billing_address_2(),
-						'city'      => WC()->customer->get_billing_city(),
-						'state'     => WC()->customer->get_billing_state(),
-						'postcode'  => WC()->customer->get_billing_postcode(),
-					),
+					'destination' => $destination,
 					'user'        => array(
 						'ID' => get_current_user_id(),
 					),
@@ -547,6 +571,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @return ExemptionCertificateBase
 	 */
 	public function get_certificate() {
+		if ( 'data_mover' === sst_integration_mode() ) {
+			return null;
+		}
+
 		$certificate_id = $this->get_certificate_id();
 
 		if ( $certificate_id && 'none' !== $certificate_id ) {
@@ -586,6 +614,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return;
 		}
 
+		if ( 'data_mover' === sst_integration_mode() ) {
+			WC()->session->set( 'sst_certificate_id', '' );
+			return;
+		}
+
 		$post_data = $this->get_post_data();
 
 		if ( isset( $post_data['certificate_id'] ) ) {
@@ -595,17 +628,25 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 			if ( 'none' === $certificate_id ) {
 				$certificate_id = '';
+				WC()->session->set( 'sst_cert_explicitly_cleared', true );
+			} else {
+				WC()->session->set( 'sst_cert_explicitly_cleared', false );
 			}
 
 			if ( $certificate_id !== WC()->session->get( 'sst_certificate_id' ) ) {
 				WC()->session->set( 'sst_certificate_id', $certificate_id );
 				WC()->session->set( 'sst_packages', array() ); // Clear cache on selection change
 			}
-		} else if ( is_null( WC()->session->sst_certificate_id ) ) {
-			WC()->session->set(
-				'sst_certificate_id',
-				$this->get_default_certificate_id()
-			);
+		} else {
+			$current_cert_id = WC()->session->get( 'sst_certificate_id' );
+			$is_cleared      = (bool) WC()->session->get( 'sst_cert_explicitly_cleared', false );
+
+			if ( ( is_null( $current_cert_id ) || '' === $current_cert_id ) && ! $is_cleared ) {
+				$default_id = $this->get_default_certificate_id();
+				if ( ! empty( $default_id ) ) {
+					WC()->session->set( 'sst_certificate_id', $default_id );
+				}
+			}
 		}
 
 		// Ensure SST packages are initialized in session
@@ -647,7 +688,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$rate_limit = new SST_Rate_Limit();
 
 		if ( $rate_limit->limit_reached() ) {
-			$message = __( 'Tax calculation is temporarily unavailable. Your order will continue without live tax estimation.', 'simple-sales-tax' );
+			$message = SST_Rate_Limit::get_notice_message();
 
 			if ( ! wc_has_notice( $message, 'notice' ) ) {
 				wc_add_notice( $message, 'notice' );
@@ -800,8 +841,13 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @param WC_Order $wc_order Order object
 	 */
 	protected function process_checkout( $data, $wc_order ) {
-		$certificate_id = $data['certificate_id'] ?? '';
-		$order          = new SST_Order( $wc_order );
+		$order = new SST_Order( $wc_order );
+
+		if ( 'data_mover' === sst_integration_mode() ) {
+			$certificate_id = '';
+		} else {
+			$certificate_id = $data['certificate_id'] ?? '';
+		}
 
 		if ( 'new' === $certificate_id ) {
 			$this->create_exemption_certificate( $data, $order );
@@ -977,6 +1023,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @param WP_Error $errors Checkout errors.
 	 */
 	protected function validate_exemption_certificate( $data, $errors ) {
+		if ( 'data_mover' === sst_integration_mode() ) {
+			return;
+		}
+
 		$certificate_id = $data['certificate_id'] ?? '';
 		$certificate    = $data['certificate'] ?? [];
 

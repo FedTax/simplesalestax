@@ -161,11 +161,13 @@ class SST_Order extends SST_Abstract_Cart {
 		$packages = array();
 		$items    = $this->transform_items( $this->order->get_items() );
 
-		/* Create a virtual package for all items that don't need shipping */
-		$virtual_package = $this->create_virtual_package( $items );
-		if ( $virtual_package ) {
-			$packages[] = $virtual_package;
-			SST_Logger::order_log( __( 'Virtual package created.', 'simple-sales-tax' ), $this->order->get_id() );
+		/* Create a virtual package for all items that don't need shipping unless virtual split is disabled */
+		if ( 'yes' !== SST_Settings::get( 'disable_virtual_split' ) ) {
+			$virtual_package = $this->create_virtual_package( $items );
+			if ( $virtual_package ) {
+				$packages[] = $virtual_package;
+				SST_Logger::order_log( __( 'Virtual package created.', 'simple-sales-tax' ), $this->order->get_id() );
+			}
 		}
 
 		/* Create an additional package for each shipping method. */
@@ -213,6 +215,11 @@ class SST_Order extends SST_Abstract_Cart {
 					$shippable_items[ $item_id ] = $item;
 				}
 			}
+
+			if ( empty( $shippable_items ) || 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
+				$shippable_items = $items;
+			}
+
 			$packages[] = sst_create_package(
 				array(
 					'contents' => $shippable_items,
@@ -248,10 +255,19 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		if ( ! empty( $virtual_items ) ) {
+			$destination = $this->get_billing_address();
+
+			if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
+				$shipping_address = $this->get_shipping_address();
+				if ( ! empty( $shipping_address['country'] ) && ! empty( $shipping_address['state'] ) ) {
+					$destination = $shipping_address;
+				}
+			}
+
 			return sst_create_package(
 				array(
 					'contents'    => $virtual_items,
-					'destination' => $this->get_billing_address(),
+					'destination' => $destination,
 					'user'        => array(
 						'ID' => $this->order->get_user_id(),
 					),
@@ -711,12 +727,21 @@ class SST_Order extends SST_Abstract_Cart {
 		$taxcloud_status = $this->get_taxcloud_status();
 		$packages        = $this->get_packages();
 
+		if (
+			'data_mover' !== sst_integration_mode()
+			&& 'pending' === $taxcloud_status
+			&& ! $this->has_capturable_packages( $packages )
+		) {
+			SST_Logger::order_log( __( 'No capturable packages found. Rebuilding packages before capture.', 'simple-sales-tax' ), $order->get_id() );
+			$packages = $this->do_lookup();
+		}
+
 		// Handle error cases.
 		if ( 'captured' === $taxcloud_status ) {
 			// Logging
 			SST_Logger::order_log( __( 'Order already captured.', 'simple-sales-tax' ), $order->get_id() );
 
-			if ( 'no' === SST_Settings::get( 'capture_immediately' ) ) {
+			if ( 'completed' === SST_Settings::get_capture_trigger() ) {
 				$this->handle_error(
 					sprintf(
 						/* translators: WooCommerce order ID */
@@ -749,10 +774,97 @@ class SST_Order extends SST_Abstract_Cart {
 			// Logging
 			SST_Logger::order_log( __( 'Data Mover Mode enabled. Creating order in TaxCloud.', 'simple-sales-tax' ), $order->get_id() );
 			$created_order = $this->create_order_in_taxcloud( $packages, $order );
-			return true;
+			return $created_order;
 		}
 
-		return $this->capture_order_v3( $packages, $order );
+		// Logging
+		SST_Logger::order_log( __( 'Capturing order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
+
+		if ( ! $this->has_capturable_packages( $packages ) ) {
+			$this->handle_error(
+				sprintf(
+					/* translators: WooCommerce order ID */
+					__( 'Failed to capture order %d: no TaxCloud lookup packages were found.', 'simple-sales-tax' ),
+					$order->get_id()
+				)
+			);
+
+			return false;
+		}
+
+		// Send AuthorizedWithCapture for all packages.
+		foreach ( $packages as $key => $package ) {
+			$now      = gmdate( 'c' );
+			$order_id = $this->get_package_order_id( $key, $package );
+
+			try {
+				$request = new TaxCloud\Request\AuthorizedWithCapture(
+					$this->api_id,
+					$this->api_key,
+					$package['customer_id'],
+					$package['cart_id'],
+					$order_id,
+					$now,
+					$now
+				);
+
+				// Logging
+				SST_Logger::order_log( __( 'Sending AuthorizedWithCapture request.', 'simple-sales-tax' ), $order->get_id(), wp_json_encode( $request ) );
+
+				TaxCloud()->AuthorizedWithCapture( $request );
+
+				// Logging
+				SST_Logger::order_log( __( 'AuthorizedWithCapture request successfully sent.', 'simple-sales-tax' ), $order->get_id(), $request );
+			} catch ( Exception $ex ) {
+				// Logging
+				SST_Logger::order_log( __( 'Failed to capture order.', 'simple-sales-tax' ), $order->get_id(), $ex->getMessage() );
+
+				$this->handle_error(
+					sprintf(
+						/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
+						__( 'Failed to capture order %1$d: %2$s.', 'simple-sales-tax' ),
+						$order->get_id(),
+						$ex->getMessage()
+					)
+				);
+
+				return false;
+			}
+		}
+
+		$this->update_meta( 'status', 'captured' );
+
+		// Logging
+		SST_Logger::order_log( __( 'Order status updated to captured.', 'simple-sales-tax' ), $order->get_id() );
+
+		$order->save();
+
+		return true;
+	}
+
+	/**
+	 * Determine whether saved lookup packages contain the data needed to capture.
+	 *
+	 * @param array $packages Saved TaxCloud lookup packages.
+	 *
+	 * @return bool True if all packages can be captured.
+	 */
+	protected function has_capturable_packages( $packages ) {
+		if ( empty( $packages ) || ! is_array( $packages ) ) {
+			return false;
+		}
+
+		foreach ( $packages as $package ) {
+			if (
+				! isset( $package['customer_id'], $package['cart_id'] )
+				|| '' === $package['customer_id']
+				|| '' === $package['cart_id']
+			) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -1058,7 +1170,15 @@ class SST_Order extends SST_Abstract_Cart {
 	protected function create_order_in_taxcloud( $packages, $order ) {
 		// No packages found.
 		if ( empty( $packages ) ) {
-			return;
+			$this->handle_error(
+				sprintf(
+					/* translators: WooCommerce order ID */
+					__( 'Failed to create order %d in TaxCloud: no TaxCloud lookup packages were found.', 'simple-sales-tax' ),
+					$order->get_id()
+				)
+			);
+
+			return false;
 		}
 
 		// Order object.
@@ -1100,38 +1220,6 @@ class SST_Order extends SST_Abstract_Cart {
 				return false;
 			}
 		}
-
-		return true;
-	}
-
-	/**
-	 * Capture order in TaxCloud using V3 Carts/Orders API.
-	 *
-	 * @param array    $packages Packages.
-	 * @param WC_Order $order    Order.
-	 *
-	 * @return bool True on success, false on failure.
-	 * @since 8.4.7
-	 */
-	protected function capture_order_v3( $packages, $order ) {
-		$carts_api = new TaxCloud_V3\Carts();
-
-		foreach ( $packages as $key => $package ) {
-			$order_id = $this->get_package_order_id( $key, $package );
-			$cart_id  = isset( $package['cart_id'] ) ? $package['cart_id'] : $order_id;
-
-			$response = $carts_api->create_order( $cart_id, $order_id, true );
-
-			if ( is_wp_error( $response ) ) {
-				SST_Logger::order_log( __( 'Failed to create order from cart in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $response->get_error_message() );
-				return false;
-			}
-		}
-
-		// Update TaxCloud Order Status
-		$this->update_meta( 'status', 'captured' );
-		SST_Logger::order_log( __( 'Order status updated to captured (V3).', 'simple-sales-tax' ), $order->get_id() );
-		$order->save();
 
 		return true;
 	}

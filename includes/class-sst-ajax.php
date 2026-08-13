@@ -25,6 +25,7 @@ class SST_Ajax {
 		'sst_verify_taxcloud'         => false,
 		'sst_delete_certificate'      => false,
 		'sst_add_certificate'         => false,
+		'sst_refresh_certificates'    => false,
 		'woocommerce_calc_line_taxes' => false,
 		'sst_get_certificates'        => false,
 		'sst_dismiss_taxcloud_notice'	=> false,
@@ -122,6 +123,40 @@ class SST_Ajax {
 				array( 'certificates' => SST_Certificates::get_certificates_formatted( $user_id ) )
 			);
 		} catch ( Exception $ex ) { /* Failed to delete */
+			wp_send_json_error( $ex->getMessage() );
+		}
+	}
+
+	/**
+	 * Refresh (delete cache of) exemption certificates for the customer.
+	 *
+	 * @since 8.4.0
+	 */
+	public static function refresh_certificates() {
+		$nonce = sanitize_text_field(
+			wp_unslash( $_POST['nonce'] ?? '' )
+		);
+
+		if ( ! wp_verify_nonce( $nonce, 'sst_refresh_certificates' ) ) {
+			wp_send_json_error( __( 'Invalid nonce.', 'simple-sales-tax' ) );
+		}
+
+		$user_id = absint(
+			wp_unslash( $_POST['user_id'] ?? 0 )
+		);
+
+		if ( 0 === $user_id ) {
+			$user_id = get_current_user_id();
+		}
+
+		if ( ! current_user_can( 'edit_user', $user_id ) && $user_id !== get_current_user_id() ) {
+			wp_send_json_error( __( 'Unauthorized.', 'simple-sales-tax' ) );
+		}
+
+		try {
+			SST_Certificates::delete_certificates( $user_id );
+			wp_send_json_success();
+		} catch ( Exception $ex ) {
 			wp_send_json_error( $ex->getMessage() );
 		}
 	}
