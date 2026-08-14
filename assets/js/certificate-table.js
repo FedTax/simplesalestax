@@ -179,7 +179,11 @@ jQuery( function( $ ) {
 					if ( ! response.success ) {
 						throw new Error( response.data );
 					}
-					window.location.reload();
+					if ( response.data && response.data.certificates ) {
+						view.model.set( 'certificates', response.data.certificates );
+					} else {
+						window.location.reload();
+					}
 				} )
 				.fail( function() {
 					alert( script_data.strings.refresh_failed || 'Failed to refresh certificates' );

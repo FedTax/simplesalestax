@@ -154,8 +154,12 @@ class SST_Ajax {
 
 		try {
 			SST_Certificates::delete_certificates( $user_id );
-			wp_send_json_success();
+			$certificates = SST_Certificates::get_certificates_formatted( $user_id );
+			wp_send_json_success( array(
+				'certificates' => $certificates,
+			) );
 		} catch ( Exception $ex ) {
+			SST_Logger::add( sprintf( 'refresh_certificates exception for user_id=%d: %s', $user_id, $ex->getMessage() ) );
 			wp_send_json_error( $ex->getMessage() );
 		}
 	}

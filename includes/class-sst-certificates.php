@@ -46,10 +46,15 @@ class SST_Certificates {
 		$certificates = array();
 
 		if ( false !== $raw_certs ) {
-			$certificates = json_decode( $raw_certs, true );
+			$raw_list = json_decode( $raw_certs, true );
 
-			foreach ( $certificates as $key => $certificate ) {
-				$certificates[ $key ] = TaxCloud\ExemptionCertificate::fromArray( $certificate );
+			if ( is_array( $raw_list ) ) {
+				foreach ( $raw_list as $key => $certificate ) {
+					$cert_obj = TaxCloud\ExemptionCertificate::fromArray( $certificate );
+					if ( $cert_obj ) {
+						$certificates[ $key ] = $cert_obj;
+					}
+				}
 			}
 		} else {
 			$certificates = self::fetch_certificates( $user_id );
@@ -162,17 +167,23 @@ class SST_Certificates {
 	 */
 	public static function get_certificates_formatted( $user_id = 0 ) {
 		$certificates = array();
-		foreach ( self::get_certificates( $user_id ) as $id => $raw_cert ) {
+		$raw_certs    = self::get_certificates( $user_id );
+
+		foreach ( $raw_certs as $id => $raw_cert ) {
 			if ( empty( $id ) ) {
 				continue;
 			}
-			$certificates[ $id ] = self::format_certificate( $raw_cert );
+			try {
+				$certificates[ $id ] = self::format_certificate( $raw_cert );
+			} catch ( \Throwable $ex ) {
+				SST_Logger::debug( sprintf( 'Error formatting certificate ID %s: %s', $id, $ex->getMessage() ) );
+			}
 		}
 
 		// Sort by created date ascending.
 		uasort( $certificates, function( $cert_a, $cert_b ) {
-			$date_a = strtotime( $cert_a['CreatedDate'] );
-			$date_b = strtotime( $cert_b['CreatedDate'] );
+			$date_a = isset( $cert_a['CreatedDate'] ) ? strtotime( $cert_a['CreatedDate'] ) : 0;
+			$date_b = isset( $cert_b['CreatedDate'] ) ? strtotime( $cert_b['CreatedDate'] ) : 0;
 			if ( $date_a === $date_b ) {
 				return 0;
 			}
@@ -213,68 +224,74 @@ class SST_Certificates {
 			return array(); /* Invalid user ID. */
 		}
 
-		$lookup_ids = array_values(
-			array_unique(
-				array_filter(
-					array(
-						(string) $user->ID,
-						'customer-' . $user->ID,
-						$user->user_login,
-						$user->user_email,
-						$user->user_login . '-' . $user->ID,
-					)
-				)
+		$api_version  = sst_get_api_version();
+		$api_login_id = SST_Settings::get( 'tc_id' );
+		$api_key      = SST_Settings::get( 'tc_key' );
+
+		$raw_lookup_ids = array_filter(
+			array(
+				(string) $user->ID,
+				$user->user_email,
+				get_user_meta( $user->ID, 'billing_email', true ),
+				$user->user_login,
+				'customer-' . $user->ID,
 			)
 		);
 
+		$lookup_ids = array_values( array_unique( array_filter( array_map( 'strval', $raw_lookup_ids ) ) ) );
+
 		try {
-			if ( sst_get_api_version() === 'v3' ) {
-				$v3_exemptions = new \TaxCloud_V3\Exemptions();
-				$final_certs   = array();
+			$final_certs = array();
 
-				foreach ( $lookup_ids as $lookup_id ) {
-					$response = $v3_exemptions->get_certificates( array(
-						'customerId' => $lookup_id,
-					) );
+			// 1. Query TaxCloud v3 exemption certificates API in parallel across customer IDs.
+			$v3_exemptions = new \TaxCloud_V3\Exemptions();
+			$v3_items      = $v3_exemptions->get_certificates_for_customer_ids( $lookup_ids );
 
-					if ( ! is_wp_error( $response ) && isset( $response['items'] ) && is_array( $response['items'] ) ) {
-						foreach ( $response['items'] as $item ) {
-							if ( empty( $item['singlePurchase'] ) ) { /* Skip single certs */
-								$cert = self::build_v1_cert_from_v3( $item );
-								$final_certs[ $cert->getCertificateID() ] = $cert;
-							}
+			if ( ! empty( $v3_items ) && is_array( $v3_items ) ) {
+				foreach ( $v3_items as $item ) {
+					if ( empty( $item['singlePurchase'] ) ) { /* Skip single certs */
+						$cert = self::build_v1_cert_from_v3( $item );
+						if ( $cert && $cert->getCertificateID() ) {
+							$final_certs[ $cert->getCertificateID() ] = $cert;
 						}
 					}
 				}
+			}
 
+			// If certificates found via V3, return them.
+			if ( ! empty( $final_certs ) ) {
 				return $final_certs;
 			}
 
-			$final_certs = array();
-
+			// 2. Fallback: Query legacy v1 TaxCloud GetExemptCertificates endpoint.
 			foreach ( $lookup_ids as $lookup_id ) {
 				try {
 					$request = new \TaxCloud\Request\GetExemptCertificates(
-						SST_Settings::get( 'tc_id' ),
-						SST_Settings::get( 'tc_key' ),
+						$api_login_id,
+						$api_key,
 						$lookup_id
 					);
 
 					$certificates = TaxCloud()->GetExemptCertificates( $request );
 
-					foreach ( $certificates as $certificate ) {
-						$detail = $certificate->getDetail();
-						if ( ! $detail->getSinglePurchase() ) { /* Skip single certs */
-							$final_certs[ $certificate->getCertificateID() ] = $certificate;
+					if ( ! empty( $certificates ) && is_iterable( $certificates ) ) {
+						foreach ( $certificates as $certificate ) {
+							if ( is_object( $certificate ) && method_exists( $certificate, 'getDetail' ) ) {
+								$detail = $certificate->getDetail();
+								if ( $detail && ! $detail->getSinglePurchase() ) { /* Skip single certs */
+									$final_certs[ $certificate->getCertificateID() ] = $certificate;
+								}
+							}
 						}
 					}
-				} catch ( \Exception $ex ) {
-					// Ignore exception for individual lookup ID in v1 API.
+				} catch ( \Throwable $ex ) {
+					SST_Logger::debug( sprintf( 'TaxCloud V1 GetExemptCertificates error for lookup ID %s: %s', $lookup_id, $ex->getMessage() ) );
 				}
 			}
 
 			return $final_certs;
-		} catch ( \Exception $ex ) {
+		} catch ( \Throwable $ex ) {
+			SST_Logger::debug( 'TaxCloud fetch_certificates error: ' . $ex->getMessage() );
 			return array();
 		}
 	}
