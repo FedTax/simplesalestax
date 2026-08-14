@@ -24,14 +24,35 @@ class SST_Certificates {
 	const TRANS_PREFIX = '_sst_certificates_';
 
 	/**
+	 * Check whether certificates are cached for a customer without triggering an API fetch.
+	 *
+	 * @param int $user_id WordPress user ID (default: 0).
+	 *
+	 * @return bool True if cached in transient, false otherwise.
+	 * @since 8.4.2
+	 */
+	public static function has_cached_certificates( $user_id = 0 ) {
+		if ( ! $user_id ) {
+			$user_id = get_current_user_id();
+		}
+
+		if ( ! $user_id ) {
+			return false;
+		}
+
+		return false !== get_transient( self::get_transient_name( $user_id ) );
+	}
+
+	/**
 	 * Get saved exemption certificates for the current customer.
 	 *
-	 * @param int $user_id WordPress user ID for customer (default: 0).
+	 * @param int  $user_id          WordPress user ID for customer (default: 0).
+	 * @param bool $fetch_if_missing Whether to fetch from API if not cached (default: true).
 	 *
 	 * @return TaxCloud\ExemptionCertificate[]
 	 * @since 5.0
 	 */
-	public static function get_certificates( $user_id = 0 ) {
+	public static function get_certificates( $user_id = 0, $fetch_if_missing = true ) {
 		if ( ! $user_id ) {
 			$user_id = get_current_user_id();
 		}
@@ -56,7 +77,7 @@ class SST_Certificates {
 					}
 				}
 			}
-		} else {
+		} elseif ( $fetch_if_missing ) {
 			$certificates = self::fetch_certificates( $user_id );
 			self::set_certificates( $user_id, $certificates );
 		}
@@ -160,14 +181,15 @@ class SST_Certificates {
 	 * Get saved exemption certificates for a customer, formatted for display
 	 * in the certificate table.
 	 *
-	 * @param int $user_id WordPress user ID for customer (default: 0).
+	 * @param int  $user_id          WordPress user ID for customer (default: 0).
+	 * @param bool $fetch_if_missing Whether to fetch from API if not cached (default: true).
 	 *
 	 * @return array
 	 * @since 5.0
 	 */
-	public static function get_certificates_formatted( $user_id = 0 ) {
+	public static function get_certificates_formatted( $user_id = 0, $fetch_if_missing = true ) {
 		$certificates = array();
-		$raw_certs    = self::get_certificates( $user_id );
+		$raw_certs    = self::get_certificates( $user_id, $fetch_if_missing );
 
 		foreach ( $raw_certs as $id => $raw_cert ) {
 			if ( empty( $id ) ) {

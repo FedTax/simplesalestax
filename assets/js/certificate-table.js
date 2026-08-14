@@ -2,6 +2,7 @@ jQuery( function( $ ) {
 	var script_data = window.SST_Certificate_Table_Data || { strings: {}, certificates: {}, user_id: 0 };
 	var $row_template = wp.template( 'sst-certificate-row' );
 	var $blank_template = wp.template( 'sst-certificate-row-blank' );
+	var $loading_template = wp.template( 'sst-certificate-row-loading' );
 
 	// Backbone model
 	var CertificateTable = Backbone.Model.extend( {
@@ -13,9 +14,13 @@ jQuery( function( $ ) {
 	var CertificateTableView = Backbone.View.extend( {
 		userId: 0,
 		addressFields: {},
+		fetchOnLoad: false,
+		isLoading: false,
 		initialize: function( options ) {
 			this.userId = options.user_id ? +options.user_id : 0;
 			this.addressFields = options.address_fields || {};
+			this.fetchOnLoad = !! options.fetch_on_load;
+			this.isLoading = false;
 
 			this.listenTo( this.model, 'change:certificates', this.render );
 			this.listenTo( this.model, 'change:selected', this.fireChangeHook );
@@ -33,8 +38,20 @@ jQuery( function( $ ) {
 				{ view: this },
 				this.onRefreshCertificates
 			);
+
+			if ( this.fetchOnLoad ) {
+				this.fetchCertificates();
+			}
 		},
 		render: function() {
+			if ( this.isLoading ) {
+				this.$el.empty();
+				if ( typeof $loading_template === 'function' ) {
+					this.$el.append( $loading_template() );
+				}
+				return;
+			}
+
 			var certificates = _.indexBy( this.model.get( 'certificates' ), 'CertificateID' ),
 				selected     = this.model.get( 'selected' ),
 				view         = this,
@@ -68,6 +85,34 @@ jQuery( function( $ ) {
 			} else {
 				view.$el.append( $blank_template );
 			}
+		},
+		fetchCertificates: function() {
+			var view = this;
+			view.isLoading = true;
+			view.render();
+
+			var requestData = {
+				nonce: script_data.get_certificates_nonce,
+			};
+
+			if ( view.userId ) {
+				requestData.customerId = view.userId;
+				requestData.user_id = view.userId;
+			}
+
+			$.post( script_data.ajaxurl + '?action=sst_get_certificates', requestData )
+				.then( function( response ) {
+					view.isLoading = false;
+					if ( response.success && response.data ) {
+						view.model.set( 'certificates', response.data );
+					} else {
+						view.render();
+					}
+				} )
+				.fail( function() {
+					view.isLoading = false;
+					view.render();
+				} );
 		},
 		fireChangeHook: function() {
 			var selected = this.model.get( 'selected' );
@@ -276,6 +321,7 @@ jQuery( function( $ ) {
 			certificates: {},
 			selected: '',
 			user_id: 0,
+			fetch_on_load: false,
 		};
 
 		for ( var key in defaults ) {
@@ -297,5 +343,6 @@ jQuery( function( $ ) {
 	renderCertificateTable( {
 		user_id: script_data.user_id,
 		certificates: script_data.certificates,
+		fetch_on_load: script_data.fetch_on_load,
 	} );
 } );

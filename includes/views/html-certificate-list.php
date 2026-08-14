@@ -57,6 +57,17 @@ $show_inputs = $args['show_inputs'] ?? true;
 	</tr>
 </script>
 
+<script type="text/html" id="tmpl-sst-certificate-row-loading">
+	<tr class="sst-certificate-row-loading">
+		<td colspan="5" style="text-align: center; padding: 18px 12px; color: #666;">
+			<span class="spinner is-active" style="float: none; margin: 0 8px 0 0; vertical-align: middle; visibility: visible;"></span>
+			<span>
+				<?php esc_html_e( 'Loading exemption certificates...', 'simple-sales-tax' ); ?>
+			</span>
+		</td>
+	</tr>
+</script>
+
 <script type="text/html" id="tmpl-sst-certificate-row">
 	<tr data-id="{{ data.CertificateID }}">
 		<?php if ( $show_inputs ): ?>
