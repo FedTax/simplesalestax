@@ -58,6 +58,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		add_action( 'woocommerce_checkout_create_order_shipping_item', array( $this, 'add_shipping_meta' ), 10, 3 );
+		add_filter( 'wc_stripe_calculated_total', array( $this, 'filter_stripe_calculated_total' ), 10, 3 );
+		add_filter( 'woocommerce_stripe_calculated_total', array( $this, 'filter_stripe_calculated_total' ), 10, 3 );
 
 		parent::__construct();
 
@@ -127,13 +129,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 			 * Woo won't include the taxes calculated by SST in the total so
 			 * we add them in here.
 			 */
-			foreach ( $this->cart->get_taxes() as $rate_id => $tax ) {
-				if ( (int) SST_RATE_ID === (int) $rate_id ) {
-					$tax_total += $tax;
-				}
-			}
-
-			$this->cart->set_total_tax( WC_Tax::get_tax_total( $this->cart->get_taxes() ) );
+			$tax_total = WC_Tax::get_tax_total( $this->cart->get_taxes() );
+			$this->cart->set_total_tax( $tax_total );
 		}
 
 		return $total + $tax_total;
@@ -207,6 +204,41 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Ensure Stripe Express Checkout total amount matches sum of display items including SST sales tax.
+	 *
+	 * @param float   $calculated_total Calculated total for Stripe in smallest currency unit (cents).
+	 * @param float   $order_total      Cart order total in dollars.
+	 * @param WC_Cart $cart             Cart object.
+	 *
+	 * @return float
+	 * @since 8.4.15
+	 */
+	public function filter_stripe_calculated_total( $calculated_total, $order_total, $cart ) {
+		if ( ! $cart || 'yes' === SST_Settings::get( 'disable_integration', 'no' ) ) {
+			return $calculated_total;
+		}
+
+		$tax_total = $cart->get_total_tax();
+		if ( $tax_total > 0 && class_exists( 'WC_Stripe_Helper' ) ) {
+			$stripe_tax      = WC_Stripe_Helper::get_stripe_amount( $tax_total );
+			$stripe_subtotal = WC_Stripe_Helper::get_stripe_amount( $cart->get_subtotal() );
+			$stripe_shipping = WC_Stripe_Helper::get_stripe_amount( $cart->get_shipping_total() );
+			$discounts       = 0;
+			foreach ( (array) $cart->get_coupon_discount_totals() as $amount ) {
+				$discounts += (float) $amount;
+			}
+			$stripe_discount = WC_Stripe_Helper::get_stripe_amount( $discounts );
+			$expected_total  = $stripe_subtotal + $stripe_shipping + $stripe_tax - $stripe_discount;
+
+			if ( $expected_total > $calculated_total ) {
+				return max( 0, $expected_total );
+			}
+		}
+
+		return $calculated_total;
 	}
 
 	/**
