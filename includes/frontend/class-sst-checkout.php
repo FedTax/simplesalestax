@@ -1116,9 +1116,13 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @return bool True if package is valid, false otherwise.
 	 */
 	protected function is_package_valid( $package ) {
+		if ( ! is_array( $package ) ) {
+			return false;
+		}
+
 		// Check if package has required keys
 		$required_keys = array( 'cart_items', 'customer_id' );
-		
+
 		foreach ( $required_keys as $key ) {
 			if ( ! isset( $package[ $key ] ) ) {
 				return false;
@@ -1130,8 +1134,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return false;
 		}
 
-		// Check if customer_id is valid
-		if ( empty( $package['customer_id'] ) ) {
+		// Check if customer_id is valid (0 is valid for guest users)
+		if ( ! is_numeric( $package['customer_id'] ) && empty( $package['customer_id'] ) ) {
 			return false;
 		}
 
