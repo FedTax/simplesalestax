@@ -86,6 +86,16 @@ class SST_Addresses {
 	 * @since 5.0
 	 */
 	public static function verify_address( $address ) {
+		if ( is_null( $address ) || ! is_a( $address, 'TaxCloud\Address' ) ) {
+			return $address;
+		}
+
+		// TaxCloud VerifyAddress requires a street address (Address1) and Zip5.
+		// If either is missing, skip the API call to avoid 400 Bad Request errors.
+		if ( empty( $address->getAddress1() ) || empty( $address->getZip5() ) ) {
+			return $address;
+		}
+
 		$addresses = get_transient( 'sst_verified_addresses' );
 
 		if ( ! is_array( $addresses ) ) {
@@ -122,15 +132,17 @@ class SST_Addresses {
 				$address = TaxCloud()->VerifyAddress( $request );
 
 				$rate_limit->increment_count();
-				
+
 				// Cache verified address.
 				$addresses[ $md5_hash ] = wp_json_encode( $address );
 
-				// Cache validated addresses for 3 days.
+				// Cache validated addresses for 2 days.
 				set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
 			} catch ( Exception $ex ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 				SST_Logger::add( 'Failed to verify address: ' . $ex->getMessage() );
-				// Leave address as-is.
+				// Cache unverified address as-is to avoid repeated failed API requests.
+				$addresses[ $md5_hash ] = wp_json_encode( $address );
+				set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
 			}
 
 		}
