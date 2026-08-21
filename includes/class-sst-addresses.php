@@ -124,14 +124,14 @@ class SST_Addresses {
 					return $address;
 				}
 
+				$rate_limit->increment_count();
+
 				$request = new TaxCloud\Request\VerifyAddress(
 					SST_Settings::get( 'tc_id' ),
 					SST_Settings::get( 'tc_key' ),
 					$address
 				);
 				$address = TaxCloud()->VerifyAddress( $request );
-
-				$rate_limit->increment_count();
 
 				// Cache verified address.
 				$addresses[ $md5_hash ] = wp_json_encode( $address );
