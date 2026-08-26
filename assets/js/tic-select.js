@@ -51,6 +51,7 @@
                     $( '.sst-tic-search' ).hideseek();
                 },
                 updateSelection: function( event ) {
+                    event.preventDefault();
                     var $target = $( event.target ),
                         $tr     = $target.closest( 'tr' );
 
@@ -69,11 +70,15 @@
                 handleInputChange: function() {
                     var tic_id = this.input.val();
 
-                    if ( '' == tic_id ) {
+                    if ( '' == tic_id || undefined === tic_id ) {
                         this.readout.text( this.readout.data( 'default' ) );
                     } else {
-                        var tic = data.tic_list[ parseInt( tic_id ) ];
-                        this.readout.text( tic['description'] + ' (' + tic['id'] + ')' );
+                        var tic = data.tic_list ? data.tic_list[ parseInt( tic_id ) ] : null;
+                        if ( tic && tic['description'] ) {
+                            this.readout.text( tic['description'] + ' (' + tic['id'] + ')' );
+                        } else {
+                            this.readout.text( this.readout.data( 'default' ) || ( 'TIC ' + tic_id ) );
+                        }
                     }
                 },
                 remove: function() {

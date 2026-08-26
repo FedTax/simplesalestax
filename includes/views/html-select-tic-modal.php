@@ -52,7 +52,7 @@ $input_classes[] = 'sst-tic-search';
 					</button>
 				</header>
 				<article>
-					<form action="" method="post">
+					<form action="" method="post" onsubmit="return false;">
 						<input name="search" class="<?php echo esc_attr( implode( ' ', $input_classes ) ); ?>"
 							   placeholder="<?php esc_attr_e( 'Start typing to search', 'simple-sales-tax' ); ?>" type="text"
 							   data-list=".sst-tic-list">
