@@ -102,7 +102,7 @@
 
                     var tic_id = this.input.val();
                     if ( tic_id ) {
-                        var tic = data.tic_list[ parseInt( tic_id ) ];
+                        var tic = data.tic_list ? data.tic_list[ parseInt( tic_id ) ] : null;
                         var initial_query = '';
                         if ( tic && tic['description'] ) {
                             initial_query = tic['description'] + ' (' + tic_id + ')';
@@ -224,6 +224,7 @@
                     this.performSearch( this.currentQuery, true );
                 },
                 updateSelection: function( event ) {
+                    event.preventDefault();
                     var $target = $( event.target ),
                         $tr     = $target.closest( 'tr' );
 
@@ -260,19 +261,20 @@
                 handleInputChange: function() {
                     var tic_id = this.input.val();
 
-                    if ( '' == tic_id ) {
+                    if ( '' == tic_id || undefined === tic_id ) {
                         this.readout.text( this.readout.data( 'default' ) );
                     } else {
                         var parsed_id = parseInt( tic_id );
+                        data.tic_list = data.tic_list || {};
                         var tic = data.tic_list[ parsed_id ];
                         if ( tic ) {
                             if ( tic.description ) {
                                 this.readout.text( tic['description'] + ' (' + tic['id'] + ')' );
                             } else {
-                                this.readout.text( 'TIC ' + tic_id );
+                                this.readout.text( this.readout.data( 'default' ) || ( 'TIC ' + tic_id ) );
                             }
                         } else {
-                            this.readout.text( 'TIC ' + tic_id );
+                            this.readout.text( this.readout.data( 'default' ) || ( 'TIC ' + tic_id ) );
 
                             // Mark as loading to prevent duplicate background requests
                             data.tic_list[ parsed_id ] = {
