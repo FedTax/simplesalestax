@@ -639,16 +639,26 @@ class SST_Order extends SST_Abstract_Cart {
 		$raw_address = $this->get_shipping_address();
 
 		try {
-			$address = new \TaxCloud_V3\Model\Address(
-				array(
-					'city'        => $raw_address['city'],
-					'countryCode' => isset( $raw_address['country'] ) ? $raw_address['country'] : 'US',
-					'line1'       => $raw_address['address'],
-					'line2'       => isset( $raw_address['address_2'] ) ? $raw_address['address_2'] : '',
-					'state'       => $raw_address['state'],
-					'zip'         => $raw_address['postcode'],
-				)
-			);
+			if ( 'v3' === sst_get_api_version() ) {
+				$address = new \TaxCloud_V3\Model\Address(
+					array(
+						'city'        => $raw_address['city'],
+						'countryCode' => isset( $raw_address['country'] ) ? $raw_address['country'] : 'US',
+						'line1'       => $raw_address['address'],
+						'line2'       => isset( $raw_address['address_2'] ) ? $raw_address['address_2'] : '',
+						'state'       => $raw_address['state'],
+						'zip'         => $raw_address['postcode'],
+					)
+				);
+			} else {
+				$address = new TaxCloud\Address(
+					$raw_address['address'],
+					isset( $raw_address['address_2'] ) ? $raw_address['address_2'] : '',
+					$raw_address['city'],
+					$raw_address['state'],
+					substr( $raw_address['postcode'], 0, 5 )
+				);
+			}
 
 			// Logging
 			SST_Logger::order_log( __( 'Verifying destination address.', 'simple-sales-tax' ), $this->order->get_id(), $address );
