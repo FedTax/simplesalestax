@@ -27,6 +27,13 @@ class SST_Checkout extends SST_Abstract_Cart {
 	private $cart = null;
 
 	/**
+	 * Tax-inclusive total captured during a Stripe Express Checkout calculation.
+	 *
+	 * @var float|null
+	 */
+	private $stripe_express_checkout_total = null;
+
+	/**
 	 * Cart validation errors.
 	 *
 	 * @var array
@@ -40,6 +47,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 */
 	public function __construct() {
 		add_filter( 'woocommerce_calculated_total', array( $this, 'calculate_tax_totals' ), 1100, 2 );
+		add_filter( 'wc_stripe_calculated_total', array( $this, 'filter_stripe_calculated_total' ), 10, 3 );
 		add_filter( 'woocommerce_cart_hide_zero_taxes', array( $this, 'hide_zero_taxes' ) );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'handle_legacy_checkout' ) );
 		add_action( 'woocommerce_cart_emptied', array( $this, 'clear_session_data' ) );
@@ -102,13 +110,15 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		$this->cart = new SST_Cart_Proxy( $cart );
 
+		$is_stripe_express_checkout_request = $this->is_stripe_express_checkout_request();
+
 		$should_calculate = (
 			is_cart() ||
 			is_checkout() ||
 			doing_action( 'wc_ajax_square_digital_wallet_recalculate_totals' ) ||
 			$this->is_store_api_request() ||
 			$this->is_edit_subscription_request() ||
-			$this->is_stripe_express_checkout_request()
+			$is_stripe_express_checkout_request
 		);
 
 		if ( apply_filters( 'sst_calculate_tax_totals', $should_calculate ) ) {
@@ -116,6 +126,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 			/**
 			 * Skip tax calculation if real-time tax calculation is disabled. [Data Import Mode]
+			 *
 			 * @since 8.4.1
 			 */
 			if ( 'data_mover' === sst_integration_mode() ) {
@@ -123,20 +134,28 @@ class SST_Checkout extends SST_Abstract_Cart {
 				return $total;
 			}
 
+			$taxes = $this->cart->get_taxes();
+
 			/**
 			 * Woo won't include the taxes calculated by SST in the total so
 			 * we add them in here.
 			 */
-			foreach ( $this->cart->get_taxes() as $rate_id => $tax ) {
-				if ( (int) SST_RATE_ID === $rate_id ) {
-					$tax_total += $tax;
+			foreach ( $taxes as $rate_id => $tax ) {
+				if ( (int) SST_RATE_ID === (int) $rate_id ) {
+					$tax_total += (float) $tax;
 				}
 			}
+
+			$this->cart->set_total_tax( WC_Tax::get_tax_total( $taxes ) );
 		}
 
-		$this->cart->set_total_tax( WC_Tax::get_tax_total( $this->cart->get_taxes() ) );
+		$calculated_total = (float) $total + $tax_total;
 
-		return $total + $tax_total;
+		if ( $is_stripe_express_checkout_request ) {
+			$this->stripe_express_checkout_total = $calculated_total;
+		}
+
+		return $calculated_total;
 	}
 
 	/**
@@ -170,8 +189,73 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 8.3.5
 	 */
 	protected function is_stripe_express_checkout_request() {
-		global $wp_query;
-		return defined( 'WC_DOING_AJAX' ) && 'wc_stripe_get_shipping_options' === $wp_query->get( 'wc-ajax' );
+		$express_checkout_actions = array(
+			'wc_stripe_get_cart_details',
+			'wc_stripe_get_shipping_options',
+			'wc_stripe_update_shipping_method',
+			'wc_stripe_add_to_cart',
+			'wc_stripe_get_selected_product_data',
+		);
+
+		foreach ( $express_checkout_actions as $action ) {
+			if ( doing_action( 'wc_ajax_' . $action ) ) {
+				return true;
+			}
+		}
+
+		if ( ! defined( 'WC_DOING_AJAX' ) || ! WC_DOING_AJAX ) {
+			return false;
+		}
+
+		// WC AJAX endpoints are passed in the query string. Read it directly
+		// because the query variable is not reliable throughout every AJAX lifecycle.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Reading the WooCommerce routing argument only.
+		$ajax_action = isset( $_GET['wc-ajax'] )
+			? sanitize_key( wp_unslash( $_GET['wc-ajax'] ) )
+			: '';
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+		if ( '' === $ajax_action ) {
+			global $wp_query;
+
+			if ( $wp_query instanceof WP_Query ) {
+				$ajax_action = sanitize_key( $wp_query->get( 'wc-ajax' ) );
+			}
+		}
+
+		return in_array( $ajax_action, $express_checkout_actions, true );
+	}
+
+	/**
+	 * Supply Stripe with the tax-inclusive total captured during calculation.
+	 *
+	 * Stripe's response builder can observe cart totals after TaxCloud's tax state
+	 * has been reset. Use the value captured earlier on this request, while the
+	 * TaxCloud result and WooCommerce total were synchronized.
+	 *
+	 * @param float   $calculated_total Stripe total in the currency's smallest unit.
+	 * @param float   $order_total      WooCommerce cart total in store currency.
+	 * @param WC_Cart $cart             WooCommerce cart instance.
+	 *
+	 * @return float
+	 */
+	public function filter_stripe_calculated_total( $calculated_total, $order_total, $cart ) {
+		if (
+			! $cart ||
+			! class_exists( 'WC_Stripe_Helper' ) ||
+			'yes' === SST_Settings::get( 'disable_integration', 'no' ) ||
+			! $this->is_stripe_express_checkout_request() ||
+			null === $this->stripe_express_checkout_total
+		) {
+			return $calculated_total;
+		}
+
+		$stripe_total = WC_Stripe_Helper::get_stripe_amount(
+			$this->stripe_express_checkout_total,
+			get_woocommerce_currency()
+		);
+
+		return max( 0, $stripe_total );
 	}
 
 	/**
@@ -1116,9 +1200,13 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @return bool True if package is valid, false otherwise.
 	 */
 	protected function is_package_valid( $package ) {
+		if ( ! is_array( $package ) ) {
+			return false;
+		}
+
 		// Check if package has required keys
 		$required_keys = array( 'cart_items', 'customer_id' );
-		
+
 		foreach ( $required_keys as $key ) {
 			if ( ! isset( $package[ $key ] ) ) {
 				return false;
@@ -1130,8 +1218,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return false;
 		}
 
-		// Check if customer_id is valid
-		if ( empty( $package['customer_id'] ) ) {
+		// Check if customer_id is valid (0 is valid for guest users)
+		if ( ! is_numeric( $package['customer_id'] ) && empty( $package['customer_id'] ) ) {
 			return false;
 		}
 

@@ -107,6 +107,16 @@ class SST_Addresses {
 	 * @since 5.0
 	 */
 	public static function verify_address( $address ) {
+		if ( is_null( $address ) || ! self::is_address_object( $address ) ) {
+			return $address;
+		}
+
+		// TaxCloud VerifyAddress requires a street address (Address1) and Zip5.
+		// If either is missing, skip the API call to avoid 400 Bad Request errors.
+		if ( empty( $address->getAddress1() ) || empty( $address->getZip5() ) ) {
+			return $address;
+		}
+
 		$addresses = get_transient( 'sst_verified_addresses' );
 
 		if ( ! is_array( $addresses ) ) {
@@ -117,7 +127,18 @@ class SST_Addresses {
 
 		if ( array_key_exists( $md5_hash, $addresses ) ) {
 			$decoded = json_decode( $addresses[ $md5_hash ], true );
-			$address = new \TaxCloud_V3\Model\Address( $decoded );
+			if ( sst_get_api_version() === 'v3' ) {
+				$address = new \TaxCloud_V3\Model\Address( $decoded );
+			} else {
+				$address = new \TaxCloud\Address(
+					isset( $decoded['Address1'] ) ? $decoded['Address1'] : ( isset( $decoded['line1'] ) ? $decoded['line1'] : '' ),
+					isset( $decoded['Address2'] ) ? $decoded['Address2'] : ( isset( $decoded['line2'] ) ? $decoded['line2'] : null ),
+					isset( $decoded['City'] ) ? $decoded['City'] : ( isset( $decoded['city'] ) ? $decoded['city'] : '' ),
+					isset( $decoded['State'] ) ? $decoded['State'] : ( isset( $decoded['state'] ) ? $decoded['state'] : '' ),
+					isset( $decoded['Zip5'] ) ? $decoded['Zip5'] : ( isset( $decoded['zip'] ) ? substr( preg_replace( '/[^0-9]/', '', $decoded['zip'] ), 0, 5 ) : '' ),
+					isset( $decoded['Zip4'] ) ? $decoded['Zip4'] : ( isset( $decoded['zip'] ) && strlen( preg_replace( '/[^0-9]/', '', $decoded['zip'] ) ) > 5 ? substr( preg_replace( '/[^0-9]/', '', $decoded['zip'] ), 5, 4 ) : null )
+				);
+			}
 		} else {
 			try {
 				// Check rate limit.
@@ -127,18 +148,39 @@ class SST_Addresses {
 					return $address;
 				}
 
-				$address = self::verify_address_v3( $address );
+				if ( sst_get_api_version() === 'v3' ) {
+					$address = self::verify_address_v3( $address );
+					$rate_limit->increment_count();
+				} else {
+					$rate_limit->increment_count();
 
-				$rate_limit->increment_count();
-				
+					$v1_address = is_a( $address, 'TaxCloud\Address' ) ? $address : new \TaxCloud\Address(
+						$address->getAddress1(),
+						$address->getAddress2(),
+						$address->getCity(),
+						$address->getState(),
+						$address->getZip5(),
+						$address->getZip4()
+					);
+
+					$request = new \TaxCloud\Request\VerifyAddress(
+						SST_Settings::get( 'tc_id' ),
+						SST_Settings::get( 'tc_key' ),
+						$v1_address
+					);
+					$address = TaxCloud()->VerifyAddress( $request );
+				}
+
 				// Cache verified address.
 				$addresses[ $md5_hash ] = wp_json_encode( $address );
 
-				// Cache validated addresses for 3 days.
+				// Cache validated addresses for 2 days.
 				set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
 			} catch ( Exception $ex ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 				SST_Logger::add( 'Failed to verify address: ' . $ex->getMessage() );
-				// Leave address as-is.
+				// Cache unverified address as-is to avoid repeated failed API requests.
+				$addresses[ $md5_hash ] = wp_json_encode( $address );
+				set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
 			}
 
 		}
@@ -151,7 +193,7 @@ class SST_Addresses {
 	 *
 	 * @param object $address Address to verify.
 	 *
-	 * @return TaxCloud_V3\Model\Address
+	 * @return \TaxCloud_V3\Model\Address
 	 * @throws Exception When verification fails.
 	 * @since 8.4.10
 	 */
@@ -218,20 +260,62 @@ class SST_Addresses {
 		$saved_addresses = array_map( 'json_decode', (array) SST_Settings::get( 'addresses', array() ) );
 
 		if ( $fetch ) {
-			SST_Logger::add( __( 'Origin address fetch from TaxCloud is not available in the v3 address flow. Using saved origin addresses.', 'simple-sales-tax' ) );
-		}
-
-		foreach ( $saved_addresses as $address ) {
-			$addresses[ $address->ID ] = new SST_Origin_Address(
-				$address->ID,
-				$address->Default,
-				$address->Address1,
-				$address->Address2,
-				$address->City,
-				$address->State,
-				$address->Zip5,
-				$address->Zip4
-			);
+			if ( sst_get_api_version() === 'v3' ) {
+				SST_Logger::add( __( 'Origin address fetch from TaxCloud is not available in the v3 address flow. Using saved origin addresses.', 'simple-sales-tax' ) );
+				foreach ( $saved_addresses as $address ) {
+					$addresses[ $address->ID ] = new SST_Origin_Address(
+						$address->ID,
+						$address->Default,
+						$address->Address1,
+						$address->Address2,
+						$address->City,
+						$address->State,
+						$address->Zip5,
+						$address->Zip4
+					);
+				}
+			} else {
+				$api_id  = SST_Settings::get( 'tc_id' );
+				$api_key = SST_Settings::get( 'tc_key' );
+				if ( $api_id && $api_key ) {
+					try {
+						$request   = new \TaxCloud\Request\GetLocations( $api_id, $api_key );
+						$locations = TaxCloud()->GetLocations( $request );
+						foreach ( $locations as $location ) {
+							$location_id = $location->getLocationID();
+							$is_default  = false;
+							if ( isset( $saved_addresses[ $location_id ] ) ) {
+								$is_default = $saved_addresses[ $location_id ]->Default;
+							}
+							$addresses[ $location_id ] = new SST_Origin_Address(
+								$location_id,
+								$is_default,
+								$location->GetAddress1(),
+								$location->getAddress2(),
+								$location->getCity(),
+								$location->getState(),
+								$location->getZip5(),
+								$location->getZip4()
+							);
+						}
+					} catch ( \TaxCloud\Exceptions\GetLocationsException $ex ) {
+						SST_Logger::error( 'GetLocations request failed. Error was: ' . $ex->getMessage() );
+					}
+				}
+			}
+		} else {
+			foreach ( $saved_addresses as $address ) {
+				$addresses[ $address->ID ] = new SST_Origin_Address(
+					$address->ID,
+					$address->Default,
+					$address->Address1,
+					$address->Address2,
+					$address->City,
+					$address->State,
+					$address->Zip5,
+					$address->Zip4
+				);
+			}
 		}
 
 		return $addresses;
@@ -242,7 +326,7 @@ class SST_Addresses {
 	 *
 	 * @param SST_Origin_Address $address Origin address to convert to Address object.
 	 *
-	 * @return TaxCloud_V3\Model\Address|null
+	 * @return \TaxCloud_V3\Model\Address|\TaxCloud\Address|null
 	 * @since 5.0
 	 */
 	public static function to_address( $address ) {
@@ -251,15 +335,26 @@ class SST_Addresses {
 		}
 
 		try {
-			return new \TaxCloud_V3\Model\Address(
-				array(
-					'city'        => $address->getCity(),
-					'countryCode' => 'US',
-					'line1'       => $address->getAddress1(),
-					'line2'       => $address->getAddress2(),
-					'state'       => $address->getState(),
-					'zip'         => $address->getZip(),
-				)
+			if ( sst_get_api_version() === 'v3' ) {
+				return new \TaxCloud_V3\Model\Address(
+					array(
+						'city'        => $address->getCity(),
+						'countryCode' => 'US',
+						'line1'       => $address->getAddress1(),
+						'line2'       => $address->getAddress2(),
+						'state'       => $address->getState(),
+						'zip'         => $address->getZip(),
+					)
+				);
+			}
+
+			return new \TaxCloud\Address(
+				$address->getAddress1(),
+				$address->getAddress2(),
+				$address->getCity(),
+				$address->getState(),
+				$address->getZip5(),
+				$address->getZip4()
 			);
 		} catch ( Exception $ex ) {
 			return null;

@@ -244,6 +244,8 @@ abstract class SST_Abstract_Cart {
 
 		// Can remove below when all integration will use v3 only
 		try {
+			$rate_limit->increment_count();
+
 			$package['response'] = TaxCloud()->Lookup( $package['request'] );
 
 			if ( ! is_array( $package['response'] ) || empty( $package['response'] ) ) {
@@ -253,8 +255,6 @@ abstract class SST_Abstract_Cart {
 			}
 
 			$package['cart_id']  = key( $package['response'] );
-
-			$rate_limit->increment_count();
 
 			SST_Logger::debug( __( 'Tax lookup response:', 'simple-sales-tax' ), $package );
 		} catch ( Throwable $ex ) {

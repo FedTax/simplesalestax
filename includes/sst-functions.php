@@ -490,21 +490,28 @@ function sst_render_certificate_table( $user_id = 0, $options = array() ) {
 		'postcode'   => $customer->get_billing_postcode(),
 	);
 
+	$is_cached    = SST_Certificates::has_cached_certificates( $user_id );
+	$certificates = $is_cached ? SST_Certificates::get_certificates_formatted( $user_id, false ) : array();
+
 	$script_data = array(
-		'delete_certificate_nonce'  => wp_create_nonce( 'sst_delete_certificate' ),
+		'delete_certificate_nonce'   => wp_create_nonce( 'sst_delete_certificate' ),
 		'refresh_certificates_nonce' => wp_create_nonce( 'sst_refresh_certificates' ),
+		'get_certificates_nonce'     => wp_create_nonce( 'sst_get_certificates' ),
 		'ajaxurl'                    => admin_url( 'admin-ajax.php' ),
 		'strings'                    => array(
 			'delete_failed'      => __( 'Failed to delete certificate', 'simple-sales-tax' ),
 			'add_failed'         => __( 'Failed to add certificate', 'simple-sales-tax' ),
 			'refresh_failed'     => __( 'Failed to refresh certificates', 'simple-sales-tax' ),
+			'fetch_failed'       => __( 'Failed to load exemption certificates', 'simple-sales-tax' ),
+			'loading'            => __( 'Loading exemption certificates...', 'simple-sales-tax' ),
 			'delete_certificate' => __(
 				'Are you sure you want to delete this certificate? This action is irreversible.',
 				'simple-sales-tax'
 			),
 		),
 		'user_id'                    => $user_id,
-		'certificates'               => SST_Certificates::get_certificates_formatted( $user_id ),
+		'certificates'               => $certificates,
+		'fetch_on_load'              => ! $is_cached,
 		'billing_address'            => $billing_address,
 	);
 

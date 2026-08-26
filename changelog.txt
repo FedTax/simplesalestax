@@ -2,6 +2,18 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [8.4.15] - 2026-08-20 =
+
+Fixed:
+- [DEV-9165] - Fix: Woo users can no longer add exemption certificates (#452)
+
+
+- [8.4.14] - 2026-08-15 =
+
+Added:
+- Add centralized defaults storage and retrieval method to SST settings class (#451)
+
+
 - [8.4.13] - 2026-07-31 =
 
 Added:

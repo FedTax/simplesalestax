@@ -78,13 +78,21 @@ abstract class RequestBase {
 	 * @since 8.4.1
 	 */
 	public function get_auth_token( $api_login_id = null, $api_key = null ) {
-
-		if ( !$api_login_id || !$api_key ) {
-			$api_login_id	= SST_Settings::get( 'tc_id' );
-			$api_key			= SST_Settings::get( 'tc_key' );
+		if ( ! $api_login_id || ! $api_key ) {
+			$api_login_id = SST_Settings::get( 'tc_id' );
+			$api_key      = SST_Settings::get( 'tc_key' );
 		}
 
-		// TODO: Implement caching & refresh token
+		if ( empty( $api_login_id ) || empty( $api_key ) ) {
+			return new \WP_Error( 'sst_v3_auth_error', 'Missing TaxCloud API credentials.' );
+		}
+
+		$transient_key = 'sst_tc_v3_token_' . md5( $api_login_id . ':' . $api_key );
+		$cached_token  = get_transient( $transient_key );
+
+		if ( ! empty( $cached_token ) && is_string( $cached_token ) ) {
+			return $cached_token;
+		}
 
 		$response = \wp_remote_post( self::get_auth_url(), array(
 			'headers' => array(
@@ -116,6 +124,9 @@ abstract class RequestBase {
 		if ( ! empty( $data['connection_id'] ) && strlen( $data['connection_id'] ) > 10 ) {
 			SST_Settings::set( 'tc_integration_id', $data['connection_id'] ); // Set integration id which returns from taxcloud
 		}
+
+		// Cache token for 12 hours (tokens are valid for 24 hours).
+		set_transient( $transient_key, $data['access_token'], 12 * HOUR_IN_SECONDS );
 
 		return $data['access_token'];
 	}

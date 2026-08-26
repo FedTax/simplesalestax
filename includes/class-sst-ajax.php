@@ -155,8 +155,12 @@ class SST_Ajax {
 
 		try {
 			SST_Certificates::delete_certificates( $user_id );
-			wp_send_json_success();
+			$certificates = SST_Certificates::get_certificates_formatted( $user_id );
+			wp_send_json_success( array(
+				'certificates' => $certificates,
+			) );
 		} catch ( Exception $ex ) {
+			SST_Logger::add( sprintf( 'refresh_certificates exception for user_id=%d: %s', $user_id, $ex->getMessage() ) );
 			wp_send_json_error( $ex->getMessage() );
 		}
 	}
@@ -221,11 +225,20 @@ class SST_Ajax {
 	public static function get_certificates() {
 		check_ajax_referer( 'sst_get_certificates', 'nonce' );
 
-		$user_id      = intval( wp_unslash( $_REQUEST['customerId'] ) );
+		$user_id = 0;
+		if ( isset( $_REQUEST['customerId'] ) ) {
+			$user_id = absint( wp_unslash( $_REQUEST['customerId'] ) );
+		} elseif ( isset( $_REQUEST['user_id'] ) ) {
+			$user_id = absint( wp_unslash( $_REQUEST['user_id'] ) );
+		}
+
+		if ( 0 === $user_id ) {
+			$user_id = get_current_user_id();
+		}
+
 		$certificates = array();
 
-		if ( current_user_can( 'edit_user', $user_id ) ) {
-			// Get certificates in select2 data format.
+		if ( ( $user_id && $user_id === get_current_user_id() ) || current_user_can( 'edit_user', $user_id ) ) {
 			$certificates = SST_Certificates::get_certificates_formatted(
 				$user_id
 			);

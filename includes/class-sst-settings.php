@@ -34,12 +34,66 @@ class SST_Settings {
 	private static $settings = array();
 
 	/**
+	 * Default setting values.
+	 *
+	 * @var array
+	 * @since 8.4.14
+	 */
+	private static $defaults = array(
+		'tc_id'                          => '',
+		'tc_key'                         => '',
+		'integration_mode'               => '',
+		'default_origin_addresses'       => array(),
+		'show_exempt'                    => 'false',
+		'company_name'                   => '',
+		'exempt_roles'                   => array( 'exempt-customer' ),
+		'restrict_exempt'                => 'no',
+		'show_zero_tax'                  => 'false',
+		'order_show_zero_tax'            => 'true',
+		'log_requests'                   => 'yes',
+		'disable_integration'            => 'no',
+		'force_tax_lookup'               => '',
+		'disable_virtual_split'          => '',
+		'capture_orders_in_taxcloud'     => 'yes',
+		'tax_based_on'                   => 'item-price',
+		'enable_taxcloud_rate_limit'     => 'no',
+		'taxcloud_rate_limit_requests'   => '',
+		'taxcloud_rate_limit_scope'      => 'customer',
+		'taxcloud_rate_limit_window'     => 60,
+		'taxcloud_rate_limit_skip_admin' => 'yes',
+		'show_rate_limit_notice'         => 'no',
+		'remove_all_data'                => 'no',
+	);
+
+	/**
 	 * Load the plugin settings from the options table.
 	 *
 	 * @since 6.3.3
 	 */
 	public static function load_settings() {
 		self::$settings = get_option( self::$options_key, array() );
+	}
+
+	/**
+	 * Get the default value for a setting key.
+	 *
+	 * @param string $key Setting key.
+	 *
+	 * @return mixed Default value.
+	 * @since 8.4.14
+	 */
+	public static function get_default( $key ) {
+		if ( 'shipping_tic' === $key ) {
+			return self::get_default_shipping_tic();
+		}
+		if ( 'capture_trigger' === $key ) {
+			return self::get_default_capture_trigger();
+		}
+		if ( array_key_exists( $key, self::$defaults ) ) {
+			return self::$defaults[ $key ];
+		}
+		$form_fields = self::get_form_fields();
+		return isset( $form_fields[ $key ]['default'] ) ? $form_fields[ $key ]['default'] : '';
 	}
 
 	/**
@@ -116,9 +170,13 @@ class SST_Settings {
 			) . '</strong>';
 		}
 
+		if ( empty( self::$settings ) ) {
+			self::load_settings();
+		}
+
 		$disable_exemption_sub_settings = (
 			$disable_data_import_settings ||
-			'false' === self::get( 'show_exempt', 'false' )
+			'false' === ( self::$settings['show_exempt'] ?? 'false' )
 		);
 
 		$fields = array(
@@ -592,15 +650,16 @@ class SST_Settings {
 
 		// Get option default if unset.
 		if ( ! isset( self::$settings[ $key ] ) ) {
-			$form_fields            = self::get_form_fields();
-			self::$settings[ $key ] = isset( $form_fields[ $key ] ) ? $form_fields[ $key ]['default'] : '';
+			self::$settings[ $key ] = self::get_default( $key );
 		}
 
-		if ( ! is_null( $empty_value ) && '' === self::$settings[ $key ] ) {
-			self::$settings[ $key ] = $empty_value;
+		$value = self::$settings[ $key ];
+
+		if ( ! is_null( $empty_value ) && '' === $value ) {
+			$value = $empty_value;
 		}
 
-		return apply_filters( 'sst_get_option', self::$settings[ $key ], $key );
+		return apply_filters( 'sst_get_option', $value, $key );
 	}
 
 	/**
