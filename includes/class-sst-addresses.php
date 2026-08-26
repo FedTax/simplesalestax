@@ -148,12 +148,11 @@ class SST_Addresses {
 					return $address;
 				}
 
+				$rate_limit->increment_count();
+
 				if ( sst_get_api_version() === 'v3' ) {
 					$address = self::verify_address_v3( $address );
-					$rate_limit->increment_count();
 				} else {
-					$rate_limit->increment_count();
-
 					$v1_address = is_a( $address, 'TaxCloud\Address' ) ? $address : new \TaxCloud\Address(
 						$address->getAddress1(),
 						$address->getAddress2(),
