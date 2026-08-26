@@ -21,7 +21,7 @@ describe('Bulk editor', () => {
     });
 
     // Would prefer to use findByRole here but had issues with that.
-    cy.get('#bulk-action-selector-top').select('Edit');
+    cy.get('#bulk-action-selector-top').select('edit');
     cy.get('#doaction').click();
     cy.get('#bulk-edit'); // Wait for editor to be visible.
 
