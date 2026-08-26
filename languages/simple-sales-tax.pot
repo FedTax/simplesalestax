@@ -2,13 +2,13 @@
 # This file is distributed under the GPLv2 or later license.
 msgid ""
 msgstr ""
-"Project-Id-Version: simple-sales-tax 8.4.11\n"
+"Project-Id-Version: simple-sales-tax 8.4.15\n"
 "Report-Msgid-Bugs-To: TaxCloud <EMAIL>\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Content-Type: text/plain; charset=iso-8859-1\n"
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
-"POT-Creation-Date: 2026-07-13T20:43:29.787Z\n"
+"POT-Creation-Date: 2026-08-26T01:50:50.914Z\n"
 "PO-Revision-Date: 2026-MO-DA HO:MI+ZONE\n"
 "Last-Translator: TaxCloud <EMAIL>\n"
 "Language-Team: TaxCloud <EMAIL>\n"
@@ -44,8 +44,8 @@ msgid "https://taxcloud.com"
 msgstr ""
 
 #: includes/sst-update-functions.php:562
-#: includes/class-sst-order.php:321
-#: includes/class-sst-order.php:1100
+#: includes/class-sst-order.php:336
+#: includes/class-sst-order.php:1143
 msgid "Fee"
 msgstr ""
 
@@ -64,143 +64,171 @@ msgid ""
 "target=\"_blank\">Locations</a> page in your TaxCloud account."
 msgstr ""
 
-#: includes/sst-functions.php:221
+#: includes/sst-functions.php:233
 msgid "Using site default"
 msgstr ""
 
-#: includes/sst-functions.php:234
+#: includes/sst-functions.php:246
 #: includes/integrations/class-sst-wcfm.php:140
 msgid "Same as parent"
 msgstr ""
 
-#: includes/sst-functions.php:257
+#: includes/sst-functions.php:259
+msgid "Search Taxability Information Codes (TIC)"
+msgstr ""
+
+#: includes/sst-functions.php:260
+msgid ""
+"Find the correct taxability codes for your products using natural language "
+"product descriptions, category names, or search terms. The search matches "
+"descriptions to help you easily classify your products."
+msgstr ""
+
+#: includes/sst-functions.php:261
+msgid ""
+"<strong>Search Tips:</strong> Include specific context for the best "
+"results. For example, <em>\"Women\\'s Running Shoes\"</em> works better "
+"than <em>\"shoes\"</em>, and <em>\"Ceramic & Pottery Kilns\"</em> works "
+"better than <em>\"kilns\"</em>."
+msgstr ""
+
+#: includes/sst-functions.php:277
 #: includes/views/html-select-tic-modal.php:35
 msgid "Select"
 msgstr ""
 
-#: includes/sst-functions.php:287
+#: includes/sst-functions.php:307
 msgid ""
 "The TIC is used to determine the appropriate sales tax rate for your "
 "product. If your product is exempt from sales tax or qualifies for reduced "
 "tax rates, please make sure you select an appropriate TIC."
 msgstr ""
 
-#: includes/sst-functions.php:408
+#: includes/sst-functions.php:428
 msgid "None"
 msgstr ""
 
-#: includes/sst-functions.php:409
+#: includes/sst-functions.php:429
 msgid "Single Purchase Certificate"
 msgstr ""
 
-#: includes/sst-functions.php:410
+#: includes/sst-functions.php:430
 msgid "Certificate added successfully! Don't forget to recalculate taxes."
 msgstr ""
 
-#: includes/sst-functions.php:414
-#: includes/sst-functions.php:479
+#: includes/sst-functions.php:434
+#: includes/sst-functions.php:503
 msgid "Failed to add certificate"
 msgstr ""
 
-#: includes/sst-functions.php:478
+#: includes/sst-functions.php:502
 msgid "Failed to delete certificate"
 msgstr ""
 
-#: includes/sst-functions.php:480
+#: includes/sst-functions.php:504
 msgid "Failed to refresh certificates"
 msgstr ""
 
-#: includes/sst-functions.php:481
+#: includes/sst-functions.php:505
+msgid "Failed to load exemption certificates"
+msgstr ""
+
+#: includes/sst-functions.php:506
+#: includes/views/html-certificate-list.php:65
+msgid "Loading exemption certificates..."
+msgstr ""
+
+#: includes/sst-functions.php:507
 msgid ""
 "Are you sure you want to delete this certificate? This action is "
 "irreversible."
 msgstr ""
 
-#: includes/sst-functions.php:565
+#: includes/sst-functions.php:592
 msgid "Sales Tax"
 msgstr ""
 
-#: includes/class-sst-settings.php:99
+#: includes/class-sst-settings.php:153
 msgid ""
 "If you have tax exempt customers, be sure to enable tax exemptions and "
 "enter your company name."
 msgstr ""
 
-#: includes/class-sst-settings.php:103
+#: includes/class-sst-settings.php:157
 msgid ""
 "Configure rate limiting for TaxCloud tax lookup requests to prevent "
 "excessive API calls."
 msgstr ""
 
-#: includes/class-sst-settings.php:109
+#: includes/class-sst-settings.php:163
 msgid ""
 "Tax exemptions are not supported in Data Import mode. These settings are "
 "disabled until Integration Mode is switched back to Real Time."
 msgstr ""
 
-#: includes/class-sst-settings.php:113
+#: includes/class-sst-settings.php:167
 msgid ""
 "Real-time TaxCloud lookup requests are not made in Data Import mode. These "
 "settings are disabled until Integration Mode is switched back to Real Time."
 msgstr ""
 
-#: includes/class-sst-settings.php:121
+#: includes/class-sst-settings.php:184
 msgid "TaxCloud Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:123
+#: includes/class-sst-settings.php:186
 msgid ""
 "You must enter a valid TaxCloud API ID and API Key for TaxCloud for "
 "WooCommerce to work properly. Use the \"Verify Settings\" button to test "
 "your settings."
 msgstr ""
 
-#: includes/class-sst-settings.php:129
+#: includes/class-sst-settings.php:192
 msgid "TaxCloud API ID"
 msgstr ""
 
-#: includes/class-sst-settings.php:131
+#: includes/class-sst-settings.php:194
 msgid ""
 "Your TaxCloud API ID. This can be found in your TaxCloud account on the "
 "\"Websites\" page."
 msgstr ""
 
-#: includes/class-sst-settings.php:139
+#: includes/class-sst-settings.php:202
 msgid "TaxCloud API Key"
 msgstr ""
 
-#: includes/class-sst-settings.php:141
+#: includes/class-sst-settings.php:204
 msgid ""
 "Your TaxCloud API Key. This can be found in your TaxCloud account on the "
 "\"Websites\" page."
 msgstr ""
 
-#: includes/class-sst-settings.php:163
+#: includes/class-sst-settings.php:226
 msgid "Verify TaxCloud Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:164
+#: includes/class-sst-settings.php:227
 #: includes/class-sst-assets.php:109
 msgid "Verify Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:166
+#: includes/class-sst-settings.php:229
 msgid "Use this button to verify that your site can communicate with TaxCloud."
 msgstr ""
 
-#: includes/class-sst-settings.php:174
+#: includes/class-sst-settings.php:237
 msgid "Integration Mode"
 msgstr ""
 
-#: includes/class-sst-settings.php:178
+#: includes/class-sst-settings.php:241
 msgid "Click the refresh button to check TaxCloud for the current mode setting."
 msgstr ""
 
-#: includes/class-sst-settings.php:188
+#: includes/class-sst-settings.php:251
 msgid "Address Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:190
+#: includes/class-sst-settings.php:253
 msgid ""
 "To accurately determine the sales tax for an order, TaxCloud for "
 "WooCommerce needs to know the locations you ship your products from.<br>You "
@@ -209,233 +237,245 @@ msgid ""
 "target=\"_blank\">Locations</a> page in your TaxCloud account."
 msgstr ""
 
-#: includes/class-sst-settings.php:196
+#: includes/class-sst-settings.php:259
 msgid "Shipping Origin Addresses"
 msgstr ""
 
-#: includes/class-sst-settings.php:198
+#: includes/class-sst-settings.php:261
 msgid ""
 "Select the addresses you ship your products from. You can choose a "
 "different set of origin addresses for a specific product under the Shipping "
 "tab on the Edit Product screen."
 msgstr ""
 
-#: includes/class-sst-settings.php:206
+#: includes/class-sst-settings.php:269
 msgid "Exemption Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:211
+#: includes/class-sst-settings.php:274
 msgid "Enable Tax Exemptions?"
 msgstr ""
 
-#: includes/class-sst-settings.php:214
-#: includes/class-sst-settings.php:256
-#: includes/class-sst-settings.php:270
-#: includes/class-sst-settings.php:286
-#: includes/class-sst-settings.php:355
+#: includes/class-sst-settings.php:277
+#: includes/class-sst-settings.php:319
+#: includes/class-sst-settings.php:333
+#: includes/class-sst-settings.php:349
+#: includes/class-sst-settings.php:418
 msgid "Yes"
 msgstr ""
 
-#: includes/class-sst-settings.php:215
-#: includes/class-sst-settings.php:257
-#: includes/class-sst-settings.php:271
-#: includes/class-sst-settings.php:285
-#: includes/class-sst-settings.php:354
+#: includes/class-sst-settings.php:278
+#: includes/class-sst-settings.php:320
+#: includes/class-sst-settings.php:334
+#: includes/class-sst-settings.php:348
+#: includes/class-sst-settings.php:417
 msgid "No"
 msgstr ""
 
-#: includes/class-sst-settings.php:218
-msgid "Set this to \"Yes\" if you have tax exempt customers."
+#: includes/class-sst-settings.php:281
+msgid ""
+"Set this to \"Yes\" to allow customers to apply or create exemption "
+"certificates during checkout."
 msgstr ""
 
-#: includes/class-sst-settings.php:223
+#: includes/class-sst-settings.php:286
 msgid "Company Name"
 msgstr ""
 
-#: includes/class-sst-settings.php:226
+#: includes/class-sst-settings.php:289
 msgid "Enter your company name as it should be displayed on exemption certificates."
 msgstr ""
 
-#: includes/class-sst-settings.php:234
+#: includes/class-sst-settings.php:297
 msgid "Exempt User Roles"
 msgstr ""
 
-#: includes/class-sst-settings.php:239
+#: includes/class-sst-settings.php:302
 msgid ""
-"When a user with one of these roles shops on your site, WooTax will "
+"When a user with one of these roles shops on your site, TaxCloud will "
 "automatically find and apply the first exemption certificate associated "
 "with their account. Convenient if you have repeat exempt customers."
 msgstr ""
 
-#: includes/class-sst-settings.php:247
+#: includes/class-sst-settings.php:310
 msgid "Restrict to Exempt Roles"
 msgstr ""
 
-#: includes/class-sst-settings.php:250
+#: includes/class-sst-settings.php:313
 msgid ""
-"Set this to \"Yes\" to restrict users aside from those specified above from "
-"seeing the exemption form during checkout."
+"Set this to \"Yes\" so only customers assigned to an Exempt User Role can "
+"view and use the tax exemption form during checkout."
 msgstr ""
 
-#: includes/class-sst-settings.php:262
+#: includes/class-sst-settings.php:325
 msgid "Display Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:264
+#: includes/class-sst-settings.php:327
 msgid "Control how taxes are displayed during checkout."
 msgstr ""
 
-#: includes/class-sst-settings.php:267
+#: includes/class-sst-settings.php:330
 msgid "Show Zero Tax On Cart Page?"
 msgstr ""
 
-#: includes/class-sst-settings.php:274
+#: includes/class-sst-settings.php:337
 msgid ""
 "When the sales tax due is zero, should the \"Sales Tax\" line be shown? "
 "Disabled when cart or checkout block is in use."
 msgstr ""
 
-#: includes/class-sst-settings.php:282
+#: includes/class-sst-settings.php:345
 msgid "Show Zero Tax on Order Page?"
 msgstr ""
 
-#: includes/class-sst-settings.php:289
+#: includes/class-sst-settings.php:352
 msgid ""
 "When the sales tax due is zero, should the \"Sales Tax\" line be shown on "
 "the order page?"
 msgstr ""
 
-#: includes/class-sst-settings.php:296
+#: includes/class-sst-settings.php:359
 msgid "Advanced Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:298
+#: includes/class-sst-settings.php:361
 msgid ""
 "For advanced users only. Leave these settings untouched if you are not sure "
 "how to use them."
 msgstr ""
 
-#: includes/class-sst-settings.php:304
+#: includes/class-sst-settings.php:367
 msgid "Shipping TIC"
 msgstr ""
 
-#: includes/class-sst-settings.php:307
+#: includes/class-sst-settings.php:370
 msgid ""
 "11000 - Handling, crating, packing, preparation for mailing or delivery, "
 "and similar charges"
 msgstr ""
 
-#: includes/class-sst-settings.php:311
+#: includes/class-sst-settings.php:374
 msgid "11010 - Transportation, shipping, postage, and similar charges"
 msgstr ""
 
-#: includes/class-sst-settings.php:315
+#: includes/class-sst-settings.php:378
 msgid "11011 - Transportation, shipping, postage, and similar charges by USPS"
 msgstr ""
 
-#: includes/class-sst-settings.php:319
+#: includes/class-sst-settings.php:382
 msgid ""
 "11012 - Transportation, shipping, postage, and similar charges with pick-up "
 "option"
 msgstr ""
 
-#: includes/class-sst-settings.php:323
+#: includes/class-sst-settings.php:386
 msgid "11098 - Colorado Retail Delivery Fees"
 msgstr ""
 
-#: includes/class-sst-settings.php:324
+#: includes/class-sst-settings.php:387
 msgid ""
 "11013 - Transportation, shipping, postage, and similar charges where the "
 "charge is marked up."
 msgstr ""
 
-#: includes/class-sst-settings.php:330
+#: includes/class-sst-settings.php:393
 msgid ""
 "Enter TIC code on <a "
 "href=\"https://support.taxcloud.com/article/109-taxability-information-"
 "codes\" target=\"_blank\">TaxCloud website</a> for details."
 msgstr ""
 
-#: includes/class-sst-settings.php:334
+#: includes/class-sst-settings.php:397
 msgid "Select the Taxability Information Code to apply to shipping charges."
 msgstr ""
 
-#: includes/class-sst-settings.php:340
+#: includes/class-sst-settings.php:403
 msgid "Log Requests"
 msgstr ""
 
-#: includes/class-sst-settings.php:344
+#: includes/class-sst-settings.php:407
 msgid ""
 "When selected, TaxCloud for WooCommerce will log all requests sent to "
 "TaxCloud for debugging purposes."
 msgstr ""
 
-#: includes/class-sst-settings.php:351
+#: includes/class-sst-settings.php:414
 msgid "Disable Integration"
 msgstr ""
 
-#: includes/class-sst-settings.php:358
+#: includes/class-sst-settings.php:421
 msgid ""
 "If enabled, TaxCloud integration will be disabled for both real-time and "
 "data mover."
 msgstr ""
 
-#: includes/class-sst-settings.php:365
+#: includes/class-sst-settings.php:428
 msgid "Force Tax Lookup"
 msgstr ""
 
-#: includes/class-sst-settings.php:369
+#: includes/class-sst-settings.php:432
 msgid ""
 "When selected, TaxCloud for WooCommerce will force a tax lookup for each "
 "order regardless of cached results. This affects on rate limit."
 msgstr ""
 
-#: includes/class-sst-settings.php:377
+#: includes/class-sst-settings.php:440
+msgid "Do Not Split Virtual Products"
+msgstr ""
+
+#: includes/class-sst-settings.php:444
+msgid ""
+"When checked, virtual products will use the shipping address if available "
+"instead of splitting into a separate billing address package."
+msgstr ""
+
+#: includes/class-sst-settings.php:451
 msgid "Capture Orders in TaxCloud"
 msgstr ""
 
-#: includes/class-sst-settings.php:381
+#: includes/class-sst-settings.php:455
 msgid ""
 "When enabled, orders are submitted to TaxCloud for reporting and filing. "
 "Orders are captured only if the integration connection is set to Live in "
 "TaxCloud."
 msgstr ""
 
-#: includes/class-sst-settings.php:388
+#: includes/class-sst-settings.php:462
 msgid "TaxCloud Order Capture Trigger"
 msgstr ""
 
-#: includes/class-sst-settings.php:391
+#: includes/class-sst-settings.php:465
 msgid ""
 "Choose when WooCommerce orders should be captured in TaxCloud for reporting "
 "and filing."
 msgstr ""
 
-#: includes/class-sst-settings.php:397
+#: includes/class-sst-settings.php:471
 msgid "Completed order"
 msgstr ""
 
-#: includes/class-sst-settings.php:398
+#: includes/class-sst-settings.php:472
 msgid "Processing order (paid)"
 msgstr ""
 
-#: includes/class-sst-settings.php:399
+#: includes/class-sst-settings.php:473
 msgid "Both Processing + Completed"
 msgstr ""
 
-#: includes/class-sst-settings.php:403
+#: includes/class-sst-settings.php:477
 msgid "Tax Based On"
 msgstr ""
 
-#: includes/class-sst-settings.php:406
+#: includes/class-sst-settings.php:480
 msgid "Item Price"
 msgstr ""
 
-#: includes/class-sst-settings.php:407
+#: includes/class-sst-settings.php:481
 msgid "Line Subtotal"
 msgstr ""
 
-#: includes/class-sst-settings.php:410
+#: includes/class-sst-settings.php:484
 msgid ""
 "\"Item Price\": TaxCloud determines the taxable amount for a line item by "
 "multiplying the item price by its quantity. \"Line Subtotal\": the taxable "
@@ -443,99 +483,138 @@ msgid ""
 "rounding becomes an issue."
 msgstr ""
 
-#: includes/class-sst-settings.php:417
+#: includes/class-sst-settings.php:491
+msgid "API Version"
+msgstr ""
+
+#: includes/class-sst-settings.php:494
+msgid "V1 (Legacy)"
+msgstr ""
+
+#: includes/class-sst-settings.php:495
+msgid "V3"
+msgstr ""
+
+#: includes/class-sst-settings.php:498
+msgid ""
+"Select the TaxCloud API version to use for tax lookups. V1 is the legacy "
+"API. V3 is the latest version with improved features. Only switch to V3 if "
+"advised by TaxCloud support."
+msgstr ""
+
+#: includes/class-sst-settings.php:505
 msgid "Rate Limit Settings"
 msgstr ""
 
-#: includes/class-sst-settings.php:422
+#: includes/class-sst-settings.php:510
 msgid "Enable TaxCloud Rate Limiting"
 msgstr ""
 
-#: includes/class-sst-settings.php:424
+#: includes/class-sst-settings.php:512
 msgid "Enable rate limiting for TaxCloud tax lookup requests"
 msgstr ""
 
-#: includes/class-sst-settings.php:426
+#: includes/class-sst-settings.php:514
 msgid ""
 "Limit how many TaxCloud tax lookup requests can be made within a defined "
 "time window."
 msgstr ""
 
-#: includes/class-sst-settings.php:434
+#: includes/class-sst-settings.php:522
 msgid "Number of Requests"
 msgstr ""
 
-#: includes/class-sst-settings.php:437
+#: includes/class-sst-settings.php:525
 msgid ""
 "Maximum number of TaxCloud tax lookup requests allowed within the "
 "configured time window. Leave empty to disable."
 msgstr ""
 
-#: includes/class-sst-settings.php:448
+#: includes/class-sst-settings.php:536
 msgid "Apply Rate Limit to"
 msgstr ""
 
-#: includes/class-sst-settings.php:451
+#: includes/class-sst-settings.php:539
 msgid "Choose how rate limits are applied."
 msgstr ""
 
-#: includes/class-sst-settings.php:457
+#: includes/class-sst-settings.php:545
 msgid "Customer / Visitor (per user or session)"
 msgstr ""
 
-#: includes/class-sst-settings.php:458
+#: includes/class-sst-settings.php:546
 msgid "Global (shared across all users)"
 msgstr ""
 
-#: includes/class-sst-settings.php:463
+#: includes/class-sst-settings.php:551
 msgid "Time Window (Minutes)"
 msgstr ""
 
-#: includes/class-sst-settings.php:466
+#: includes/class-sst-settings.php:554
 msgid ""
 "Time window (in minutes) for rate limiting. Requests reset after this "
 "duration."
 msgstr ""
 
-#: includes/class-sst-settings.php:477
+#: includes/class-sst-settings.php:565
+msgid "Skip Admin Order Rate Limiting"
+msgstr ""
+
+#: includes/class-sst-settings.php:567
+msgid "Exempt admin users and backend order calculations from rate limits"
+msgstr ""
+
+#: includes/class-sst-settings.php:569
+msgid ""
+"When enabled, TaxCloud rate limits will not apply to orders created or "
+"calculated by admin users."
+msgstr ""
+
+#: includes/class-sst-settings.php:577
 msgid "Notify Customer When Limited"
 msgstr ""
 
-#: includes/class-sst-settings.php:479
+#: includes/class-sst-settings.php:579
 msgid "Display a notice to customers when tax lookup is skipped"
 msgstr ""
 
-#: includes/class-sst-settings.php:481
+#: includes/class-sst-settings.php:581
 msgid ""
 "If enabled, customers will see a non-blocking message when TaxCloud tax "
 "calculation is temporarily unavailable."
 msgstr ""
 
-#: includes/class-sst-settings.php:489
+#: includes/class-sst-settings.php:589
 msgid "Remove All Data"
 msgstr ""
 
-#: includes/class-sst-settings.php:493
+#: includes/class-sst-settings.php:593
 msgid ""
 "When this feature is enabled, all TaxCloud for WooCommerce options and data "
 "will be removed when you click deactivate and delete the plugin."
 msgstr ""
 
-#: includes/class-sst-settings.php:500
+#: includes/class-sst-settings.php:600
 msgid "Debug Report"
 msgstr ""
 
-#: includes/class-sst-settings.php:501
+#: includes/class-sst-settings.php:601
 msgid "Download"
 msgstr ""
 
-#: includes/class-sst-settings.php:505
+#: includes/class-sst-settings.php:605
 msgid ""
 "Send a copy of this report to TaxCloud support to help with debugging "
 "TaxCloud for WooCommerce issues."
 msgstr ""
 
-#: includes/class-sst-rate-limit.php:152
+#: includes/class-sst-rate-limit.php:31
+msgid ""
+"Tax calculation is temporarily unavailable. Your order will continue "
+"without live tax estimation."
+msgstr ""
+
+#: includes/class-sst-rate-limit.php:185
 msgid "TaxCloud lookup rate limit reached for customer/session. ID: %s."
 msgstr ""
 
@@ -552,158 +631,172 @@ msgstr ""
 msgid "Virtual package created."
 msgstr ""
 
-#: includes/class-sst-order.php:205
+#: includes/class-sst-order.php:206
 msgid "Shipping methods and items assigned to packages."
 msgstr ""
 
-#: includes/class-sst-order.php:227
+#: includes/class-sst-order.php:233
 msgid "No shipping method but items assigned to packages."
 msgstr ""
 
-#: includes/class-sst-order.php:352
+#: includes/class-sst-order.php:367
 msgid "Final shipping packages:"
 msgstr ""
 
-#: includes/class-sst-order.php:632
+#: includes/class-sst-order.php:664
 msgid "Verifying destination address."
 msgstr ""
 
-#: includes/class-sst-order.php:637
+#: includes/class-sst-order.php:669
 msgid "Destination address is invalid."
 msgstr ""
 
-#: includes/class-sst-order.php:677
+#: includes/class-sst-order.php:714
 msgid "Capturing order."
 msgstr ""
 
-#: includes/class-sst-order.php:682
+#: includes/class-sst-order.php:719
 msgid "Capture Order In TaxCloud is disabled in plugin settings."
 msgstr ""
 
-#: includes/class-sst-order.php:708
+#: includes/class-sst-order.php:745
 msgid "No capturable packages found. Rebuilding packages before capture."
 msgstr ""
 
-#: includes/class-sst-order.php:715
+#: includes/class-sst-order.php:752
 msgid "Order already captured."
 msgstr ""
 
 # WooCommerce order ID
-#: includes/class-sst-order.php:721
+#: includes/class-sst-order.php:758
 msgid "Failed to capture order %d: already captured."
 msgstr ""
 
-#: includes/class-sst-order.php:731
+#: includes/class-sst-order.php:768
 msgid "Order already refunded."
 msgstr ""
 
 # WooCommerce order ID
-#: includes/class-sst-order.php:736
+#: includes/class-sst-order.php:773
 msgid "Failed to capture order %d: order was refunded."
 msgstr ""
 
-#: includes/class-sst-order.php:748
+#: includes/class-sst-order.php:785
 msgid "Data Mover Mode enabled. Creating order in TaxCloud."
 msgstr ""
 
-#: includes/class-sst-order.php:754
+#: includes/class-sst-order.php:791
 msgid "Capturing order packages:"
 msgstr ""
 
 # WooCommerce order ID
-#: includes/class-sst-order.php:760
+#: includes/class-sst-order.php:797
 msgid "Failed to capture order %d: no TaxCloud lookup packages were found."
 msgstr ""
 
-#: includes/class-sst-order.php:785
+#: includes/class-sst-order.php:827
 msgid "Sending AuthorizedWithCapture request."
 msgstr ""
 
-#: includes/class-sst-order.php:790
+#: includes/class-sst-order.php:832
 msgid "AuthorizedWithCapture request successfully sent."
 msgstr ""
 
-#: includes/class-sst-order.php:793
+#: includes/class-sst-order.php:835
 msgid "Failed to capture order."
 msgstr ""
 
 # 1 - WooCommerce order ID, 2 - Error message from TaxCloud
-#: includes/class-sst-order.php:798
+#: includes/class-sst-order.php:840
 msgid "Failed to capture order %1$d: %2$s."
 msgstr ""
 
-#: includes/class-sst-order.php:811
-#: includes/class-sst-order.php:1243
+#: includes/class-sst-order.php:853
+#: includes/class-sst-order.php:1286
 msgid "Order status updated to captured."
 msgstr ""
 
-#: includes/class-sst-order.php:859
+#: includes/class-sst-order.php:901
 msgid "Sending Refund request."
 msgstr ""
 
-#: includes/class-sst-order.php:872
+#: includes/class-sst-order.php:914
 msgid "Order must be captured first."
 msgstr ""
 
 # WooCommerce order ID
-#: includes/class-sst-order.php:877
+#: includes/class-sst-order.php:919
 msgid "Can't refund order %d: order must be completed first."
 msgstr ""
 
-#: includes/class-sst-order.php:890
+#: includes/class-sst-order.php:931
 msgid "Data Mover Mode enabled. Refunding using v3."
 msgstr ""
 
-#: includes/class-sst-order.php:921
+#: includes/class-sst-order.php:962
 msgid "Refunding order packages:"
 msgstr ""
 
-#: includes/class-sst-order.php:973
+#: includes/class-sst-order.php:1012
 msgid "Refunding order items:"
 msgstr ""
 
-#: includes/class-sst-order.php:991
+#: includes/class-sst-order.php:1030
 msgid "Failed to refund package %s in TaxCloud."
 msgstr ""
 
-#: includes/class-sst-order.php:993
-msgid "Refund request response for package %s in TaxCloud."
-msgstr ""
-
-#: includes/class-sst-order.php:1012
-msgid "Refund request sent."
-msgstr ""
-
-#: includes/class-sst-order.php:1017
-msgid "Refund request failed."
-msgstr ""
-
 # 1 - WooCommerce order ID, 2 - Error message from TaxCloud
-#: includes/class-sst-order.php:1022
+#: includes/class-sst-order.php:1034
+#: includes/class-sst-order.php:1064
 msgid "Failed to refund order %1$d: %2$s."
 msgstr ""
 
-#: includes/class-sst-order.php:1038
+#: includes/class-sst-order.php:1041
+msgid "Refund request response for package %s in TaxCloud."
+msgstr ""
+
+#: includes/class-sst-order.php:1054
+msgid "Refund request sent."
+msgstr ""
+
+#: includes/class-sst-order.php:1059
+msgid "Refund request failed."
+msgstr ""
+
+#: includes/class-sst-order.php:1081
 msgid "Order fully refunded."
 msgstr ""
 
-#: includes/class-sst-order.php:1045
+#: includes/class-sst-order.php:1088
 msgid "Order partially refunded."
 msgstr ""
 
 # WooCommerce order ID
-#: includes/class-sst-order.php:1205
+#: includes/class-sst-order.php:1248
 msgid ""
 "Failed to create order %d in TaxCloud: no TaxCloud lookup packages were "
 "found."
 msgstr ""
 
-#: includes/class-sst-order.php:1233
+#: includes/class-sst-order.php:1276
 msgid "Sending Create Order request to TaxCloud v3."
 msgstr ""
 
-#: includes/class-sst-order.php:1248
+#: includes/class-sst-order.php:1291
 msgid "Failed to create order in TaxCloud."
+msgstr ""
+
+#: includes/class-sst-order.php:1318
+msgid "Failed to create order from cart in TaxCloud."
+msgstr ""
+
+# 1 - WooCommerce order ID, 2 - Error message from TaxCloud
+#: includes/class-sst-order.php:1322
+msgid "Failed to capture order %1$d in TaxCloud: %2$s"
+msgstr ""
+
+#: includes/class-sst-order.php:1333
+msgid "Order status updated to captured (V3)."
 msgstr ""
 
 #: includes/class-sst-order-controller.php:66
@@ -758,21 +851,21 @@ msgid "Settings"
 msgstr ""
 
 # 1 - state issued, 2 - tax id, 3 - date created
-#: includes/class-sst-certificates.php:147
+#: includes/class-sst-certificates.php:173
 msgid "%1$s - %2$s (created %3$s)"
 msgstr ""
 
 # 1 - error message
-#: includes/class-sst-certificates.php:436
+#: includes/class-sst-certificates.php:490
 msgid "Failed to add exemption certificate. Error was: %1$s"
 msgstr ""
 
-#: includes/class-sst-certificates.php:530
+#: includes/class-sst-certificates.php:584
 msgid "V3 exemption certificate payload:"
 msgstr ""
 
 # 1 - error message
-#: includes/class-sst-certificates.php:563
+#: includes/class-sst-certificates.php:617
 msgid "Failed to add exemption certificate object. Error was: %1$s"
 msgstr ""
 
@@ -810,34 +903,44 @@ msgid ""
 "certificate."
 msgstr ""
 
-#: includes/class-sst-ajax.php:140
+#: includes/class-sst-ajax.php:141
 msgid "Invalid nonce."
 msgstr ""
 
-#: includes/class-sst-ajax.php:152
+#: includes/class-sst-ajax.php:153
 msgid "Unauthorized."
 msgstr ""
 
-#: includes/class-sst-ajax.php:180
+#: includes/class-sst-ajax.php:185
 msgid "Invalid request."
 msgstr ""
 
-#: includes/class-sst-ajax.php:363
+#: includes/class-sst-ajax.php:377
 msgid "Invalid order ID."
 msgstr ""
 
-#: includes/class-sst-ajax.php:392
+#: includes/class-sst-ajax.php:406
 msgid "View Order Debug Log triggered."
 msgstr ""
 
-#: includes/class-sst-ajax.php:411
-#: includes/admin/class-sst-integration.php:469
+#: includes/class-sst-ajax.php:425
+#: includes/admin/class-sst-integration.php:487
 msgid "Real Time"
 msgstr ""
 
-#: includes/class-sst-ajax.php:411
-#: includes/admin/class-sst-integration.php:469
+#: includes/class-sst-ajax.php:425
+#: includes/admin/class-sst-integration.php:487
 msgid "Data Import"
+msgstr ""
+
+#: includes/class-sst-ajax.php:447
+msgid "Query cannot be empty."
+msgstr ""
+
+#: includes/class-sst-addresses.php:263
+msgid ""
+"Origin address fetch from TaxCloud is not available in the v3 address flow. "
+"Using saved origin addresses."
 msgstr ""
 
 #: includes/class-simplesalestax.php:301
@@ -992,11 +1095,11 @@ msgstr ""
 msgid "There are no certificates to display. Click 'Add Certificate' to add one."
 msgstr ""
 
-#: includes/views/html-certificate-list.php:75
+#: includes/views/html-certificate-list.php:86
 msgid "View"
 msgstr ""
 
-#: includes/views/html-certificate-list.php:79
+#: includes/views/html-certificate-list.php:90
 msgid "Delete"
 msgstr ""
 
@@ -1236,60 +1339,113 @@ msgstr ""
 msgid "Add certificate"
 msgstr ""
 
+# minimum supported WCMp version
+#: includes/integrations/class-sst-wcmp.php:93
+msgid ""
+"TaxCloud for WooCommerce does not support the installed version of WC "
+"Marketplace. WC Marketplace %s+ is required."
+msgstr ""
+
+#: includes/integrations/class-sst-wcmp.php:130
+#: includes/integrations/class-sst-wcmp.php:161
+#: includes/integrations/class-sst-wcfm.php:148
+#: includes/integrations/class-sst-wcfm.php:190
+#: includes/admin/class-sst-admin.php:258
+msgid "Taxability Information Code"
+msgstr ""
+
+#: includes/integrations/class-sst-wcmp.php:210
+#: includes/integrations/class-sst-wcfm.php:300
+#: includes/integrations/class-sst-dokan.php:248
+msgid "Incomplete origin address."
+msgstr ""
+
+#: includes/integrations/class-sst-wcmp.php:224
+#: includes/integrations/class-sst-wcfm.php:314
+#: includes/integrations/class-sst-dokan.php:262
+msgid ""
+"Failed to get origin address for seller %d: %s. Falling back to default "
+"store origin."
+msgstr ""
+
+# minimum supported WCFM version
+#: includes/integrations/class-sst-wcfm.php:99
+msgid ""
+"TaxCloud for WooCommerce does not support the installed version of WCFM. "
+"WCFM %s+ is required."
+msgstr ""
+
+# 1 - Renewal order ID, 2 - Error message
+#: includes/integrations/class-sst-subscriptions.php:89
+msgid "Failed to calculate sales tax for renewal order %1$d: %2$s."
+msgstr ""
+
+#: includes/integrations/class-sst-subscriptions.php:96
+msgid "Failed to calculate sales tax for renewal order."
+msgstr ""
+
+#: includes/integrations/class-sst-dokan.php:102
+msgid ""
+"TaxCloud for WooCommerce does not support the installed version of Dokan. "
+"Dokan %s+ is required."
+msgstr ""
+
+#: includes/integrations/class-sst-dokan.php:147
+msgid "Taxability Information Code (TIC)"
+msgstr ""
+
+#: includes/integrations/class-sst-adp.php:78
+msgid "ADP Integration Error:"
+msgstr ""
+
 #: includes/frontend/class-sst-my-account.php:63
 msgid "Exemption certificates"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:105
+#: includes/frontend/class-sst-checkout.php:104
 msgid ""
 "SST: Session not ready for tax calculation, skipping to prevent refresh "
 "requirement."
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:131
+#: includes/frontend/class-sst-checkout.php:133
 msgid "Data mover mode. Skipping tax calculation."
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:304
+#: includes/frontend/class-sst-checkout.php:379
 msgid "Missing shipping packages"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:316
+#: includes/frontend/class-sst-checkout.php:401
 msgid "Missing virtual packages"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:435
+#: includes/frontend/class-sst-checkout.php:543
 msgid "Packages created successfully"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:437
+#: includes/frontend/class-sst-checkout.php:545
 msgid "No packages created."
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:659
-msgid ""
-"Tax calculation is temporarily unavailable. Your order will continue "
-"without live tax estimation."
-msgstr ""
-
 # 1 - error message
-#: includes/frontend/class-sst-checkout.php:793
+#: includes/frontend/class-sst-checkout.php:909
 msgid "Failed to add exemption certificate during checkout. Error was: %1$s"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:926
+#: includes/frontend/class-sst-checkout.php:1042
 msgid "Select a exemption certificate"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:927
+#: includes/frontend/class-sst-checkout.php:1043
 msgid "Add new certificate"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:1037
+#: includes/frontend/class-sst-checkout.php:1153
 msgid "Required exemption certificate fields are missing"
 msgstr ""
 
-#: includes/frontend/class-sst-checkout.php:1237
+#: includes/frontend/class-sst-checkout.php:1357
 msgid "CO EXCISE TAX"
 msgstr ""
 
@@ -1310,17 +1466,17 @@ msgid ""
 "target=\"_blank\">Installation Guide</a>.</p>"
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:202
+#: includes/admin/class-sst-integration.php:220
 msgid "Select origin addresses"
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:219
+#: includes/admin/class-sst-integration.php:237
 msgid ""
 "Enter your TaxCloud API credentials and click <strong>Save changes</strong> "
 "to configure your Origin Addresses."
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:234
+#: includes/admin/class-sst-integration.php:252
 msgid ""
 "Oops! It appears there are no addresses in your TaxCloud account. Please "
 "add at least one address on the <a href=\"%s\" target=\"_blank\" "
@@ -1328,19 +1484,19 @@ msgid ""
 "your settings to refresh the address list."
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:273
+#: includes/admin/class-sst-integration.php:291
 msgid "Please select at least one origin address."
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:497
+#: includes/admin/class-sst-integration.php:515
 msgid "Refresh"
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:510
+#: includes/admin/class-sst-integration.php:528
 msgid "Configure in TaxCloud"
 msgstr ""
 
-#: includes/admin/class-sst-integration.php:519
+#: includes/admin/class-sst-integration.php:537
 msgid ""
 "Enter your TaxCloud API credentials and click <strong>Save changes</strong> "
 "to display the Integration Mode."
@@ -1372,14 +1528,6 @@ msgstr ""
 
 #: includes/admin/class-sst-admin.php:223
 msgid "Tax rate cache cleared."
-msgstr ""
-
-#: includes/admin/class-sst-admin.php:258
-#: includes/integrations/class-sst-wcmp.php:130
-#: includes/integrations/class-sst-wcmp.php:161
-#: includes/integrations/class-sst-wcfm.php:148
-#: includes/integrations/class-sst-wcfm.php:190
-msgid "Taxability Information Code"
 msgstr ""
 
 #: includes/admin/class-sst-admin.php:266
@@ -1425,32 +1573,32 @@ msgid ""
 "the sub-orders for tax details."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:74
+#: includes/abstracts/class-sst-abstract-cart.php:71
 msgid "Integration disabled. Skipping tax calculation."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:82
+#: includes/abstracts/class-sst-abstract-cart.php:79
 msgid "API Login ID or API Key is empty. Skipping lookup."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:91
+#: includes/abstracts/class-sst-abstract-cart.php:88
 msgid "Real-time tax calculation is disabled. Calculating tax from saved packages."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:99
+#: includes/abstracts/class-sst-abstract-cart.php:96
 msgid "No response from TaxCloud. Skipping lookup."
 msgstr ""
 
 # error message from TaxCloud API response.
-#: includes/abstracts/class-sst-abstract-cart.php:140
+#: includes/abstracts/class-sst-abstract-cart.php:137
 msgid "Failed to calculate sales tax: %s"
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:172
+#: includes/abstracts/class-sst-abstract-cart.php:169
 msgid "Tax lookup failed: Shipping destination address is invalid."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:178
+#: includes/abstracts/class-sst-abstract-cart.php:175
 msgid "Failed to calculate sales tax: Shipping origin address is invalid."
 msgstr ""
 
@@ -1458,86 +1606,52 @@ msgstr ""
 msgid "Tax lookup skipped: Package already saved."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:227
+#: includes/abstracts/class-sst-abstract-cart.php:228
 msgid "Real-time tax calculation is disabled. Skipping lookup."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:244
+#: includes/abstracts/class-sst-abstract-cart.php:253
+#: includes/abstracts/class-sst-abstract-cart.php:292
+msgid "TaxCloud returned an invalid lookup response."
+msgstr ""
+
+#: includes/abstracts/class-sst-abstract-cart.php:259
 msgid "Tax lookup response:"
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:248
+#: includes/abstracts/class-sst-abstract-cart.php:263
 msgid "Tax lookup failed. Exception:"
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:447
+#: includes/abstracts/class-sst-abstract-cart.php:300
+msgid "TaxCloud V3 lookup response:"
+msgstr ""
+
+#: includes/abstracts/class-sst-abstract-cart.php:304
+msgid "TaxCloud V3 lookup failed. Exception:"
+msgstr ""
+
+#: includes/abstracts/class-sst-abstract-cart.php:706
 msgid "Shipping destination verifying"
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:451
+#: includes/abstracts/class-sst-abstract-cart.php:710
 msgid "Shipping destination is not a verified address."
 msgstr ""
 
 # WooCommerce product ID.
-#: includes/abstracts/class-sst-abstract-cart.php:474
+#: includes/abstracts/class-sst-abstract-cart.php:733
 msgid "Failed to calculate sales tax: no origin address for product %d."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:520
+#: includes/abstracts/class-sst-abstract-cart.php:779
 msgid ""
 "Origin address for shipping package is invalid. Using default origin "
 "address from TaxCloud for WooCommerce settings."
 msgstr ""
 
-#: includes/abstracts/class-sst-abstract-cart.php:599
+#: includes/abstracts/class-sst-abstract-cart.php:860
 msgid "Checking package origin address validity"
-msgstr ""
-
-# minimum supported WCMp version
-#: includes/integrations/class-sst-wcmp.php:93
-msgid ""
-"TaxCloud for WooCommerce does not support the installed version of WC "
-"Marketplace. WC Marketplace %s+ is required."
-msgstr ""
-
-#: includes/integrations/class-sst-wcmp.php:210
-#: includes/integrations/class-sst-wcfm.php:300
-#: includes/integrations/class-sst-dokan.php:248
-msgid "Incomplete origin address."
-msgstr ""
-
-#: includes/integrations/class-sst-wcmp.php:224
-#: includes/integrations/class-sst-wcfm.php:314
-#: includes/integrations/class-sst-dokan.php:262
-msgid ""
-"Failed to get origin address for seller %d: %s. Falling back to default "
-"store origin."
-msgstr ""
-
-# minimum supported WCFM version
-#: includes/integrations/class-sst-wcfm.php:99
-msgid ""
-"TaxCloud for WooCommerce does not support the installed version of WCFM. "
-"WCFM %s+ is required."
-msgstr ""
-
-# 1 - Renewal order ID, 2 - Error message
-#: includes/integrations/class-sst-subscriptions.php:89
-msgid "Failed to calculate sales tax for renewal order %1$d: %2$s."
-msgstr ""
-
-#: includes/integrations/class-sst-dokan.php:102
-msgid ""
-"TaxCloud for WooCommerce does not support the installed version of Dokan. "
-"Dokan %s+ is required."
-msgstr ""
-
-#: includes/integrations/class-sst-dokan.php:147
-msgid "Taxability Information Code (TIC)"
-msgstr ""
-
-#: includes/integrations/class-sst-adp.php:78
-msgid "ADP Integration Error:"
 msgstr ""
 
 #: includes/frontend/views/html-my-account.php:19
