@@ -31,7 +31,7 @@ import { NewCertificateForm } from './new-certificate-form';
 import { useExtensionState } from './use-extension-state';
 
 const Block = ( { className, children } ) => {
-	if (!showExemptionForm) {
+	if ( ! showExemptionForm ) {
 		return null;
 	}
 
@@ -42,6 +42,22 @@ const Block = ( { className, children } ) => {
 
 	const { __internalIncrementCalculating, __internalDecrementCalculating } =
 		useDispatch( CHECKOUT_STORE_KEY );
+	let selectionHelp = __(
+		'No exemption certificate will be applied to this order.',
+		'simple-sales-tax'
+	);
+
+	if ( certificateId === 'new' ) {
+		selectionHelp = __(
+			'Complete the certificate details below to apply it to this order.',
+			'simple-sales-tax'
+		);
+	} else if ( certificateId ) {
+		selectionHelp = __(
+			'This certificate will be applied to this order. Certificates are ordered newest first.',
+			'simple-sales-tax'
+		);
+	}
 
 	const onChangeCertificate = ( value ) => {
 		// Update value
@@ -81,13 +97,16 @@ const Block = ( { className, children } ) => {
 					<Select
 						id="exemption-certificate-input"
 						label={ __(
-							'Exemption certificate',
+							'Certificate to apply',
 							'simple-sales-tax'
 						) }
 						onChange={ onChangeCertificate }
 						options={ options }
 						value={ certificateId }
 					/>
+					<p className="sst-certificate-selection-help">
+						{ selectionHelp }
+					</p>
 					<a href={ myAccountEndpointUrl } target="_blank">
 						{ __(
 							'Manage exemption certificates →',

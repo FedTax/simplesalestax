@@ -1039,12 +1039,12 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		$certificates = SST_Certificates::get_certificates_formatted();
 		$options      = array(
-			'none' => __( 'Select a exemption certificate', 'simple-sales-tax' ),
-			'new'  => __( 'Add new certificate', 'simple-sales-tax' ),
+			'none' => __( 'No certificate — do not apply a tax exemption', 'simple-sales-tax' ),
+			'new'  => __( 'Add a new certificate', 'simple-sales-tax' ),
 		);
 
 		foreach ( $certificates as $cert ) {
-			$options[ $cert['CertificateID'] ] = $cert['Description'];
+			$options[ $cert['CertificateID'] ] = $cert['CheckoutDescription'];
 		}
 
 		$selected = $this->get_certificate_id();

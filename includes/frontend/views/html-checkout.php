@@ -41,12 +41,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 				'type'        => 'select',
 				'placeholder' => 'None',
 				'options'     => $args['options'],
-				'label'       => esc_html__( 'Exemption certificate', 'simple-sales-tax' ),
+				'label'       => esc_html__( 'Certificate to apply', 'simple-sales-tax' ),
 				'input_class' => array( 'sst-input' ),
 			),
 			$args['selected']
 		);
 		?>
+		<p class="sst-certificate-selection-help">
+			<?php esc_html_e( 'The selected certificate will be applied to this order. Certificates are ordered newest first.', 'simple-sales-tax' ); ?>
+		</p>
 
 		<p id="exemption_certificates_link">
 			<a
