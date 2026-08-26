@@ -683,16 +683,26 @@ abstract class SST_Abstract_Cart {
 
 		// Convert destination address to Address object.
 		try {
-			$destination = new \TaxCloud_V3\Model\Address(
-				array(
-					'city'        => $package['destination']['city'],
-					'countryCode' => isset( $package['destination']['country'] ) ? $package['destination']['country'] : 'US',
-					'line1'       => isset( $package['destination']['address_1'] ) ? $package['destination']['address_1'] : $package['destination']['address'],
-					'line2'       => isset( $package['destination']['address_2'] ) ? $package['destination']['address_2'] : '',
-					'state'       => $package['destination']['state'],
-					'zip'         => $package['destination']['postcode'],
-				)
-			);
+			if ( 'v3' === sst_get_api_version() ) {
+				$destination = new \TaxCloud_V3\Model\Address(
+					array(
+						'city'        => $package['destination']['city'],
+						'countryCode' => isset( $package['destination']['country'] ) ? $package['destination']['country'] : 'US',
+						'line1'       => isset( $package['destination']['address_1'] ) ? $package['destination']['address_1'] : $package['destination']['address'],
+						'line2'       => isset( $package['destination']['address_2'] ) ? $package['destination']['address_2'] : '',
+						'state'       => $package['destination']['state'],
+						'zip'         => $package['destination']['postcode'],
+					)
+				);
+			} else {
+				$destination = new TaxCloud\Address(
+					isset( $package['destination']['address_1'] ) ? $package['destination']['address_1'] : $package['destination']['address'],
+					isset( $package['destination']['address_2'] ) ? $package['destination']['address_2'] : '',
+					$package['destination']['city'],
+					$package['destination']['state'],
+					substr( $package['destination']['postcode'], 0, 5 )
+				);
+			}
 			SST_Logger::add( __( 'Shipping destination verifying', 'simple-sales-tax' ), $destination );
 			// TODO: substr sometimes include trailing dash, e.g. 12345-
 			$package['destination'] = SST_Addresses::verify_address( $destination );
