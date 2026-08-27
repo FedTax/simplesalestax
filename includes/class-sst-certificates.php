@@ -132,21 +132,40 @@ class SST_Certificates {
 	 * @since 5.0
 	 */
 	public static function format_certificate( $certificate ) {
-		$detail    = $certificate->getDetail();
-		$formatted = array(
-			'CertificateID'              => $certificate->getCertificateID(),
-			'PurchaserName'              => $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName(),
-			'CreatedDate'                => gmdate( 'm/d/Y', strtotime( $detail->getCreatedDate() ) ),
+		$detail         = $certificate->getDetail();
+		$certificate_id = $certificate->getCertificateID();
+		$created_date   = $detail->getCreatedDate();
+		$created_time   = strtotime( $created_date );
+		$exempt_states  = self::get_exempt_state_abbreviations( $detail );
+		$purchaser_name = trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() );
+		$short_id       = self::get_short_certificate_id( $certificate_id );
+		$formatted      = array(
+			'CertificateID'              => $certificate_id,
+			'CertificateLabel'           => $short_id
+				? sprintf( __( 'ID %s…', 'simple-sales-tax' ), $short_id )
+				: __( 'ID unavailable', 'simple-sales-tax' ),
+			'PurchaserName'              => $purchaser_name ?: __( 'Purchaser not specified', 'simple-sales-tax' ),
+			'CreatedDate'                => self::format_certificate_datetime( $created_time ),
+			'CreatedTimestamp'           => $created_time ?: 0,
+			'ExemptStates'               => $exempt_states,
+			'ExemptStatesLabel'          => $exempt_states
+				? implode( ', ', $exempt_states )
+				: __( 'States not specified', 'simple-sales-tax' ),
 			'PurchaserAddress'           => $detail->getPurchaserAddress1(),
 			'PurchaserState'             => sst_prettify( $detail->getPurchaserState() ),
-			'PurchaserExemptionReason'   => sst_prettify( $detail->getPurchaserExemptionReason() ),
+			'PurchaserExemptionReason'   => sst_prettify( $detail->getPurchaserExemptionReason() ) ?: __( 'Exemption certificate', 'simple-sales-tax' ),
 			'SinglePurchase'             => $detail->getSinglePurchase(),
 			'SinglePurchaserOrderNumber' => $detail->getSinglePurchaseOrderNumber(),
 			'TaxType'                    => sst_prettify( $detail->getPurchaserTaxID()->getTaxType() ),
 			'IDNumber'                   => $detail->getPurchaserTaxID()->getIDNumber(),
-			'PurchaserBusinessType'      => sst_prettify( $detail->getPurchaserBusinessType() ),
+			'PurchaserBusinessType'      => sst_prettify( $detail->getPurchaserBusinessType() ) ?: __( 'Business type not specified', 'simple-sales-tax' ),
 			'Description'                => self::get_certificate_description(
-				$detail
+				$detail,
+				$certificate_id
+			),
+			'CheckoutDescription'        => self::get_checkout_certificate_description(
+				$detail,
+				$certificate_id
 			),
 			'SellerName'                 => SST_Settings::get( 'company_name' ),
 		);
@@ -157,24 +176,147 @@ class SST_Certificates {
 	/**
 	 * Get a text description of a certificate.
 	 *
-	 * @param TaxCloud\ExemptionCertificateDetail $detail Certificate details.
+	 * @param TaxCloud\ExemptionCertificateDetail $detail         Certificate details.
+	 * @param string                              $certificate_id Certificate ID.
 	 *
 	 * @return string
 	 */
-	protected static function get_certificate_description( $detail ) {
-		$state      = current( $detail->GetExemptStates() );
-		$state_abbr = $state->GetStateAbbr();
-		$id_type    = sst_prettify( $detail->getPurchaserTaxID()->getTaxType() );
-		$id_number  = $detail->getPurchaserTaxID()->getIDNumber();
-		$date       = gmdate( 'm/d/Y', strtotime( $detail->getCreatedDate() ) );
+	protected static function get_certificate_description( $detail, $certificate_id = '' ) {
+		$states         = self::get_exempt_state_abbreviations( $detail );
+		$state_label    = $states ? implode( ', ', $states ) : __( 'States not specified', 'simple-sales-tax' );
+		$reason         = sst_prettify( $detail->getPurchaserExemptionReason() ) ?: __( 'Exemption certificate', 'simple-sales-tax' );
+		$purchaser_name = trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() );
+		$created_time   = strtotime( $detail->getCreatedDate() );
+		$created_date   = self::format_certificate_datetime( $created_time, true );
+		$short_id       = self::get_short_certificate_id( $certificate_id );
+		$parts          = array(
+			$state_label,
+			$reason,
+		);
+
+		if ( $purchaser_name ) {
+			$parts[] = $purchaser_name;
+		}
+
+		/* translators: %s: certificate creation date. */
+		$parts[] = sprintf( __( 'Added %s', 'simple-sales-tax' ), $created_date );
+
+		if ( $short_id ) {
+			/* translators: %s: first characters of the certificate ID. */
+			$parts[] = sprintf( __( 'ID %s…', 'simple-sales-tax' ), $short_id );
+		}
+
+		return implode( ' • ', $parts );
+	}
+
+	/**
+	 * Get a concise certificate description for checkout selectors.
+	 *
+	 * @param TaxCloud\ExemptionCertificateDetail $detail         Certificate details.
+	 * @param string                              $certificate_id Certificate ID.
+	 *
+	 * @return string
+	 */
+	protected static function get_checkout_certificate_description( $detail, $certificate_id = '' ) {
+		$states       = self::get_exempt_state_abbreviations( $detail );
+		$state_label  = $states ? implode( ', ', $states ) : __( 'States not specified', 'simple-sales-tax' );
+		$created_time = strtotime( $detail->getCreatedDate() );
+		$short_id     = self::get_short_certificate_id( $certificate_id );
+		$parts        = array(
+			$state_label,
+			self::format_checkout_certificate_datetime( $created_time ),
+		);
+
+		if ( $short_id ) {
+			/* translators: %s: first characters of the certificate ID. */
+			$parts[] = sprintf( __( '#%s', 'simple-sales-tax' ), $short_id );
+		}
+
+		return implode( ' · ', $parts );
+	}
+
+	/**
+	 * Format a compact certificate creation time for checkout selectors.
+	 *
+	 * The current year is omitted to keep frequently used options concise.
+	 *
+	 * @param int $timestamp Unix timestamp.
+	 *
+	 * @return string
+	 */
+	protected static function format_checkout_certificate_datetime( $timestamp ) {
+		if ( ! $timestamp ) {
+			return __( 'Date unavailable', 'simple-sales-tax' );
+		}
+
+		$date_format = wp_date( 'Y', $timestamp ) === wp_date( 'Y' ) ? 'M j' : 'M j, Y';
+		$time_format = get_option( 'time_format', 'g:i a' );
 
 		return sprintf(
-			/* translators: 1 - state issued, 2 - tax id, 3 - date created */
-			__( '%1$s - %2$s (created %3$s)', 'simple-sales-tax' ),
-			$state_abbr,
-			$id_number,
-			$date
+			/* translators: 1: certificate creation date, 2: certificate creation time. */
+			__( '%1$s, %2$s', 'simple-sales-tax' ),
+			wp_date( $date_format, $timestamp ),
+			wp_date( $time_format, $timestamp )
 		);
+	}
+
+	/**
+	 * Format a certificate creation time in the WordPress site timezone.
+	 *
+	 * @param int  $timestamp Unix timestamp.
+	 * @param bool $compact   Whether to use a compact date for option labels.
+	 *
+	 * @return string
+	 */
+	protected static function format_certificate_datetime( $timestamp, $compact = false ) {
+		if ( ! $timestamp ) {
+			return __( 'Date unavailable', 'simple-sales-tax' );
+		}
+
+		$date_format = $compact ? 'M j, Y' : get_option( 'date_format', 'F j, Y' );
+		$time_format = get_option( 'time_format', 'g:i a' );
+
+		return sprintf(
+			/* translators: 1: certificate creation date, 2: certificate creation time. */
+			__( '%1$s at %2$s', 'simple-sales-tax' ),
+			wp_date( $date_format, $timestamp ),
+			wp_date( $time_format, $timestamp )
+		);
+	}
+
+	/**
+	 * Get the state abbreviations covered by a certificate.
+	 *
+	 * @param TaxCloud\ExemptionCertificateDetail $detail Certificate details.
+	 *
+	 * @return string[]
+	 */
+	protected static function get_exempt_state_abbreviations( $detail ) {
+		$states = array();
+
+		foreach ( (array) $detail->getExemptStates() as $state ) {
+			if ( is_object( $state ) && method_exists( $state, 'getStateAbbr' ) ) {
+				$state_abbr = strtoupper( (string) $state->getStateAbbr() );
+				if ( $state_abbr ) {
+					$states[] = $state_abbr;
+				}
+			}
+		}
+
+		return array_values( array_unique( $states ) );
+	}
+
+	/**
+	 * Get a compact, recognizable portion of a certificate ID.
+	 *
+	 * @param string $certificate_id Certificate ID.
+	 *
+	 * @return string
+	 */
+	protected static function get_short_certificate_id( $certificate_id ) {
+		$certificate_id = trim( (string) $certificate_id );
+
+		return $certificate_id ? substr( $certificate_id, 0, 8 ) : '';
 	}
 
 	/**
@@ -202,14 +344,14 @@ class SST_Certificates {
 			}
 		}
 
-		// Sort by created date ascending.
+		// Sort newest first so the most relevant certificate is easiest to find.
 		uasort( $certificates, function( $cert_a, $cert_b ) {
-			$date_a = isset( $cert_a['CreatedDate'] ) ? strtotime( $cert_a['CreatedDate'] ) : 0;
-			$date_b = isset( $cert_b['CreatedDate'] ) ? strtotime( $cert_b['CreatedDate'] ) : 0;
+			$date_a = isset( $cert_a['CreatedTimestamp'] ) ? (int) $cert_a['CreatedTimestamp'] : 0;
+			$date_b = isset( $cert_b['CreatedTimestamp'] ) ? (int) $cert_b['CreatedTimestamp'] : 0;
 			if ( $date_a === $date_b ) {
-				return 0;
+				return strcmp( $cert_b['CertificateID'], $cert_a['CertificateID'] );
 			}
-			return $date_a < $date_b ? -1 : 1;
+			return $date_a < $date_b ? 1 : -1;
 		} );
 
 		return $certificates;

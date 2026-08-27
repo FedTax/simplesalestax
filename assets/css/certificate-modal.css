@@ -107,6 +107,108 @@ span.table-action-sep {
     margin: 0 3px;
 }
 
+#sst-certificates th,
+#sst-certificates td {
+    vertical-align: middle;
+}
+
+#sst-certificates .sst-certificate-select-column {
+    width: 32px;
+    text-align: center;
+}
+
+#sst-certificates strong,
+#sst-certificates .sst-certificate-meta,
+#sst-certificates code {
+    display: block;
+}
+
+#sst-certificates .sst-certificate-meta,
+#sst-certificates code {
+    margin-top: 3px;
+    color: #646970;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+#sst-certificates code {
+    width: fit-content;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #f0f0f1;
+}
+
+#sst-certificates .sst-certificate-table-message {
+    padding: 18px 12px;
+    color: #646970;
+    text-align: center;
+}
+
+#sst-certificates .sst-certificate-table-message .spinner {
+    float: none;
+    margin: 0 8px 0 0;
+    vertical-align: middle;
+    visibility: visible;
+}
+
+.sst-certificate-table-footer,
+.sst-certificate-table-actions,
+.sst-certificate-table-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.sst-certificate-table-footer {
+    justify-content: space-between;
+}
+
+.sst-certificate-table-pagination {
+    color: #646970;
+    font-size: 12px;
+}
+
+.sst-certificate-table-pagination[hidden] {
+    display: none;
+}
+
+@media screen and (max-width: 782px) {
+    #sst-certificates thead {
+        display: none;
+    }
+
+    #sst-certificates tbody tr,
+    #sst-certificates tbody td {
+        display: block;
+        width: auto;
+    }
+
+    #sst-certificates tbody tr {
+        padding: 10px 12px;
+        border-bottom: 1px solid #dcdcde;
+    }
+
+    #sst-certificates tbody td {
+        padding: 7px 0;
+        border: 0;
+    }
+
+    #sst-certificates tbody td::before {
+        display: block;
+        margin-bottom: 3px;
+        color: #646970;
+        content: attr(data-title);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    #sst-certificates .sst-certificate-select-column {
+        text-align: left;
+    }
+}
+
 .select2-container.select2-container--open,
 .sst-select2-dropdown {
     z-index: 100002 !important;

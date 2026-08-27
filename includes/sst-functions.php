@@ -479,12 +479,13 @@ function sst_render_certificate_table( $user_id = 0, $options = array() ) {
 		'get_certificates_nonce'     => wp_create_nonce( 'sst_get_certificates' ),
 		'ajaxurl'                    => admin_url( 'admin-ajax.php' ),
 		'strings'                    => array(
-			'delete_failed'      => __( 'Failed to delete certificate', 'simple-sales-tax' ),
-			'add_failed'         => __( 'Failed to add certificate', 'simple-sales-tax' ),
-			'refresh_failed'     => __( 'Failed to refresh certificates', 'simple-sales-tax' ),
-			'fetch_failed'       => __( 'Failed to load exemption certificates', 'simple-sales-tax' ),
-			'loading'            => __( 'Loading exemption certificates...', 'simple-sales-tax' ),
-			'delete_certificate' => __(
+			'delete_failed'        => __( 'Failed to delete certificate', 'simple-sales-tax' ),
+			'add_failed'           => __( 'Failed to add certificate', 'simple-sales-tax' ),
+			'refresh_failed'       => __( 'Failed to refresh certificates', 'simple-sales-tax' ),
+			'fetch_failed'         => __( 'Failed to load exemption certificates', 'simple-sales-tax' ),
+			'loading'              => __( 'Loading exemption certificates...', 'simple-sales-tax' ),
+			'showing_certificates' => __( 'Showing %1$d of %2$d certificates', 'simple-sales-tax' ),
+			'delete_certificate'   => __(
 				'Are you sure you want to delete this certificate? This action is irreversible.',
 				'simple-sales-tax'
 			),
