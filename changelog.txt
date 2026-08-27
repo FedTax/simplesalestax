@@ -2,6 +2,18 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [8.4.16] - 2026-08-27 =
+
+Added:
+- [DEV-9165] - Improve exemption certificate fetching and selection UX (#460)
+
+Fixed:
+- Fix: Prevent page form submission during TIC selection (#459)
+- [DEV-8729] - Fix: Capture and filter Stripe Express Checkout totals to ensure tax-inclusive accuracy during AJAX requests (#457)
+- [DEV-9333] - Fix rate limit trigger (#456)
+- [DEV-9333] - Fix: Optimize API calls by fixing guest package caching and address verification (#455)
+
+
 - [8.4.15] - 2026-08-20 =
 
 Fixed:
