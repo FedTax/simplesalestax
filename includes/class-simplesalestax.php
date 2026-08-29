@@ -96,6 +96,14 @@ final class SimpleSalesTax {
 		update_option( 'woocommerce_tax_display_shop', 'excl' );
 		update_option( 'woocommerce_tax_display_cart', 'excl' );
 		update_option( 'woocommerce_tax_total_display', 'itemized' );
+
+		if ( false === get_option( 'wootax_install_date' ) ) {
+			if ( get_option( 'wootax_version' ) || get_option( 'woocommerce_wootax_settings' ) ) {
+				update_option( 'wootax_install_date', time() - ( 7 * DAY_IN_SECONDS ) );
+			} else {
+				update_option( 'wootax_install_date', time() );
+			}
+		}
 	}
 
 	/**

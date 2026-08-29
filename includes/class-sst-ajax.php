@@ -28,8 +28,9 @@ class SST_Ajax {
 		'sst_refresh_certificates'    => false,
 		'woocommerce_calc_line_taxes' => false,
 		'sst_get_certificates'        => false,
-		'sst_dismiss_taxcloud_notice'	=> false,
-		'sst_get_order_log'						=> false,
+		'sst_dismiss_taxcloud_notice' => false,
+		'sst_review_notice_action'    => false,
+		'sst_get_order_log'           => false,
 		'sst_update_data_mover'				=> false,
 	);
 
@@ -356,6 +357,18 @@ class SST_Ajax {
 			SST_Settings::set( 'dismissed_notices', $dismissed_notices );
 		}
 		wp_send_json_success( SST_Settings::get( 'dismissed_notices', [] ) );
+	}
+
+	/**
+	 * Handle review notice action (rate, maybe later, already did, dismiss).
+	 *
+	 * @since 8.4.17
+	 */
+	public static function review_notice_action() {
+		if ( ! class_exists( 'SST_Review_Notice' ) ) {
+			require_once __DIR__ . '/admin/class-sst-review-notice.php';
+		}
+		SST_Review_Notice::handle_ajax_action();
 	}
 
 	/**
