@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $nonce      = wp_create_nonce( 'sst_review_notice_nonce' );
-$review_url = 'https://wordpress.org/support/plugin/simple-sales-tax/reviews/#new-post';
+$review_url = 'https://wordpress.org/support/plugin/simple-sales-tax/reviews/?rate=5#new-post';
 ?>
 <div id="sst-review-notice" class="notice notice-info sst-review-notice is-dismissible" data-nonce="<?php echo esc_attr( $nonce ); ?>">
 	<div class="sst-review-notice-wrapper">
