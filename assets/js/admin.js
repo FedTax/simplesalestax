@@ -27,9 +27,9 @@
       })
         .done(function (resp) {
           if (resp.success) {
-            if (resp.data.connection_id) {
-              jQuery('#woocommerce_wootax_tc_connection_id').val(resp.data.connection_id);
-              jQuery('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + resp.data.connection_id + '#settings');
+            if (resp.data.integration_id) {
+              jQuery('#woocommerce_wootax_tc_connection_id').val(resp.data.integration_id);
+              jQuery('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + resp.data.integration_id + '#settings');
             }
             alert(data.strings.settings_valid);
           } else {
@@ -100,9 +100,9 @@
           if (resp.success) {
             var integrationMode = resp.data.integration_mode;
             jQuery('#woocommerce_wootax_integration_mode').val(integrationMode);
-            if (resp.data.connection_id) {
-              jQuery('#woocommerce_wootax_tc_connection_id').val(resp.data.connection_id);
-              jQuery('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + resp.data.connection_id + '#settings');
+            if (resp.data.tc_integration_id) {
+              jQuery('#woocommerce_wootax_tc_connection_id').val(resp.data.tc_integration_id);
+              jQuery('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + resp.data.tc_integration_id + '#settings');
             }
             alert(data.strings.mode_refreshed + integrationMode);
           } else {

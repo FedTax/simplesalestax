@@ -187,6 +187,18 @@ function TaxCloud() {
  * @since 5.9
  */
 function sst_get_tics() {
+	if ( sst_get_api_version() === 'v3' ) {
+		$cached = get_transient( 'sst_tic_descriptions_v3' );
+		if ( false === $cached ) {
+			$cached = array();
+		}
+		$tics   = array();
+		foreach ( $cached as $id => $description ) {
+			$tics[ (int) $id ] = new SST_TIC( $id, $description );
+		}
+		return $tics;
+	}
+
 	$tics = get_transient( 'sst_tics' );
 
 	if ( false === $tics ) {
@@ -240,6 +252,14 @@ function sst_output_tic_select_field( $args = array() ) {
 	$script_data = array(
 		'tic_list'               => sst_get_tics(),
 		'tic_select_init_events' => sst_get_tic_select_init_events(),
+		'api_version'            => sst_get_api_version(),
+		'ajaxurl'                => admin_url( 'admin-ajax.php' ),
+		'search_tics_nonce'      => wp_create_nonce( 'sst_tic_search_nonce' ),
+		'strings'                => array(
+			'search_title' => __( 'Search Taxability Information Codes (TIC)', 'simple-sales-tax' ),
+			'search_desc'  => __( 'Find the correct taxability codes for your products using natural language product descriptions, category names, or search terms. The search matches descriptions to help you easily classify your products.', 'simple-sales-tax' ),
+			'search_tips'  => __( '<strong>Search Tips:</strong> Include specific context for the best results. For example, <em>"Women\'s Running Shoes"</em> works better than <em>"shoes"</em>, and <em>"Ceramic & Pottery Kilns"</em> works better than <em>"kilns"</em>.', 'simple-sales-tax' ),
+		),
 	);
 	wp_localize_script( 'sst-tic-select', 'ticSelectLocalizeScript', $script_data );
 	wp_enqueue_script( 'sst-tic-select' );
@@ -600,7 +620,7 @@ function sst_integration_mode() {
  * @return string API version
  */
 function sst_get_api_version() {
-	return 'v1';
+	return SST_Settings::get( 'api_version', 'v1' );
 }
 
 /**

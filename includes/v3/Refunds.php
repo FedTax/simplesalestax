@@ -35,7 +35,7 @@ class Refunds extends RequestBase {
 	 * @since 8.4.1
 	 */
 	public function get_api_url( $order_id ) {
-		return self::API_BASE_URL . '/tax/connections/' . $this->connection_id . '/orders/refunds/' . $order_id;
+		return rtrim( self::API_BASE_URL, '/' ) . '/tax/connections/' . $this->connection_id . '/orders/refunds/' . $order_id;
 	}
 
 	/**
@@ -44,7 +44,7 @@ class Refunds extends RequestBase {
 	 * @param string $order_id Order ID.
 	 * @param array  $args     Request arguments.
 	 *
-	 * @return array|WP_Error Refund response on success, WP_Error on failure.
+	 * @return array|\WP_Error Refund response on success, WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public function refund_order( $order_id, $args = array() ) {
@@ -55,13 +55,14 @@ class Refunds extends RequestBase {
 			return $refund;
 		}
 
-		if ( is_wp_error( $this->get_auth_token() ) ) {
-			return $this->get_auth_token();
+		$token = $this->get_auth_token();
+		if ( is_wp_error( $token ) ) {
+			return $token;
 		}
 
 		$response = wp_remote_post( $this->get_api_url( $order_id ), array(
 			'headers' => array(
-				'Authorization' => 'Bearer ' . $this->get_auth_token(),
+				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
 			'body'    => json_encode( $refund ),
@@ -76,7 +77,7 @@ class Refunds extends RequestBase {
 		$body = wp_remote_retrieve_body( $response );
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_refunds_error', 'Failed to refund order: ' . $body );
+			return new \WP_Error( 'sst_v3_refunds_error', 'Failed to refund order: ' . $body );
 		}
 
 		return json_decode( $body, true );

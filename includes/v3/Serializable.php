@@ -26,6 +26,10 @@ class Serializable implements \JsonSerializable {
 	 */
 	private function serializeArray(&$array) {
 		foreach ($array as $key => $val) {
+			if (is_null($val)) {
+				unset($array[$key]);
+				continue;
+			}
 			if ($val instanceof \JsonSerializable) {
 				$array[$key] = $val->jsonSerialize();
 			} elseif (is_array($val)) {
@@ -51,6 +55,9 @@ class Serializable implements \JsonSerializable {
 		$props = get_object_vars($this);
 
 		foreach ($props as $key => $value) {
+			if (is_null($value)) {
+				continue;
+			}
 			if ($value instanceof \JsonSerializable) {
 				$request[$key] = $value->jsonSerialize();
 			} elseif (is_array($value)) {

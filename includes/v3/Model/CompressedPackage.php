@@ -2,8 +2,6 @@
 
 namespace TaxCloud_V3\Model;
 
-use TaxCloud\ExemptionCertificateBase;
-use TaxCloud\ExemptionCertificate;
 use SST_Addresses;
 
 /**
@@ -68,37 +66,25 @@ class CompressedPackage {
 			$package['shipping_cost']   = $package['shipping']->cost;
 		}
 
-		if ( is_a( $package['origin'], 'TaxCloud\Address' ) ) {
-      $address = $package['origin'];
-			$package['origin'] = array(
-        'city' => $address->getCity(),
-        'line1' => $address->getAddress1(),
-        'state' => $address->getState(),
-        'zip' => $this->trim_dashes( $address->getZip() ),
-      );
+		if ( isset( $package['origin'] ) && SST_Addresses::is_address_object( $package['origin'] ) ) {
+			$package['origin'] = $this->format_address( $package['origin'] );
 		}
 
-		if ( is_a( $package['destination'], 'TaxCloud\Address' ) ) {
-      $address = $package['destination'];
-			$package['destination'] = array(
-        'city' => $address->getCity(),
-        'line1' => $address->getAddress1(),
-        'state' => $address->getState(),
-        'zip' => $this->trim_dashes( $address->getZip() ),
-      );
+		if ( isset( $package['destination'] ) && SST_Addresses::is_address_object( $package['destination'] ) ) {
+			$package['destination'] = $this->format_address( $package['destination'] );
 		}
 
 		$certificate = $package['certificate'];
 
-		if ( $certificate instanceof ExemptionCertificate ) {
+		if ( is_object( $certificate ) && method_exists( $certificate, 'getDetail' ) ) {
 			// Single-purchase certificate without an ID. Use a stable hash of the certificate detail object as the ID.
 			$detail       = $certificate->getDetail();
 			$detail_array = json_decode( wp_json_encode( $detail ), true );
 			unset( $detail_array['CreatedDate'] );
 			$package['certificate_id'] = md5( wp_json_encode( $detail_array ) );
-		} else if ( $certificate instanceof ExemptionCertificateBase ) {
+		} elseif ( is_object( $certificate ) && method_exists( $certificate, 'getCertificateId' ) ) {
 			// Entity-based exemption certificate with ID
-			$package['certificate_id'] = $package['certificate']->getCertificateId();
+			$package['certificate_id'] = $certificate->getCertificateId();
 		}
 
 		// Remove keys not required to set tax amounts or capture/refund orders.
@@ -117,17 +103,40 @@ class CompressedPackage {
 		$this->package = $package;
 	}
 
-  /**
-   * Remove trailing dashes from a zip code.
-   *
-   * @param string $zip Zip code.
-   *
-   * @return string Zip code without trailing dashes.
-   * @since 8.4.1
-   */
-  public function trim_dashes( $zip ) {
-    return trim($zip, '-'); 
-  }
+	/**
+	 * Format an address object for TaxCloud v3 package payloads.
+	 *
+	 * @param object $address Address object.
+	 *
+	 * @return array
+	 * @since 8.4.10
+	 */
+	private function format_address( $address ) {
+		$formatted = array(
+			'city'  => $address->getCity(),
+			'line1' => $address->getAddress1(),
+			'state' => $address->getState(),
+			'zip'   => $this->trim_dashes( $address->getZip() ),
+		);
+
+		if ( '' !== $address->getAddress2() && null !== $address->getAddress2() ) {
+			$formatted['line2'] = $address->getAddress2();
+		}
+
+		return $formatted;
+	}
+
+	/**
+	 * Remove trailing dashes from a zip code.
+	 *
+	 * @param string $zip Zip code.
+	 *
+	 * @return string Zip code without trailing dashes.
+	 * @since 8.4.1
+	 */
+	public function trim_dashes( $zip ) {
+		return trim( $zip, '-' );
+	}
 
 	/**
 	 * Get the cart items for a given package.

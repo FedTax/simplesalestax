@@ -2,7 +2,6 @@
 namespace TaxCloud_V3;
 
 use SST_Settings;
-use WP_Error;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -33,7 +32,7 @@ class Exemptions extends RequestBase {
 	 * @since 8.4.2
 	 */
 	public function get_api_url() {
-		return self::API_BASE_URL . 'tax/connections/' . $this->connection_id . '/exemption-certificates';
+		return rtrim( self::API_BASE_URL, '/' ) . '/tax/connections/' . $this->connection_id . '/exemption-certificates';
 	}
 
 	/**
@@ -43,7 +42,7 @@ class Exemptions extends RequestBase {
 	 * @since 8.4.2
 	 */
 	public function get_fetch_api_url() {
-		return self::API_BASE_URL . 'tax/exemption-certificates';
+		return rtrim( self::API_BASE_URL, '/' ) . '/tax/exemption-certificates';
 	}
 
 	/**
@@ -51,32 +50,33 @@ class Exemptions extends RequestBase {
 	 *
 	 * @param array $args Request arguments.
 	 *
-	 * @return array|WP_Error Certificate response on success, WP_Error on failure.
+	 * @return array|\WP_Error Certificate response on success, \WP_Error on failure.
 	 * @since 8.4.2
 	 */
 	public function create_certificate( $args ) {
-		if ( is_wp_error( $this->get_auth_token() ) ) {
-			return $this->get_auth_token();
+		$token = $this->get_auth_token();
+		if ( \is_wp_error( $token ) ) {
+			return $token;
 		}
 
-		$response = wp_remote_post( $this->get_api_url(), array(
+		$response = \wp_remote_post( $this->get_api_url(), array(
 			'headers' => array(
-				'Authorization' => 'Bearer ' . $this->get_auth_token(),
+				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
-			'body'    => wp_json_encode( $args ),
+			'body'    => \wp_json_encode( $args ),
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
+		if ( \is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
+		$code = \wp_remote_retrieve_response_code( $response );
+		$body = \wp_remote_retrieve_body( $response );
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_exemptions_error', 'Failed to create certificate: ' . $body );
+			return new \WP_Error( 'sst_v3_exemptions_error', 'Failed to create certificate: ' . $body );
 		}
 
 		return json_decode( $body, true );
@@ -87,11 +87,11 @@ class Exemptions extends RequestBase {
 	 *
 	 * @param array $args Optional query args.
 	 *
-	 * @return array|WP_Error Certificates array on success, WP_Error on failure.
+	 * @return array|\WP_Error Certificates array on success, WP_Error on failure.
 	 * @since 8.4.2
 	 */
 	public function get_certificates( $args = array() ) {
-		$token = self::get_auth_token();
+		$token = $this->get_auth_token();
 		
 		if ( is_wp_error( $token ) ) {
 			return $token;
@@ -228,11 +228,11 @@ class Exemptions extends RequestBase {
 	 *
 	 * @param string $certificate_id Certificate ID.
 	 *
-	 * @return array|WP_Error Certificate array on success, WP_Error on failure.
+	 * @return array|\WP_Error Certificate array on success, WP_Error on failure.
 	 * @since 8.4.2
 	 */
 	public function get_certificate( $certificate_id ) {
-		$token = self::get_auth_token();
+		$token = $this->get_auth_token();
 		
 		if ( is_wp_error( $token ) ) {
 			return $token;
@@ -256,7 +256,7 @@ class Exemptions extends RequestBase {
 		$body = wp_remote_retrieve_body( $response );
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_exemptions_error', 'Failed to retrieve certificate: ' . $body );
+			return new \WP_Error( 'sst_v3_exemptions_error', 'Failed to retrieve certificate: ' . $body );
 		}
 
 		return json_decode( $body, true );
@@ -266,9 +266,11 @@ class Exemptions extends RequestBase {
 	 * Delete a certificate.
 	 *
 	 * @param string $certificate_id Certificate ID.
+	 *
+	 * @return bool|\WP_Error
 	 */
 	public function delete_certificate( $certificate_id ) {
-		$token = self::get_auth_token();
+		$token = $this->get_auth_token();
 		
 		if ( is_wp_error( $token ) ) {
 			return $token;
@@ -293,7 +295,7 @@ class Exemptions extends RequestBase {
 		$body = wp_remote_retrieve_body( $response );
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_exemptions_error', 'Failed to delete certificate: ' . $body );
+			return new \WP_Error( 'sst_v3_exemptions_error', 'Failed to delete certificate: ' . $body );
 		}
 
 		return true;
