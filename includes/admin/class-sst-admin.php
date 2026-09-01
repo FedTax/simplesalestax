@@ -46,6 +46,7 @@ class SST_Admin {
 		add_action( 'edit_user_profile', array( __CLASS__, 'render_user_certificates' ), 11 );
 		add_action( 'show_user_profile', array( __CLASS__, 'render_user_certificates' ), 11 );
 		add_action( 'admin_notices', array( __CLASS__, 'display_admin_notices' ) );
+		SST_Review_Notice::init();
 	}
 
 	/**
@@ -56,6 +57,7 @@ class SST_Admin {
 	public function includes() {
 		require_once dirname( __DIR__ ) . '/sst-message-functions.php';
 		require_once __DIR__ . '/class-sst-integration.php';
+		require_once __DIR__ . '/class-sst-review-notice.php';
 	}
 
 	/**
@@ -423,25 +425,25 @@ class SST_Admin {
 	 */
 	public static function display_admin_notices() {
 		// Check if taxes are enabled
-    if ( ! wc_tax_enabled() ) {
+		if ( ! wc_tax_enabled() ) {
 			// phpcs:ignore WordPress.Security.EscapeOutput
 			self::render_admin_notice( array(
 				'id'      => 'taxes-not-enabled',
 				'message' => __( 'Taxes are not enabled in WooCommerce. TaxCloud for WooCommerce will not calculate taxes for any orders. Please enable taxes from WooCommerce > Settings > General.', 'simple-sales-tax' ),
-				'type'    => 'error'
-			));
-    }
+				'type'    => 'error',
+			) );
+		}
 
-    // Check if store has a shipping method set
-    $method_count  = wc_get_shipping_method_count();
-    if ( 0 === $method_count ) {
-				// phpcs:ignore WordPress.Security.EscapeOutput
-				self::render_admin_notice( array(
-					'id'      => 'no-shipping-methods',
-					'message' => __( 'No shipping methods are configured in WooCommerce. TaxCloud will not calculate taxes for orders that require shipping.', 'simple-sales-tax' ),
-					'button'  => '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=shipping' ) ) . '">' . __( 'Add a shipping method', 'simple-sales-tax' ) . '</a>',
-				));
-    }
+		// Check if store has a shipping method set
+		$method_count = wc_get_shipping_method_count();
+		if ( 0 === $method_count ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput
+			self::render_admin_notice( array(
+				'id'      => 'no-shipping-methods',
+				'message' => __( 'No shipping methods are configured in WooCommerce. TaxCloud will not calculate taxes for orders that require shipping.', 'simple-sales-tax' ),
+				'button'  => '<a class="button" href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=shipping' ) ) . '">' . __( 'Add a shipping method', 'simple-sales-tax' ) . '</a>',
+			) );
+		}
 	}
 
 }
