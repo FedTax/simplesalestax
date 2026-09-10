@@ -1,3 +1,10 @@
 #select2-certificate_id-results li:first-of-type:not(:last-of-type) {
 	border-bottom: 1px solid #aaa;
 }
+
+.sst-certificate-selection-help {
+	margin-top: -0.5em;
+	color: #646970;
+	font-size: 0.875em;
+	line-height: 1.45;
+}

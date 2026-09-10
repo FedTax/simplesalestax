@@ -107,11 +107,11 @@ class SST_Blocks_Integration implements IntegrationInterface {
 
 		$certificates = SST_Certificates::get_certificates_formatted();
 		$options      = array(
-			'new'  => 'Add new certificate',
+			'new' => __( 'Add a new certificate', 'simple-sales-tax' ),
 		);
 
 		foreach ( $certificates as $cert ) {
-			$options[ $cert['CertificateID'] ] = $cert['Description'];
+			$options[ $cert['CertificateID'] ] = $cert['CheckoutDescription'];
 		}
 
 		$selected = WC()->session

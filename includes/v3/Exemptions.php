@@ -153,7 +153,13 @@ class Exemptions extends RequestBase {
 			$channels = array();
 
 			foreach ( $customer_ids as $cid ) {
-				$url = add_query_arg( array( 'customerId' => $cid ), $base_url );
+				$url = add_query_arg(
+					array(
+						'customerId' => $cid,
+						'limit'      => 100,
+					),
+					$base_url
+				);
 				$ch  = curl_init();
 
 				curl_setopt_array( $ch, array(
@@ -201,7 +207,12 @@ class Exemptions extends RequestBase {
 
 		// Fallback: Sequential execution
 		foreach ( $customer_ids as $cid ) {
-			$response = $this->get_certificates( array( 'customerId' => $cid ) );
+			$response = $this->get_certificates(
+				array(
+					'customerId' => $cid,
+					'limit'      => 100,
+				)
+			);
 			if ( ! is_wp_error( $response ) && isset( $response['items'] ) && is_array( $response['items'] ) ) {
 				foreach ( $response['items'] as $item ) {
 					$all_items[] = $item;

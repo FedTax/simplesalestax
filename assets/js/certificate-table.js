@@ -3,6 +3,7 @@ jQuery( function( $ ) {
 	var $row_template = wp.template( 'sst-certificate-row' );
 	var $blank_template = wp.template( 'sst-certificate-row-blank' );
 	var $loading_template = wp.template( 'sst-certificate-row-loading' );
+	var pageSize = 20;
 
 	// Backbone model
 	var CertificateTable = Backbone.Model.extend( {
@@ -16,13 +17,16 @@ jQuery( function( $ ) {
 		addressFields: {},
 		fetchOnLoad: false,
 		isLoading: false,
+		visibleCount: pageSize,
 		initialize: function( options ) {
 			this.userId = options.user_id ? +options.user_id : 0;
 			this.addressFields = options.address_fields || {};
 			this.fetchOnLoad = !! options.fetch_on_load;
 			this.isLoading = false;
+			this.visibleCount = pageSize;
+			this.$table = this.$el.closest( 'table' );
 
-			this.listenTo( this.model, 'change:certificates', this.render );
+			this.listenTo( this.model, 'change:certificates', this.resetAndRender );
 			this.listenTo( this.model, 'change:selected', this.fireChangeHook );
 
 			$( document.body ).on(
@@ -39,33 +43,44 @@ jQuery( function( $ ) {
 				this.onRefreshCertificates
 			);
 
+			this.$table.on(
+				'click',
+				'.sst-certificate-show-more',
+				{ view: this },
+				this.onShowMore
+			);
+
 			if ( this.fetchOnLoad ) {
 				this.fetchCertificates();
 			}
 		},
+		resetAndRender: function() {
+			this.visibleCount = pageSize;
+			this.render();
+		},
 		render: function() {
 			if ( this.isLoading ) {
 				this.$el.empty();
+				this.updateTableStatus( 0 );
 				if ( typeof $loading_template === 'function' ) {
 					this.$el.append( $loading_template() );
 				}
 				return;
 			}
 
-			var certificates = _.indexBy( this.model.get( 'certificates' ), 'CertificateID' ),
+			var certificates = _.values( this.model.get( 'certificates' ) ),
 				selected     = this.model.get( 'selected' ),
-				view         = this,
-				index        = 1;
+				view         = this;
 
 			// Blank out the contents.
 			this.$el.empty();
 
-			if ( _.size( certificates ) ) {
+			if ( certificates.length ) {
 				// Populate $tbody with the current certificates
-				$.each( certificates, function( id, rowData ) {
-					rowData.Index = index++;
+				$.each( certificates.slice( 0, this.visibleCount ), function( index, rowData ) {
 					view.$el.append( $row_template( rowData ) );
 				} );
+				this.updateTableStatus( certificates.length );
 
 				// Make the rows function
 				view.$el.find( '.sst-certificate-delete' ).on( 'click', { view: this }, this.onDeleteRow );
@@ -74,17 +89,41 @@ jQuery( function( $ ) {
 
 				// Select certificate (first certificate selected by default)
 				if ( selected ) {
-					$( 'input[name="certificate_id"][value="' + selected + '"]' ).prop( 'checked', true );
+					view.$el.find( 'input[name="certificate_id"][value="' + selected + '"]' ).prop( 'checked', true );
 				} else {
-					var first = $( 'input[name="certificate_id"]' ).first();
-					if ( first ) {
+					var first = view.$el.find( 'input[name="certificate_id"]' ).first();
+					if ( first.length ) {
 						first.prop( 'checked', true );
 						this.model.set( 'selected', first.val() );
 					}
 				}
 			} else {
+				this.updateTableStatus( 0 );
 				view.$el.append( $blank_template );
 			}
+		},
+		updateTableStatus: function( total ) {
+			var $pagination = this.$table.find( '.sst-certificate-table-pagination' );
+
+			if ( ! total ) {
+				$pagination.prop( 'hidden', true );
+				return;
+			}
+
+			var shown = Math.min( this.visibleCount, total );
+			var countText = script_data.strings.showing_certificates || 'Showing %1$d of %2$d certificates';
+			countText = countText.replace( '%1$d', shown ).replace( '%2$d', total );
+
+			$pagination.prop( 'hidden', false );
+			$pagination.find( '.sst-certificate-count' ).text( countText );
+			$pagination.find( '.sst-certificate-show-more' ).toggle( shown < total );
+		},
+		onShowMore: function( event ) {
+			event.preventDefault();
+
+			var view = event.data.view;
+			view.visibleCount += pageSize;
+			view.render();
 		},
 		fetchCertificates: function() {
 			var view = this;
@@ -170,7 +209,6 @@ jQuery( function( $ ) {
 					}
 
 					view.model.set( 'certificates', response.data.certificates );
-					view.model.trigger( 'change:certificates' );
 				} )
 				.fail( function() {
 					alert( script_data.strings.delete_failed );
@@ -284,7 +322,6 @@ jQuery( function( $ ) {
 					// Re-render
 					view.model.set( 'selected', response.data.certificate_id );
 					view.model.set( 'certificates', response.data.certificates );
-					view.model.trigger( 'change:certificates' );
 				} )
 				.fail( function( jqXHR ) {
 					var errorMessage = script_data.strings.add_failed;
