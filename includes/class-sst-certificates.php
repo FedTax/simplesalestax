@@ -504,6 +504,11 @@ class SST_Certificates {
 
 		// TaxType and BusinessType mapped similarly
 		$v3_business_type = $v3_cert['customerBusinessType'] ?? '';
+		$business_type_map = array(
+			'AgriculturalForestryFishingHunting'   => 'Agricultural_Forestry_Fishing_Hunting',
+			'InformationPublishingAndCommunications' => 'Information_PublishingAndCommunications',
+		);
+		$v3_business_type = isset( $business_type_map[ $v3_business_type ] ) ? $business_type_map[ $v3_business_type ] : $v3_business_type;
 		if ( ! defined( '\TaxCloud\BusinessType::' . $v3_business_type ) ) {
 			$v3_business_type = 'Other';
 		}

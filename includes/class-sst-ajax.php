@@ -82,7 +82,16 @@ class SST_Ajax {
 			wp_send_json_error();
 		} else {
 			try {
-				TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
+				if ( 'v3' === sst_get_api_version() ) {
+					$utilities = new \TaxCloud_V3\Utilities();
+					$ping      = $utilities->ping( $taxcloud_id, $taxcloud_key, $taxcloud_key );
+
+					if ( is_wp_error( $ping ) ) {
+						throw new Exception( $ping->get_error_message() );
+					}
+				} else {
+					TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
+				}
 
 				// Ping successful, update data mover settings
 				SST_TaxCloud_V3_API::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
