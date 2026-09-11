@@ -519,6 +519,9 @@ class SST_Integration extends WC_Integration {
 							<p>
 								<?php
 								$integration_id   = SST_Settings::get( 'tc_integration_id' );
+								if ( empty( $integration_id ) ) {
+									$integration_id = SST_Settings::get( 'tc_connection_id' );
+								}
 								$integration_url = 'https://app.taxcloud.com/go/integrations';
 								if ( ! empty( $integration_id ) ) {
 									$integration_url .= '/' . $integration_id . '#settings';

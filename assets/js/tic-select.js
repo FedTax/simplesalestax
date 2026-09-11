@@ -9,7 +9,7 @@
                 initialize: function() {
                     this.input             = this.$el.siblings( '.sst-tic-input' );
                     this.readout           = this.$el.siblings( '.sst-selected-tic' );
-                    
+
                     // Bind all methods to the view instance context
                     this.handleInputChange = this.handleInputChange.bind( this );
                     this.openModal         = this.openModal.bind( this );
@@ -30,9 +30,12 @@
                 bindEvents: function() {
                     $( document.body ).on( 'click', '.sst-select-done', this.updateSelection );
                     $( document.body ).on( 'wc_backbone_modal_response', this.completeSelection );
-                    $( document.body ).on( 'click', '.sst-tic-load-more', this.loadMoreResults );
-                    $( document.body ).on( 'keyup input', '.sst-tic-search', this.handleSearchInput );
                     $( document.body ).on( 'wc_backbone_modal_removed', this.handleModalClose );
+
+                    if ( 'v3' === data.api_version ) {
+                        $( document.body ).on( 'click', '.sst-tic-load-more', this.loadMoreResults );
+                        $( document.body ).on( 'keyup input', '.sst-tic-search', this.handleSearchInput );
+                    }
                 },
                 unbindEvents: function() {
                     $( document.body ).off( 'click', '.sst-select-done', this.updateSelection );
@@ -94,6 +97,19 @@
                     $( '.sst-tic-list' ).html( html );
                 },
                 initModal: function( event ) {
+                    var $list = $( '.sst-tic-list' );
+
+                    if ( 'v3' !== data.api_version ) {
+                        $list.empty();
+
+                        _.each( data.tic_list, function( rowData ) {
+                            $list.append( this.rowTemplate( rowData ) );
+                        }, this );
+
+                        $( '.sst-tic-search' ).hideseek();
+                        return;
+                    }
+
                     this.currentQuery = '';
                     this.nextCursor   = '';
                     this.isLoading    = false;
@@ -109,7 +125,7 @@
                         } else {
                             initial_query = tic_id;
                         }
-                        
+
                         $( '.sst-tic-search' ).val( initial_query );
                         this.currentQuery = initial_query;
                         this.performSearch( initial_query, false );
@@ -276,6 +292,10 @@
                         } else {
                             this.readout.text( this.readout.data( 'default' ) || ( 'TIC ' + tic_id ) );
 
+                            if ( 'v3' !== data.api_version ) {
+                                return;
+                            }
+
                             // Mark as loading to prevent duplicate background requests
                             data.tic_list[ parsed_id ] = {
                                 id: tic_id,
@@ -303,7 +323,7 @@
                                                 id: match.id,
                                                 description: match.description
                                             };
-                                            
+
                                             // Update all readout fields with this matching TIC ID
                                             $( '.sst-tic-input' ).each( function() {
                                                 var $input = $( this );

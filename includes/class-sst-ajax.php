@@ -96,9 +96,17 @@ class SST_Ajax {
 				// Ping successful, update data mover settings
 				SST_TaxCloud_V3_API::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
 
-				wp_send_json_success( array(
-					'tc_integration_id' => SST_Settings::get( 'tc_integration_id' ),
-				) );
+				$connection_id = SST_Settings::get( 'tc_integration_id' );
+				if ( empty( $connection_id ) ) {
+					$connection_id = SST_Settings::get( 'tc_connection_id' );
+				}
+
+				wp_send_json_success(
+					array(
+						'connection_id'  => $connection_id,
+						'integration_id' => $connection_id,
+					)
+				);
 			} catch ( Exception $ex ) {
 				wp_send_json_error( $ex->getMessage() );
 			}
@@ -446,11 +454,17 @@ class SST_Ajax {
 		$data_mover       = SST_Settings::get( 'data_mover', false );
 		$integration_mode = $data_mover == false ? __( 'Real Time', 'simple-sales-tax' ) : __( 'Data Import', 'simple-sales-tax' );
 
+		$connection_id = SST_Settings::get( 'tc_integration_id' );
+		if ( empty( $connection_id ) ) {
+			$connection_id = SST_Settings::get( 'tc_connection_id' );
+		}
+
 		// Response
 		wp_send_json_success( [
 			'integration_mode' => $integration_mode,
 			'data_mover'       => $data_mover,
-			'tc_integration_id'    => SST_Settings::get( 'tc_integration_id' ),
+			'connection_id'    => $connection_id,
+			'integration_id'   => $connection_id,
 		] );
 	}
 
@@ -461,6 +475,10 @@ class SST_Ajax {
 	 */
 	public static function search_tics() {
 		check_ajax_referer( 'sst_tic_search_nonce', 'nonce' );
+
+		if ( 'v3' !== sst_get_api_version() ) {
+			wp_send_json_error( __( 'TaxCloud V3 TIC search is not enabled.', 'simple-sales-tax' ) );
+		}
 
 		$query  = sanitize_text_field( wp_unslash( $_POST['query'] ?? '' ) );
 		$cursor = sanitize_text_field( wp_unslash( $_POST['cursor'] ?? '' ) );
