@@ -32,7 +32,7 @@ class Exemptions extends RequestBase {
 	 * @since 8.4.2
 	 */
 	public function get_api_url() {
-		return rtrim( self::API_BASE_URL, '/' ) . '/tax/connections/' . $this->connection_id . '/exemption-certificates';
+		return $this->get_api_base_url() . '/tax/connections/' . rawurlencode( (string) $this->connection_id ) . '/exemption-certificates';
 	}
 
 	/**
@@ -42,7 +42,7 @@ class Exemptions extends RequestBase {
 	 * @since 8.4.2
 	 */
 	public function get_fetch_api_url() {
-		return rtrim( self::API_BASE_URL, '/' ) . '/tax/exemption-certificates';
+		return $this->get_api_base_url() . '/tax/exemption-certificates';
 	}
 
 	/**
@@ -54,32 +54,28 @@ class Exemptions extends RequestBase {
 	 * @since 8.4.2
 	 */
 	public function create_certificate( $args ) {
+		if ( ! is_array( $args ) ) {
+			return new \WP_Error( 'sst_v3_exemptions_invalid_request', 'Certificate data must be an array.' );
+		}
+
+		foreach ( array( 'address', 'customerBusinessType', 'customerId', 'customerName', 'reason', 'reasonDescription', 'states' ) as $required_field ) {
+			if ( ! isset( $args[ $required_field ] ) || '' === $args[ $required_field ] || array() === $args[ $required_field ] ) {
+				return new \WP_Error( 'sst_v3_exemptions_invalid_request', sprintf( 'Certificate field %s is required.', $required_field ) );
+			}
+		}
+
 		$token = $this->get_auth_token();
 		if ( \is_wp_error( $token ) ) {
 			return $token;
 		}
 
 		$response = \wp_remote_post( $this->get_api_url(), array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $token,
-				'Content-Type'  => 'application/json',
-			),
+			'headers' => $this->get_request_headers( $token ),
 			'body'    => \wp_json_encode( $args ),
 			'timeout' => 30,
 		) );
 
-		if ( \is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$code = \wp_remote_retrieve_response_code( $response );
-		$body = \wp_remote_retrieve_body( $response );
-
-		if ( $code >= 400 ) {
-			return new \WP_Error( 'sst_v3_exemptions_error', 'Failed to create certificate: ' . $body );
-		}
-
-		return json_decode( $body, true );
+		return $this->parse_json_response( $response, 'sst_v3_exemptions_error', 'Failed to create certificate: ' );
 	}
 
 	/**
@@ -103,25 +99,11 @@ class Exemptions extends RequestBase {
 		}
 
 		$response = wp_remote_get( $url, array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $token,
-				'Content-Type'  => 'application/json',
-			),
+			'headers' => $this->get_request_headers( $token ),
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-
-		if ( $code >= 400 ) {
-			return new \WP_Error( 'sst_v3_exemptions_error', 'Failed to retrieve certificates: ' . $body );
-		}
-
-		return json_decode( $body, true );
+		return $this->parse_json_response( $response, 'sst_v3_exemptions_error', 'Failed to retrieve certificates: ' );
 	}
 
 	/**
@@ -139,85 +121,42 @@ class Exemptions extends RequestBase {
 			return array();
 		}
 
-		$token = self::get_auth_token();
-		if ( is_wp_error( $token ) ) {
-			return array();
-		}
-
-		$base_url  = $this->get_fetch_api_url();
 		$all_items = array();
 
-		// Use curl_multi for parallel execution if available and multiple IDs
-		if ( function_exists( 'curl_multi_init' ) && count( $customer_ids ) > 1 ) {
-			$mh       = curl_multi_init();
-			$channels = array();
+		foreach ( $customer_ids as $cid ) {
+			$cursor       = '';
+			$seen_cursors = array();
 
-			foreach ( $customer_ids as $cid ) {
-				$url = add_query_arg(
-					array(
-						'customerId' => $cid,
-						'limit'      => 100,
-					),
-					$base_url
-				);
-				$ch  = curl_init();
-
-				curl_setopt_array( $ch, array(
-					CURLOPT_URL            => $url,
-					CURLOPT_HTTPHEADER     => array(
-						'Authorization: Bearer ' . $token,
-						'Content-Type: application/json',
-					),
-					CURLOPT_RETURNTRANSFER => true,
-					CURLOPT_TIMEOUT        => 15,
-				) );
-
-				curl_multi_add_handle( $mh, $ch );
-				$channels[ (string) $cid ] = $ch;
-			}
-
-			$active = null;
 			do {
-				$status = curl_multi_exec( $mh, $active );
-				if ( $active ) {
-					curl_multi_select( $mh, 0.1 );
+				$query = array(
+					'connectionId' => $this->connection_id,
+					'customerId'   => $cid,
+					'limit'        => 100,
+				);
+
+				if ( '' !== $cursor ) {
+					$query['cursor'] = $cursor;
 				}
-			} while ( $active && CURLM_OK === $status );
 
-			foreach ( $channels as $cid => $ch ) {
-				$body = curl_multi_getcontent( $ch );
-				$code = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+				$response = $this->get_certificates( $query );
+				if ( is_wp_error( $response ) ) {
+					break;
+				}
 
-				if ( $code >= 200 && $code < 300 && ! empty( $body ) ) {
-					$decoded = json_decode( $body, true );
-					if ( isset( $decoded['items'] ) && is_array( $decoded['items'] ) ) {
-						foreach ( $decoded['items'] as $item ) {
-							$all_items[] = $item;
-						}
+				if ( isset( $response['items'] ) && is_array( $response['items'] ) ) {
+					foreach ( $response['items'] as $item ) {
+						$all_items[] = $item;
 					}
 				}
 
-				curl_multi_remove_handle( $mh, $ch );
-				curl_close( $ch );
-			}
-
-			curl_multi_close( $mh );
-			return $all_items;
-		}
-
-		// Fallback: Sequential execution
-		foreach ( $customer_ids as $cid ) {
-			$response = $this->get_certificates(
-				array(
-					'customerId' => $cid,
-					'limit'      => 100,
-				)
-			);
-			if ( ! is_wp_error( $response ) && isset( $response['items'] ) && is_array( $response['items'] ) ) {
-				foreach ( $response['items'] as $item ) {
-					$all_items[] = $item;
+				$next_cursor = isset( $response['nextCursor'] ) ? (string) $response['nextCursor'] : '';
+				if ( '' === $next_cursor || isset( $seen_cursors[ $next_cursor ] ) ) {
+					break;
 				}
-			}
+
+				$seen_cursors[ $next_cursor ] = true;
+				$cursor = $next_cursor;
+			} while ( true );
 		}
 
 		return $all_items;
@@ -232,34 +171,24 @@ class Exemptions extends RequestBase {
 	 * @since 8.4.2
 	 */
 	public function get_certificate( $certificate_id ) {
+		if ( '' === (string) $certificate_id ) {
+			return new \WP_Error( 'sst_v3_exemptions_invalid_request', 'A certificate ID is required.' );
+		}
+
 		$token = $this->get_auth_token();
 		
 		if ( is_wp_error( $token ) ) {
 			return $token;
 		}
 
-		$url = $this->get_fetch_api_url() . '/' . $certificate_id;
+		$url = $this->get_api_url() . '/' . rawurlencode( (string) $certificate_id );
 
 		$response = wp_remote_get( $url, array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $token,
-				'Content-Type'  => 'application/json',
-			),
+			'headers' => $this->get_request_headers( $token ),
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-
-		if ( $code >= 400 ) {
-			return new \WP_Error( 'sst_v3_exemptions_error', 'Failed to retrieve certificate: ' . $body );
-		}
-
-		return json_decode( $body, true );
+		return $this->parse_json_response( $response, 'sst_v3_exemptions_error', 'Failed to retrieve certificate: ' );
 	}
 
 	/**
@@ -270,20 +199,21 @@ class Exemptions extends RequestBase {
 	 * @return bool|\WP_Error
 	 */
 	public function delete_certificate( $certificate_id ) {
+		if ( '' === (string) $certificate_id ) {
+			return new \WP_Error( 'sst_v3_exemptions_invalid_request', 'A certificate ID is required.' );
+		}
+
 		$token = $this->get_auth_token();
 		
 		if ( is_wp_error( $token ) ) {
 			return $token;
 		}
 
-		$url = $this->get_api_url() . '/' . $certificate_id;
+		$url = $this->get_api_url() . '/' . rawurlencode( (string) $certificate_id );
 
 		$response = wp_remote_request( $url, array(
 			'method'  => 'DELETE',
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $token,
-				'Content-Type'  => 'application/json',
-			),
+			'headers' => $this->get_request_headers( $token ),
 			'timeout' => 30,
 		) );
 
@@ -294,7 +224,7 @@ class Exemptions extends RequestBase {
 		$code = wp_remote_retrieve_response_code( $response );
 		$body = wp_remote_retrieve_body( $response );
 
-		if ( $code >= 400 ) {
+		if ( $code < 200 || $code >= 300 ) {
 			return new \WP_Error( 'sst_v3_exemptions_error', 'Failed to delete certificate: ' . $body );
 		}
 

@@ -30,6 +30,6 @@ class Currency extends Serializable {
 	 * @since 8.4.1
 	 */
 	public function __construct( $currencyCode = 'USD' ) {
-		$this->currencyCode = $currencyCode;
+		$this->currencyCode = strtoupper( (string) $currencyCode );
 	}
 }

@@ -165,6 +165,16 @@ class Address extends Serializable {
 	}
 
 	/**
+	 * Get country code.
+	 *
+	 * @return string
+	 * @since 8.4.17
+	 */
+	public function getCountryCode() {
+		return $this->countryCode;
+	}
+
+	/**
 	 * Get state.
 	 *
 	 * @return string

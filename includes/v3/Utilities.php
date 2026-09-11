@@ -34,11 +34,40 @@ class Utilities extends RequestBase {
 	 * @since 8.4.10
 	 */
 	public function get_api_url( $path = '' ) {
-		$base_url = ( defined( 'SST_TAXCLOUD_STAGING' ) && \SST_TAXCLOUD_STAGING )
-			? 'https://api.v3.taxcloud.net'
-			: 'https://api.v3.taxcloud.com';
+		return $this->get_api_base_url() . '/tax' . $path;
+	}
 
-		return rtrim( $base_url, '/' ) . '/tax' . $path;
+	/**
+	 * Verify authentication for the configured connection.
+	 *
+	 * @param string|null $api_login_id Optional TaxCloud API Login ID override.
+	 * @param string|null $api_key      Optional TaxCloud API key override.
+	 * @param string|null $connection_id Optional connection ID override. Defaults to the API key.
+	 *
+	 * @return array|\WP_Error Ping response on success, WP_Error on failure.
+	 * @since 8.4.17
+	 */
+	public function ping( $api_login_id = null, $api_key = null, $connection_id = null ) {
+		$token = $this->get_auth_token( $api_login_id, $api_key );
+		if ( \is_wp_error( $token ) ) {
+			return $token;
+		}
+
+		if ( null === $connection_id || '' === (string) $connection_id ) {
+			$connection_id = ! empty( $api_key ) ? $api_key : $this->connection_id;
+		}
+
+		if ( '' === (string) $connection_id ) {
+			return new \WP_Error( 'sst_v3_ping_error', 'A TaxCloud connection ID is required.' );
+		}
+
+		$url = $this->get_api_base_url() . '/tax/connections/' . rawurlencode( (string) $connection_id ) . '/ping';
+		$response = \wp_remote_get( $url, array(
+			'headers' => $this->get_request_headers( $token ),
+			'timeout' => 30,
+		) );
+
+		return $this->parse_json_response( $response, 'sst_v3_ping_error', 'TaxCloud authentication failed: ' );
 	}
 
 	/**
@@ -62,32 +91,12 @@ class Utilities extends RequestBase {
 		}
 
 		$response = \wp_remote_post( $this->get_api_url( '/verify-address' ), array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $token,
-				'Content-Type'  => 'application/json',
-			),
+			'headers' => $this->get_request_headers( $token ),
 			'body'    => \wp_json_encode( $payload ),
 			'timeout' => 30,
 		) );
 
-		if ( \is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$code = \wp_remote_retrieve_response_code( $response );
-		$body = \wp_remote_retrieve_body( $response );
-		$data = \json_decode( $body, true );
-
-		if ( $code >= 400 ) {
-			$error_msg = $this->get_error_message( $data, $body );
-			return new \WP_Error( 'sst_v3_verify_address_error', 'Failed to verify address: ' . $error_msg );
-		}
-
-		if ( ! is_array( $data ) ) {
-			return new \WP_Error( 'sst_v3_verify_address_error', 'TaxCloud API returned an invalid verify address response.' );
-		}
-
-		return $data;
+		return $this->parse_json_response( $response, 'sst_v3_verify_address_error', 'Failed to verify address: ' );
 	}
 
 	/**
@@ -101,6 +110,11 @@ class Utilities extends RequestBase {
 	 * @since 8.4.9
 	 */
 	public function search_tics( $query, $limit = 20, $cursor = '' ) {
+		$query = trim( (string) $query );
+		if ( '' === $query ) {
+			return new \WP_Error( 'sst_v3_tic_search_invalid_request', 'A TIC search query is required.' );
+		}
+
 		$token = $this->get_auth_token();
 		if ( \is_wp_error( $token ) ) {
 			return $token;
@@ -108,7 +122,7 @@ class Utilities extends RequestBase {
 
 		$payload = array(
 			'query' => $query,
-			'limit' => (int) $limit,
+			'limit' => min( 100, max( 1, (int) $limit ) ),
 		);
 
 		if ( ! empty( $cursor ) ) {
@@ -116,28 +130,12 @@ class Utilities extends RequestBase {
 		}
 
 		$response = \wp_remote_post( $this->get_api_url( '/tic/search' ), array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $token,
-				'Content-Type'  => 'application/json',
-			),
+			'headers' => $this->get_request_headers( $token ),
 			'body'    => \wp_json_encode( $payload ),
 			'timeout' => 30,
 		) );
 
-		if ( \is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$code = \wp_remote_retrieve_response_code( $response );
-		$body = \wp_remote_retrieve_body( $response );
-
-		if ( $code >= 400 ) {
-			$data = \json_decode( $body, true );
-			$error_msg = $this->get_error_message( $data, $body );
-			return new \WP_Error( 'sst_v3_tic_search_error', 'TaxCloud API Error: ' . $error_msg );
-		}
-
-		return \json_decode( $body, true );
+		return $this->parse_json_response( $response, 'sst_v3_tic_search_error', 'TaxCloud API error: ' );
 	}
 
 	/**
@@ -233,30 +231,4 @@ class Utilities extends RequestBase {
 		return '' !== $zip4 ? $zip5 . '-' . $zip4 : $zip5;
 	}
 
-	/**
-	 * Get a readable API error message.
-	 *
-	 * @param array|null $data Error response data.
-	 * @param string     $body Raw response body.
-	 *
-	 * @return string
-	 * @since 8.4.10
-	 */
-	protected function get_error_message( $data, $body ) {
-		if ( is_array( $data ) ) {
-			if ( ! empty( $data['detail'] ) ) {
-				return $data['detail'];
-			}
-
-			if ( ! empty( $data['message'] ) ) {
-				return $data['message'];
-			}
-
-			if ( ! empty( $data['title'] ) ) {
-				return $data['title'];
-			}
-		}
-
-		return $body;
-	}
 }

@@ -2,7 +2,6 @@
 namespace TaxCloud_V3;
 
 use SST_Settings;
-use WP_Error;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -35,7 +34,7 @@ class Refunds extends RequestBase {
 	 * @since 8.4.1
 	 */
 	public function get_api_url( $order_id ) {
-		return rtrim( self::API_BASE_URL, '/' ) . '/tax/connections/' . $this->connection_id . '/orders/refunds/' . $order_id;
+		return $this->get_api_base_url() . '/tax/connections/' . rawurlencode( $this->connection_id ) . '/orders/refunds/' . rawurlencode( (string) $order_id );
 	}
 
 	/**
@@ -48,6 +47,13 @@ class Refunds extends RequestBase {
 	 * @since 8.4.1
 	 */
 	public function refund_order( $order_id, $args = array() ) {
+		if ( '' === (string) $order_id ) {
+			return new \WP_Error( 'sst_v3_refunds_invalid_request', 'An order ID is required.' );
+		}
+
+		if ( ! is_array( $args ) ) {
+			return new \WP_Error( 'sst_v3_refunds_invalid_request', 'Refund data must be an array.' );
+		}
 	
 		$refund = $this->prepare_item_for_request( $args );
 
@@ -61,26 +67,12 @@ class Refunds extends RequestBase {
 		}
 
 		$response = wp_remote_post( $this->get_api_url( $order_id ), array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $token,
-				'Content-Type'  => 'application/json',
-			),
-			'body'    => json_encode( $refund ),
+			'headers' => $this->get_request_headers( $token ),
+			'body'    => wp_json_encode( $refund ),
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-
-		if ( $code >= 400 ) {
-			return new \WP_Error( 'sst_v3_refunds_error', 'Failed to refund order: ' . $body );
-		}
-
-		return json_decode( $body, true );
+		return $this->parse_json_response( $response, 'sst_v3_refunds_error', 'Failed to refund order: ' );
 	}
 
 	/**
@@ -92,20 +84,36 @@ class Refunds extends RequestBase {
 	 * @since 8.4.1
 	 */
 	public function prepare_item_for_request( $args ) {
+		if ( ! is_array( $args ) ) {
+			return new \WP_Error( 'sst_v3_refunds_invalid_request', 'Refund data must be an array.' );
+		}
+
 		$refund_args = array();
 
 		if ( isset( $args['items'] ) && ! empty( $args['items'] ) ) {
 			$refund_args['items'] = array();
 			foreach ( $args['items'] as $item ) {
-				$refund_args['items'][] = (object) array(
+				if ( ! is_array( $item ) || ! array_key_exists( 'itemId', $item ) || ! array_key_exists( 'quantity', $item ) ) {
+					return new \WP_Error( 'sst_v3_refunds_invalid_request', 'Each refund item must include itemId and quantity.' );
+				}
+
+				$refund_item = array(
 					'itemId'   => (string) $item['itemId'],
 					'quantity' => (float) $item['quantity'],
 				);
+
+				if ( array_key_exists( 'cartItemIndex', $item ) ) {
+					$refund_item['cartItemIndex'] = (int) $item['cartItemIndex'];
+				}
+
+				$refund_args['items'][] = (object) $refund_item;
 			}
 		}
 
-		if ( isset( $args['returnedDate'] ) ) {
-			$refund_args['returnedDate'] = $args['returnedDate'];
+		foreach ( array( 'batchId', 'idempotencyKey', 'returnedDate' ) as $optional_field ) {
+			if ( array_key_exists( $optional_field, $args ) ) {
+				$refund_args[ $optional_field ] = $args[ $optional_field ];
+			}
 		}
 
 		return (object) $refund_args;

@@ -41,7 +41,9 @@ abstract class RequestBase {
 	const PROD_AUTH_URL    = 'https://taxcloudapi-appservice-core-prod.azurewebsites.net/api/v3/auth/token';
 	const STAGING_MGMT_URL = 'https://api.v3.taxcloud.net/mgmt';
 	const PROD_MGMT_URL    = 'https://api.v3.taxcloud.com/mgmt';
-	const API_BASE_URL		 = 'https://api.v3.taxcloud.com/';
+	const STAGING_API_URL  = 'https://api.v3.taxcloud.net';
+	const PROD_API_URL     = 'https://api.v3.taxcloud.com';
+	const API_BASE_URL     = self::PROD_API_URL;
 
 	/**
 	 * Get the appropriate Auth URL based on environment.
@@ -69,6 +71,94 @@ abstract class RequestBase {
 			return self::STAGING_MGMT_URL;
 		}
 		return self::PROD_MGMT_URL;
+	}
+
+	/**
+	 * Get the Sales Tax API base URL for the configured environment.
+	 *
+	 * @return string API base URL.
+	 * @since 8.4.17
+	 */
+	protected function get_api_base_url() {
+		if ( defined( 'SST_TAXCLOUD_STAGING' ) && SST_TAXCLOUD_STAGING ) {
+			return self::STAGING_API_URL;
+		}
+
+		return self::PROD_API_URL;
+	}
+
+	/**
+	 * Build common headers for an authenticated Sales Tax API request.
+	 *
+	 * @param string $token Bearer token.
+	 *
+	 * @return array Request headers.
+	 * @since 8.4.17
+	 */
+	protected function get_request_headers( $token ) {
+		$headers = array(
+			'Authorization' => 'Bearer ' . $token,
+			'Content-Type'  => 'application/json',
+		);
+
+		if ( function_exists( 'sst_get_user_agent' ) ) {
+			$headers['User-Agent'] = sst_get_user_agent();
+		}
+
+		return $headers;
+	}
+
+	/**
+	 * Decode a successful JSON response or return a consistent API error.
+	 *
+	 * @param array|\WP_Error $response     WordPress HTTP response.
+	 * @param string          $error_code   WP_Error code.
+	 * @param string          $error_prefix Human-readable error prefix.
+	 *
+	 * @return array|\WP_Error Decoded response on success, WP_Error on failure.
+	 * @since 8.4.17
+	 */
+	protected function parse_json_response( $response, $error_code, $error_prefix ) {
+		if ( \is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$status = \wp_remote_retrieve_response_code( $response );
+		$body   = \wp_remote_retrieve_body( $response );
+
+		if ( $status < 200 || $status >= 300 ) {
+			return new \WP_Error( $error_code, $error_prefix . $this->get_error_message( $body ) );
+		}
+
+		$data = \json_decode( $body, true );
+
+		if ( ! is_array( $data ) || JSON_ERROR_NONE !== json_last_error() ) {
+			return new \WP_Error( $error_code, $error_prefix . 'TaxCloud returned an invalid JSON response.' );
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Extract a useful message from a TaxCloud error response.
+	 *
+	 * @param string $body Raw response body.
+	 *
+	 * @return string Error message.
+	 * @since 8.4.17
+	 */
+	protected function get_error_message( $body ) {
+		$data = \json_decode( $body, true );
+
+		if ( is_array( $data ) ) {
+			foreach ( array( 'detail', 'message', 'title' ) as $key ) {
+				if ( ! empty( $data[ $key ] ) ) {
+					return (string) $data[ $key ];
+				}
+			}
+		}
+
+		return '' !== $body ? $body : 'Unknown TaxCloud API error.';
 	}
 
 	/**
@@ -134,6 +224,7 @@ abstract class RequestBase {
 	/**
 	 * Get connection settings using Bearer token.
 	 *
+	 * @param string $api_key      TaxCloud API key/connection ID.
 	 * @param string $access_token Bearer token.
 	 *
 	 * @return array|\WP_Error Settings array on success, \WP_Error on failure.

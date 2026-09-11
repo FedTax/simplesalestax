@@ -1,9 +1,6 @@
 <?php
 namespace TaxCloud_V3;
 
-use SST_Settings;
-use WP_Error;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }

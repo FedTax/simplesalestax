@@ -76,6 +76,16 @@ class CartItem extends Serializable
 	}
 
 	/**
+	 * Set item index.
+	 *
+	 * @param mixed $value Item index.
+	 * @since 8.4.17
+	 */
+	public function set_index( $value ) {
+		$this->index = (int) $value;
+	}
+
+	/**
 	 * Set item ID.
 	 *
 	 * @param mixed $value Item ID.
@@ -106,13 +116,25 @@ class CartItem extends Serializable
   }
 
 	/**
+	 * Set product ID.
+	 *
+	 * @param mixed $value Product ID.
+	 * @since 8.4.17
+	 */
+	public function set_productId( $value ) {
+		$this->productId = (string) $value;
+	}
+
+	/**
 	 * Set item tax.
 	 *
 	 * @param array $value Tax data.
 	 * @since 8.4.1
 	 */
   public function set_tax( $value ) {
-    $this->tax = new Tax( $value['amount'], $value['rate'] );
+		if ( is_array( $value ) && array_key_exists( 'amount', $value ) && array_key_exists( 'rate', $value ) ) {
+			$this->tax = new Tax( (float) $value['amount'], (float) $value['rate'] );
+		}
   }
 
 	/**
@@ -132,17 +154,12 @@ class CartItem extends Serializable
 	 * @since 8.4.1
 	 */
   public function get_item() {
-    return array(
-      'index' => $this->index,
-      'itemId' => $this->itemId,
-      'price' => $this->price,
-      'productId' => $this->productId,
-      'quantity' => $this->quantity,
-      'tax' => array(
-        'amount' => $this->tax->amount,
-        'rate' => $this->tax->rate
-      ),
-      'tic' => $this->tic
-    );
+		$item = $this->jsonSerialize();
+
+		if ( $this->tax instanceof Tax ) {
+			$item['tax'] = $this->tax->jsonSerialize();
+		}
+
+		return $item;
   }
 }
