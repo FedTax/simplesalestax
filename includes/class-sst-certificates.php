@@ -407,27 +407,26 @@ class SST_Certificates {
 		try {
 			$final_certs = array();
 
-			// 1. Query TaxCloud v3 exemption certificates API in parallel across customer IDs.
-			$v3_exemptions = new \TaxCloud_V3\Exemptions();
-			$v3_items      = $v3_exemptions->get_certificates_for_customer_ids( $lookup_ids );
+			if ( 'v3' === $api_version ) {
+				// Query only the selected TaxCloud V3 exemption certificates API.
+				$v3_exemptions = new \TaxCloud_V3\Exemptions();
+				$v3_items      = $v3_exemptions->get_certificates_for_customer_ids( $lookup_ids );
 
-			if ( ! empty( $v3_items ) && is_array( $v3_items ) ) {
-				foreach ( $v3_items as $item ) {
-					if ( empty( $item['singlePurchase'] ) ) { /* Skip single certs */
-						$cert = self::build_v1_cert_from_v3( $item );
-						if ( $cert && $cert->getCertificateID() ) {
-							$final_certs[ $cert->getCertificateID() ] = $cert;
+				if ( ! empty( $v3_items ) && is_array( $v3_items ) ) {
+					foreach ( $v3_items as $item ) {
+						if ( empty( $item['singlePurchase'] ) ) { /* Skip single certs */
+							$cert = self::build_v1_cert_from_v3( $item );
+							if ( $cert && $cert->getCertificateID() ) {
+								$final_certs[ $cert->getCertificateID() ] = $cert;
+							}
 						}
 					}
 				}
-			}
 
-			// If certificates found via V3, return them.
-			if ( ! empty( $final_certs ) ) {
 				return $final_certs;
 			}
 
-			// 2. Fallback: Query legacy v1 TaxCloud GetExemptCertificates endpoint.
+			// Query only the selected legacy V1 TaxCloud endpoint.
 			foreach ( $lookup_ids as $lookup_id ) {
 				try {
 					$request = new \TaxCloud\Request\GetExemptCertificates(
