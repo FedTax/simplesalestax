@@ -325,7 +325,7 @@ abstract class SST_Abstract_Cart {
 		/* Add products */
 		foreach ( $package['contents'] as $cart_id => $item ) {
 			$line_total       = $item['line_total'];
-			$discounted_price = round( $line_total / $item['quantity'], wc_get_price_decimals() );
+			$discounted_price = $item['quantity'] > 0 ? round( $line_total / $item['quantity'], wc_get_price_decimals() ) : 0.0;
 
 			/* Set quantity and price according to 'Tax Based On' setting. */
 			if ( 'line-subtotal' === $based_on ) {
@@ -353,16 +353,17 @@ abstract class SST_Abstract_Cart {
 			if ( $data_mover ) {
 				// Calculate tax rate
 				$line_tax = isset( $item['line_tax'] ) ? (float) $item['line_tax'] : 0.0;
-				$tax_rate = ( $price > 0 ) ? ( $line_tax / $price ) : 0.0;
+				$taxable_amount = $price * $quantity;
+				$tax_rate = ( $taxable_amount > 0 ) ? ( $line_tax / $taxable_amount ) : 0.0;
 
 				$v3_data = new TaxCloud_V3\Model\CartItem( array(
-					'index' => count( $cart_items ),
+					'index' => count( $cart_items ) - 1,
 					'itemId' => $item['variation_id'] ? $item['variation_id'] : $item['product_id'],
 					'price' => $price,
 					'quantity' => $quantity,
 					'tax' => array(
-						'amount' => number_format( $line_tax, 2 ),
-						'rate' => number_format( $tax_rate, 2 )
+						'amount' => round( $line_tax, 2 ),
+						'rate' => $tax_rate,
 					),
 					'tic' => $tic,
 				) );
@@ -388,14 +389,17 @@ abstract class SST_Abstract_Cart {
 
 			// V3: Data Mover Mode.
 			if ( $data_mover ) {
+				$fee_tax = isset( $fee->tax ) ? (float) $fee->tax : 0.0;
+				$fee_price = (float) apply_filters( 'wootax_fee_price', $fee->amount, $fee );
+
 				$v3_data = new TaxCloud_V3\Model\CartItem( array(
-					'index' => count( $cart_items ),
+					'index' => count( $cart_items ) - 1,
 					'itemId' => $fee->id,
-					'price' => apply_filters( 'wootax_fee_price', $fee->amount, $fee ),
+					'price' => $fee_price,
 					'quantity' => 1,
 					'tax' => array(
-						'amount' => 0,
-						'rate' => 0
+						'amount' => round( $fee_tax, 2 ),
+						'rate' => $fee_price > 0 ? $fee_tax / $fee_price : 0.0,
 					),
 					'tic' => apply_filters( 'wootax_fee_tic', SST_DEFAULT_FEE_TIC, $fee ),
 				) );
@@ -426,14 +430,18 @@ abstract class SST_Abstract_Cart {
 
 			// V3: Data Mover Mode.
 			if ( $data_mover ) {
+				$shipping_price = (float) apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate );
+				$shipping_taxes = method_exists( $shipping_rate, 'get_taxes' ) ? $shipping_rate->get_taxes() : array();
+				$shipping_tax   = is_array( $shipping_taxes ) ? (float) array_sum( $shipping_taxes ) : 0.0;
+
 				$v3_data = new TaxCloud_V3\Model\CartItem( array(
-					'index' => count( $cart_items ),
+					'index' => count( $cart_items ) - 1,
 					'itemId' => SST_SHIPPING_ITEM,
-					'price' => apply_filters( 'wootax_shipping_price', $shipping_rate->cost, $shipping_rate ),
+					'price' => $shipping_price,
 					'quantity' => 1,
 					'tax' => array(
-						'amount' => 0,
-						'rate' => 0
+						'amount' => round( $shipping_tax, 2 ),
+						'rate' => $shipping_price > 0 ? $shipping_tax / $shipping_price : 0.0,
 					),
 					'tic' => sst_get_shipping_tic( $shipping_rate->method_id ),
 				) );
@@ -548,16 +556,20 @@ abstract class SST_Abstract_Cart {
 			'currencyCode'     => get_woocommerce_currency(),
 			'deliveredBySeller' => $local_delivery,
 			'destination'      => array(
-				'city'  => $package['destination']->getCity(),
-				'line1' => $package['destination']->getAddress1(),
-				'state' => $package['destination']->getState(),
-				'zip'   => $package['destination']->getZip5(),
+				'city'        => $package['destination']->getCity(),
+				'countryCode' => method_exists( $package['destination'], 'getCountryCode' ) ? $package['destination']->getCountryCode() : 'US',
+				'line1'       => $package['destination']->getAddress1(),
+				'line2'       => $package['destination']->getAddress2(),
+				'state'       => $package['destination']->getState(),
+				'zip'         => method_exists( $package['destination'], 'getZip' ) ? $package['destination']->getZip() : $package['destination']->getZip5(),
 			),
 			'origin'           => array(
-				'city'  => $package['origin']->getCity(),
-				'line1' => $package['origin']->getAddress1(),
-				'state' => $package['origin']->getState(),
-				'zip'   => $package['origin']->getZip5(),
+				'city'        => $package['origin']->getCity(),
+				'countryCode' => method_exists( $package['origin'], 'getCountryCode' ) ? $package['origin']->getCountryCode() : 'US',
+				'line1'       => $package['origin']->getAddress1(),
+				'line2'       => $package['origin']->getAddress2(),
+				'state'       => $package['origin']->getState(),
+				'zip'         => method_exists( $package['origin'], 'getZip' ) ? $package['origin']->getZip() : $package['origin']->getZip5(),
 			),
 			'lineItems'        => $items,
 		);
@@ -1029,6 +1041,7 @@ abstract class SST_Abstract_Cart {
 			$item_id = (string) ( $item['variation_id'] ? $item['variation_id'] : $item['product_id'] );
 
 			$cart_items[] = array(
+				'index'   => count( $cart_items ),
 				'type'    => 'line_item',
 				'id'      => $item['data']->get_id(),
 				'cart_id' => isset( $item['shipping_item_key'] ) ? $item['shipping_item_key'] : $item['key'],
@@ -1041,6 +1054,7 @@ abstract class SST_Abstract_Cart {
 
 		foreach ( $package['fees'] as $cart_id => $fee ) {
 			$cart_items[] = array(
+				'index'   => count( $cart_items ),
 				'type'    => 'fee',
 				'id'      => $fee->id,
 				'cart_id' => $cart_id,
@@ -1053,6 +1067,7 @@ abstract class SST_Abstract_Cart {
 
 		if ( ! empty( $package['shipping'] ) ) {
 			$cart_items[] = array(
+				'index'   => count( $cart_items ),
 				'type'    => 'shipping',
 				'id'      => SST_SHIPPING_ITEM,
 				'cart_id' => $package['shipping']->id,

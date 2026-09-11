@@ -179,6 +179,8 @@ class SST_Order extends SST_Abstract_Cart {
 
 			foreach ( $package_items as $contents ) {
 				$method = current( $ship_methods );
+				$method_taxes = is_object( $method ) && method_exists( $method, 'get_taxes' ) ? $method->get_taxes() : array();
+				$shipping_taxes = isset( $method_taxes['total'] ) && is_array( $method_taxes['total'] ) ? $method_taxes['total'] : array();
 
 				/* Assign shipping method to package. */
 				$package = sst_create_package(
@@ -188,7 +190,7 @@ class SST_Order extends SST_Abstract_Cart {
 							key( $ship_methods ),
 							'',
 							$method['cost'],
-							array(),
+							$shipping_taxes,
 							$method['method_id']
 						),
 						'user'     => array(
@@ -339,6 +341,7 @@ class SST_Order extends SST_Abstract_Cart {
 				$fee_obj = (object) array(
 					'id'     => $fee_id,
 					'amount' => $fee['line_total'],
+					'tax'    => isset( $fee['line_tax'] ) ? $fee['line_tax'] : 0,
 				);
 
 				$target_package_key = key( $packages );
@@ -954,6 +957,7 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		$refund_amounts = $this->get_refund_amounts( $items );
+		$refund_id      = is_object( $refund_or_items ) && method_exists( $refund_or_items, 'get_id' ) ? $refund_or_items->get_id() : 0;
 
 		// Process refunds while items remain.
 		$packages = $this->get_packages();
@@ -970,18 +974,27 @@ class SST_Order extends SST_Abstract_Cart {
 
 			foreach ( $cart_items as $item_index => $cart_item ) {
 				$item_id = ( 'v3' === $api_version ) ? $cart_item['itemId'] : $cart_item['id'];
+				$refund_key = $item_id;
 
 				if ( 'shipping' === $cart_item['type'] ) {
-					$item_id = $shipping_method;
+					$refund_key = $shipping_method;
+
+					if ( 'v3' !== $api_version ) {
+						$item_id = $shipping_method;
+					}
 				}
 
-				if ( ! isset( $refund_amounts[ $item_id ] ) ) {
+				if ( ! isset( $refund_amounts[ $refund_key ] ) ) {
 					continue;
 				}
 
-				$refund_amount = $refund_amounts[ $item_id ];
+				$refund_amount = $refund_amounts[ $refund_key ];
 
 				if ( $refund_amount <= 0 ) {
+					continue;
+				}
+
+				if ( empty( $cart_item['price'] ) ) {
 					continue;
 				}
 
@@ -992,8 +1005,9 @@ class SST_Order extends SST_Abstract_Cart {
 
 				if ( 'v3' === $api_version ) {
 					$refund_items[] = array(
-						'itemId'   => $item_id,
-						'quantity' => $refund_qty,
+						'itemId'       => $item_id,
+						'quantity'     => $refund_qty,
+						'cartItemIndex' => isset( $cart_item['index'] ) ? (int) $cart_item['index'] : (int) $item_index,
 					);
 				} else {
 					$refund_items[] = new TaxCloud\CartItem(
@@ -1006,6 +1020,7 @@ class SST_Order extends SST_Abstract_Cart {
 				}
 				
 				$refund_amount -= $refund_qty * $cart_item['price'];
+				$refund_amounts[ $refund_key ] = max( 0, $refund_amount );
 			}
 
 			// Logging
@@ -1022,9 +1037,12 @@ class SST_Order extends SST_Abstract_Cart {
 					$txc_refund = new TaxCloud_V3\Refunds();
 
 					// Refund order
-					$response = $txc_refund->refund_order( $order_id, array(
-						'items' => $refund_items,
-					) );
+					$refund_args = array( 'items' => $refund_items );
+					if ( $refund_id ) {
+						$refund_args['idempotencyKey'] = 'woocommerce-refund-' . $refund_id;
+					}
+
+					$response = $txc_refund->refund_order( $order_id, $refund_args );
 
 					if ( is_wp_error( $response ) ) {
 						SST_Logger::order_log( sprintf( __( 'Failed to refund package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response->get_error_message() );
@@ -1258,18 +1276,23 @@ class SST_Order extends SST_Abstract_Cart {
 
 		// Send order for all packages.
 		foreach ( $packages as $key => $package ) {
-			$now      = gmdate( 'c' );
-			$order_id = $this->get_package_order_id( $key, $package );
+			$now               = gmdate( 'c' );
+			$order_id          = $this->get_package_order_id( $key, $package );
+			$created_date      = $order->get_date_created();
+			$completed_date    = $order->get_date_completed();
+			$transaction_date  = $created_date ? gmdate( 'c', $created_date->getTimestamp() ) : $now;
+			$tax_liability_date = $completed_date ? gmdate( 'c', $completed_date->getTimestamp() ) : $now;
 
 			// Create order in TaxCloud.
 			$payload = [
-				'completedDate' => $now,
+				'completedDate' => $tax_liability_date,
 				'customerId' => 'customer-' . $package['customer_id'],
+				'deliveredBySeller' => ! empty( $package['delivered_by_seller'] ),
 				'destination' => $package['destination'],
 				'lineItems' => $package['cart_items'],
 				'orderId' => $order_id,
 				'origin' => $package['origin'],
-				'transactionDate' => $now,
+				'transactionDate' => $transaction_date,
 				'currencyCode' => $order->get_currency(),
 			];
 
@@ -1307,12 +1330,19 @@ class SST_Order extends SST_Abstract_Cart {
 	 */
 	protected function capture_order_v3( $packages, $order ) {
 		$carts_api = new TaxCloud_V3\Carts();
+		$completed_date = $order->get_date_completed();
+		$completed_date = $completed_date ? gmdate( 'c', $completed_date->getTimestamp() ) : gmdate( 'c' );
 
 		foreach ( $packages as $key => $package ) {
 			$order_id = $this->get_package_order_id( $key, $package );
 			$cart_id  = isset( $package['cart_id'] ) ? $package['cart_id'] : $order_id;
 
-			$response = $carts_api->create_order( $cart_id, $order_id, true );
+			$response = $carts_api->create_order(
+				$cart_id,
+				$order_id,
+				true,
+				array( 'completedDate' => $completed_date )
+			);
 
 			if ( is_wp_error( $response ) ) {
 				SST_Logger::order_log( __( 'Failed to create order from cart in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $response->get_error_message() );

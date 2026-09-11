@@ -361,6 +361,7 @@ function sst_format_order_items( $items ) {
 				'variation_id'  => $item['variation_id'],
 				'quantity'      => $item['qty'],
 				'line_total'    => $item['line_total'],
+				'line_tax'      => isset( $item['line_tax'] ) ? $item['line_tax'] : 0,
 				'line_subtotal' => $item['line_subtotal'],
 				'data'          => $product,
 			);

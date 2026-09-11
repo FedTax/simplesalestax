@@ -60,6 +60,7 @@ class CompressedPackage {
 		$package['shipping_method']     = '';
 		$package['shipping_cost']       = 0;
 		$package['certificate_id']      = '';
+		$package['delivered_by_seller'] = isset( $package['request']['localDelivery'] ) ? (bool) $package['request']['localDelivery'] : false;
 
 		if ( ! empty( $package['shipping'] ) ) {
 			$package['shipping_method'] = $package['shipping']->method_id;
@@ -113,10 +114,11 @@ class CompressedPackage {
 	 */
 	private function format_address( $address ) {
 		$formatted = array(
-			'city'  => $address->getCity(),
-			'line1' => $address->getAddress1(),
-			'state' => $address->getState(),
-			'zip'   => $this->trim_dashes( $address->getZip() ),
+			'city'        => $address->getCity(),
+			'countryCode' => method_exists( $address, 'getCountryCode' ) ? $address->getCountryCode() : 'US',
+			'line1'       => $address->getAddress1(),
+			'state'       => $address->getState(),
+			'zip'         => $this->trim_dashes( $address->getZip() ),
 		);
 
 		if ( '' !== $address->getAddress2() && null !== $address->getAddress2() ) {
