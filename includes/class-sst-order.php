@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use \TaxCloud\ExemptionCertificate;
+use \TaxCloud\ExemptionCertificateBase;
 
 /**
  * Order.
@@ -491,9 +492,13 @@ class SST_Order extends SST_Abstract_Cart {
 
 		if ( $cert_id === SST_SINGLE_PURCHASE_CERT_ID ) {
 			return $this->get_single_purchase_certificate();
-		} else {
+		}
+
+		if ( 'v3' === sst_get_api_version() ) {
 			return new \TaxCloud_V3\Model\Exemption( $cert_id );
 		}
+
+		return new ExemptionCertificateBase( $cert_id );
 	}
 
 	/**
@@ -805,8 +810,8 @@ class SST_Order extends SST_Abstract_Cart {
 			return false;
 		}
 
-		// V3 Capture Logic
-		if ( 'v3' === sst_get_api_version() ) {
+		// Capture with the API that created the saved lookup package.
+		if ( 'v3' === $this->get_packages_api_version( $packages ) ) {
 			return $this->capture_order_v3( $packages, $order );
 		}
 
@@ -886,6 +891,33 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
+	 * Get the API version used to create a set of saved packages.
+	 *
+	 * Packages created before the API switch was introduced have no version
+	 * marker and must remain on V1. The itemId fallback identifies packages
+	 * produced by the existing V3 Data Import format.
+	 *
+	 * @param array $packages Saved TaxCloud lookup packages.
+	 *
+	 * @return string V1 or V3.
+	 */
+	protected function get_packages_api_version( $packages ) {
+		foreach ( (array) $packages as $package ) {
+			if ( isset( $package['api_version'] ) ) {
+				return 'v3' === $package['api_version'] ? 'v3' : 'v1';
+			}
+
+			foreach ( (array) ( $package['cart_items'] ?? array() ) as $cart_item ) {
+				if ( isset( $cart_item['itemId'] ) ) {
+					return 'v3';
+				}
+			}
+		}
+
+		return 'v1';
+	}
+
+	/**
 	 * Send Returned request to fully or partially refund an order.
 	 *
 	 * @param WC_Order|array $refund_or_items Refund order or array of items to
@@ -928,8 +960,7 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		// V3: Data Mover Mode - Refund order in TaxCloud.
-		$data_mover  = SST_Settings::get( 'data_mover' );
-		$api_version = sst_get_api_version();
+		$data_mover = SST_Settings::get( 'data_mover' );
 		if ( $data_mover ) {
 			SST_Logger::order_log( __( 'Data Mover Mode enabled. Refunding using v3.', 'simple-sales-tax' ), $order->get_id() );
 		}
@@ -960,7 +991,8 @@ class SST_Order extends SST_Abstract_Cart {
 		$refund_id      = is_object( $refund_or_items ) && method_exists( $refund_or_items, 'get_id' ) ? $refund_or_items->get_id() : 0;
 
 		// Process refunds while items remain.
-		$packages = $this->get_packages();
+		$packages    = $this->get_packages();
+		$api_version = $data_mover ? 'v3' : $this->get_packages_api_version( $packages );
 
 		// Logging
 		SST_Logger::order_log( __( 'Refunding order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
@@ -994,7 +1026,7 @@ class SST_Order extends SST_Abstract_Cart {
 					continue;
 				}
 
-				if ( empty( $cart_item['price'] ) ) {
+				if ( 'v3' === $api_version && empty( $cart_item['price'] ) ) {
 					continue;
 				}
 
@@ -1020,7 +1052,9 @@ class SST_Order extends SST_Abstract_Cart {
 				}
 				
 				$refund_amount -= $refund_qty * $cart_item['price'];
-				$refund_amounts[ $refund_key ] = max( 0, $refund_amount );
+				if ( 'v3' === $api_version ) {
+					$refund_amounts[ $refund_key ] = max( 0, $refund_amount );
+				}
 			}
 
 			// Logging

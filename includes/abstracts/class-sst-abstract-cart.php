@@ -325,7 +325,9 @@ abstract class SST_Abstract_Cart {
 		/* Add products */
 		foreach ( $package['contents'] as $cart_id => $item ) {
 			$line_total       = $item['line_total'];
-			$discounted_price = $item['quantity'] > 0 ? round( $line_total / $item['quantity'], wc_get_price_decimals() ) : 0.0;
+			$discounted_price = $data_mover && $item['quantity'] <= 0
+				? 0.0
+				: round( $line_total / $item['quantity'], wc_get_price_decimals() );
 
 			/* Set quantity and price according to 'Tax Based On' setting. */
 			if ( 'line-subtotal' === $based_on ) {
@@ -865,7 +867,11 @@ abstract class SST_Abstract_Cart {
 	 * @since 7.0.2
 	 */
 	protected function is_origin_valid( $package ) {
-		$is_address_object = isset( $package['origin'] ) && SST_Addresses::is_address_object( $package['origin'] );
+		$is_address_object = isset( $package['origin'] ) && (
+			'v3' === sst_get_api_version()
+				? SST_Addresses::is_address_object( $package['origin'] )
+				: $package['origin'] instanceof TaxCloud\Address
+		);
 
 		// Debug: Check if valid origin
 		SST_Logger::add(
@@ -947,7 +953,9 @@ abstract class SST_Abstract_Cart {
 		// V3: Data Mover Mode.
 		$data_mover = SST_Settings::get( 'data_mover', false );
 		if ( $data_mover ) {
-			return ( new TaxCloud_V3\Model\CompressedPackage( $package ) )->get_package();
+			$package                = ( new TaxCloud_V3\Model\CompressedPackage( $package ) )->get_package();
+			$package['api_version'] = 'v3';
+			return $package;
 		}
 
 		$already_compressed = isset( $package['cart_items'] );
@@ -957,6 +965,7 @@ abstract class SST_Abstract_Cart {
 		}
 
 		// Set new keys with compressed data.
+		$package['api_version']         = sst_get_api_version();
 		$package['customer_id']         = $package['user']['ID'];
 		$package['cart_items']          = $this->get_package_cart_items( $package );
 		$package['shipping_method']     = '';
@@ -984,7 +993,14 @@ abstract class SST_Abstract_Cart {
 
 		$certificate = $package['certificate'];
 
-		if ( is_object( $certificate ) && method_exists( $certificate, 'getDetail' ) ) {
+		if ( 'v3' !== sst_get_api_version() && $certificate instanceof \TaxCloud\ExemptionCertificate ) {
+			$detail       = $certificate->getDetail();
+			$detail_array = json_decode( wp_json_encode( $detail ), true );
+			unset( $detail_array['CreatedDate'] );
+			$package['certificate_id'] = md5( wp_json_encode( $detail_array ) );
+		} elseif ( 'v3' !== sst_get_api_version() && $certificate instanceof \TaxCloud\ExemptionCertificateBase ) {
+			$package['certificate_id'] = $certificate->getCertificateId();
+		} elseif ( is_object( $certificate ) && method_exists( $certificate, 'getDetail' ) ) {
 			// Single-purchase certificate without an ID. Use a stable hash of the certificate detail object as the ID.
 			$detail       = $certificate->getDetail();
 			$detail_array = json_decode( wp_json_encode( $detail ), true );
@@ -1023,6 +1039,23 @@ abstract class SST_Abstract_Cart {
 	 */
 	protected function get_package_cart_items( $package ) {
 		$cart_items = array();
+
+		if ( 'v3' !== sst_get_api_version() ) {
+			foreach ( $package['request']->getCartItems() as $key => $item ) {
+				$map_entry    = $package['map'][ $key ];
+				$cart_items[] = array_merge(
+					$map_entry,
+					array(
+						'qty'   => $item->getQty(),
+						'tic'   => $item->getTIC(),
+						'price' => $item->getPrice(),
+					)
+				);
+			}
+
+			return $cart_items;
+		}
+
 		$based_on   = SST_Settings::get( 'tax_based_on' );
 
 		foreach ( $package['contents'] as $item ) {

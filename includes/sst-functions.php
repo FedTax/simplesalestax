@@ -621,7 +621,10 @@ function sst_integration_mode() {
  * @return string API version
  */
 function sst_get_api_version() {
-	return SST_Settings::get( 'api_version', 'v1' );
+	$api_version = SST_Settings::get( 'api_version', 'v1' );
+
+	// Only an explicit V3 selection may opt a site out of the legacy V1 flow.
+	return 'v3' === $api_version ? 'v3' : 'v1';
 }
 
 /**

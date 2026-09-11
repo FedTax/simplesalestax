@@ -56,6 +56,7 @@ class SST_Settings {
 		'disable_virtual_split'          => '',
 		'capture_orders_in_taxcloud'     => 'yes',
 		'tax_based_on'                   => 'item-price',
+		'api_version'                    => 'v1',
 		'enable_taxcloud_rate_limit'     => 'no',
 		'taxcloud_rate_limit_requests'   => '',
 		'taxcloud_rate_limit_scope'      => 'customer',

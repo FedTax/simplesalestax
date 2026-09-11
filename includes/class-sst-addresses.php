@@ -65,7 +65,11 @@ class SST_Addresses {
 	 * @since 5.0
 	 */
 	public static function is_valid( $address ) {
-		if ( ! self::is_address_object( $address ) ) {
+		if ( 'v3' === sst_get_api_version() && ! self::is_address_object( $address ) ) {
+			return false;
+		}
+
+		if ( 'v3' !== sst_get_api_version() && is_null( $address ) ) {
 			return false;
 		}
 
@@ -107,7 +111,12 @@ class SST_Addresses {
 	 * @since 5.0
 	 */
 	public static function verify_address( $address ) {
-		if ( is_null( $address ) || ! self::is_address_object( $address ) ) {
+		$is_v3 = 'v3' === sst_get_api_version();
+		if (
+			is_null( $address )
+			|| ( $is_v3 && ! self::is_address_object( $address ) )
+			|| ( ! $is_v3 && ! is_a( $address, 'TaxCloud\Address' ) )
+		) {
 			return $address;
 		}
 
@@ -127,16 +136,16 @@ class SST_Addresses {
 
 		if ( array_key_exists( $md5_hash, $addresses ) ) {
 			$decoded = json_decode( $addresses[ $md5_hash ], true );
-			if ( sst_get_api_version() === 'v3' ) {
+			if ( $is_v3 ) {
 				$address = new \TaxCloud_V3\Model\Address( $decoded );
 			} else {
 				$address = new \TaxCloud\Address(
-					isset( $decoded['Address1'] ) ? $decoded['Address1'] : ( isset( $decoded['line1'] ) ? $decoded['line1'] : '' ),
-					isset( $decoded['Address2'] ) ? $decoded['Address2'] : ( isset( $decoded['line2'] ) ? $decoded['line2'] : null ),
-					isset( $decoded['City'] ) ? $decoded['City'] : ( isset( $decoded['city'] ) ? $decoded['city'] : '' ),
-					isset( $decoded['State'] ) ? $decoded['State'] : ( isset( $decoded['state'] ) ? $decoded['state'] : '' ),
-					isset( $decoded['Zip5'] ) ? $decoded['Zip5'] : ( isset( $decoded['zip'] ) ? substr( preg_replace( '/[^0-9]/', '', $decoded['zip'] ), 0, 5 ) : '' ),
-					isset( $decoded['Zip4'] ) ? $decoded['Zip4'] : ( isset( $decoded['zip'] ) && strlen( preg_replace( '/[^0-9]/', '', $decoded['zip'] ) ) > 5 ? substr( preg_replace( '/[^0-9]/', '', $decoded['zip'] ), 5, 4 ) : null )
+					$decoded['Address1'],
+					$decoded['Address2'],
+					$decoded['City'],
+					$decoded['State'],
+					$decoded['Zip5'],
+					$decoded['Zip4']
 				);
 			}
 		} else {
@@ -150,22 +159,13 @@ class SST_Addresses {
 
 				$rate_limit->increment_count();
 
-				if ( sst_get_api_version() === 'v3' ) {
+				if ( $is_v3 ) {
 					$address = self::verify_address_v3( $address );
 				} else {
-					$v1_address = is_a( $address, 'TaxCloud\Address' ) ? $address : new \TaxCloud\Address(
-						$address->getAddress1(),
-						$address->getAddress2(),
-						$address->getCity(),
-						$address->getState(),
-						$address->getZip5(),
-						$address->getZip4()
-					);
-
 					$request = new \TaxCloud\Request\VerifyAddress(
 						SST_Settings::get( 'tc_id' ),
 						SST_Settings::get( 'tc_key' ),
-						$v1_address
+						$address
 					);
 					$address = TaxCloud()->VerifyAddress( $request );
 				}
