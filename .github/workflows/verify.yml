@@ -69,6 +69,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       max-parallel: 1
       matrix:
         php_version: ["${{needs.prepare.outputs.min_php}}", 8.2]
@@ -118,7 +119,7 @@ jobs:
         working-directory: docker
         run: |
           docker compose logs --tail 100 wordpress
-          docker compose exec -T wordpress sh -c "cat /var/www/html/wp-content/uploads/wc-logs/wootax-* || true"
+          docker compose exec -T wordpress sh -c "cat /var/www/html/wp-content/uploads/wc-logs/wootax-* || true" || true
 
       - name: Upload screenshots
         uses: actions/upload-artifact@v4.4.0

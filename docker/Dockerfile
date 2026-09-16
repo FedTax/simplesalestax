@@ -4,6 +4,17 @@ ARG PHP_VERSION=8.0
 
 FROM php:${PHP_VERSION}-apache
 
+# Use archive.debian.org for EOL Debian releases (e.g. Bullseye on PHP 7.4, Buster on PHP 7.3)
+RUN set -eux; \
+    if [ -f /etc/os-release ]; then \
+        . /etc/os-release; \
+        if [ "${VERSION_CODENAME:-}" = "bullseye" ] || [ "${VERSION_CODENAME:-}" = "buster" ]; then \
+            echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until; \
+            echo "deb http://archive.debian.org/debian ${VERSION_CODENAME} main" > /etc/apt/sources.list; \
+            echo "deb http://archive.debian.org/debian ${VERSION_CODENAME}-updates main" >> /etc/apt/sources.list; \
+        fi; \
+    fi
+
 # persistent dependencies
 RUN set -eux; \
     apt-get update; \
