@@ -25,7 +25,7 @@ $input_classes[] = 'sst-tic-search';
 
 ?>
 <script type="text/html" id="tmpl-sst-tic-row">
-	<tr class="tic-row" data-id="{{ data.id }}">
+	<tr class="tic-row" data-id="{{ data.id }}" data-description="{{ data.description }}">
 		<td>
 			<h4>{{ data.id }}</h4>
 			<p>{{ data.description }}</p>
