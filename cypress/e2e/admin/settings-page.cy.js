@@ -32,6 +32,31 @@ describe('Settings page', () => {
     });
   });
 
+  it('saves and restores the selected TaxCloud API version', () => {
+    const saveSettings = () => {
+      cy.findByRole('button', {name: 'Save changes'}).click();
+      cy.findByText(/saved/i, {timeout: 15000}).should('exist');
+    };
+
+    cy.findByRole('combobox', {name: 'API Version'})
+      .invoke('val')
+      .then((originalVersion) => {
+        cy.wrap(originalVersion).as('originalApiVersion');
+      });
+
+    cy.findByRole('combobox', {name: 'API Version'}).select('v3');
+    saveSettings();
+    cy.reload();
+    cy.findByRole('combobox', {name: 'API Version'}).should('have.value', 'v3');
+
+    cy.get('@originalApiVersion').then((originalVersion) => {
+      cy.findByRole('combobox', {name: 'API Version'}).select(originalVersion);
+      saveSettings();
+      cy.reload();
+      cy.findByRole('combobox', {name: 'API Version'}).should('have.value', originalVersion);
+    });
+  });
+
   describe('when block cart/checkout is enabled', () => {
     before(() => {
       cy.loginAsAdmin();
