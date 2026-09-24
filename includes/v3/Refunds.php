@@ -90,6 +90,10 @@ class Refunds extends RequestBase {
 
 		$refund_args = array();
 
+		if ( array_key_exists( 'items', $args ) && ! is_array( $args['items'] ) ) {
+			return new \WP_Error( 'sst_v3_refunds_invalid_request', 'Refund items must be an array.' );
+		}
+
 		if ( isset( $args['items'] ) && ! empty( $args['items'] ) ) {
 			$refund_args['items'] = array();
 			foreach ( $args['items'] as $item ) {

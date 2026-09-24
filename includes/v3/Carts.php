@@ -186,6 +186,10 @@ class Carts extends RequestBase {
 				}
 			}
 
+			if ( ! is_array( $cart['lineItems'] ) ) {
+				return new \WP_Error( 'sst_v3_carts_invalid_request', 'Cart lineItems must be an array.' );
+			}
+
 			$prepared_cart = array(
 				'customerId'        => (string) $cart['customerId'],
 				'deliveredBySeller' => isset( $cart['deliveredBySeller'] ) ? $cart['deliveredBySeller'] : false,
