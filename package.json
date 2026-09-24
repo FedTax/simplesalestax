@@ -8,6 +8,7 @@
     "archive": "cross-var wp dist-archive . releases/simple-sales-tax-$npm_package_version.zip --plugin-dirname=simple-sales-tax --format=zip",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
+    "test:api:v3": "php tests/api-v3/run.php && php tests/api-v3/run.php --staging",
     "build:blocks": "wp-scripts build --webpack-src-dir=./assets/js/blocks",
     "format": "wp-scripts format ./assets/js/blocks",
     "lint:css": "wp-scripts lint-style ./assets/js/blocks",
