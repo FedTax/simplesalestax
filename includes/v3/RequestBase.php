@@ -41,7 +41,9 @@ abstract class RequestBase {
 	const PROD_AUTH_URL    = 'https://taxcloudapi-appservice-core-prod.azurewebsites.net/api/v3/auth/token';
 	const STAGING_MGMT_URL = 'https://api.v3.taxcloud.net/mgmt';
 	const PROD_MGMT_URL    = 'https://api.v3.taxcloud.com/mgmt';
-	const API_BASE_URL		 = 'https://api.v3.taxcloud.com/';
+	const STAGING_API_URL  = 'https://api.v3.taxcloud.net';
+	const PROD_API_URL     = 'https://api.v3.taxcloud.com';
+	const API_BASE_URL     = self::PROD_API_URL;
 
 	/**
 	 * Get the appropriate Auth URL based on environment.
@@ -72,12 +74,97 @@ abstract class RequestBase {
 	}
 
 	/**
+	 * Get the Sales Tax API base URL for the configured environment.
+	 *
+	 * @return string API base URL.
+	 * @since 8.4.17
+	 */
+	protected function get_api_base_url() {
+		if ( defined( 'SST_TAXCLOUD_STAGING' ) && SST_TAXCLOUD_STAGING ) {
+			return self::STAGING_API_URL;
+		}
+
+		return self::PROD_API_URL;
+	}
+
+	/**
+	 * Build common headers for an authenticated Sales Tax API request.
+	 *
+	 * @param string $token Bearer token.
+	 *
+	 * @return array Request headers.
+	 * @since 8.4.17
+	 */
+	protected function get_request_headers( $token ) {
+		$headers = array(
+			'Authorization' => 'Bearer ' . $token,
+			'Content-Type'  => 'application/json',
+		);
+
+		if ( function_exists( 'sst_get_user_agent' ) ) {
+			$headers['User-Agent'] = sst_get_user_agent();
+		}
+
+		return $headers;
+	}
+
+	/**
+	 * Decode a successful JSON response or return a consistent API error.
+	 *
+	 * @param array|\WP_Error $response     WordPress HTTP response.
+	 * @param string          $error_code   WP_Error code.
+	 * @param string          $error_prefix Human-readable error prefix.
+	 *
+	 * @return array|\WP_Error Decoded response on success, WP_Error on failure.
+	 * @since 8.4.17
+	 */
+	protected function parse_json_response( $response, $error_code, $error_prefix ) {
+		if ( \is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$status = \wp_remote_retrieve_response_code( $response );
+		$body   = \wp_remote_retrieve_body( $response );
+
+		if ( $status < 200 || $status >= 300 ) {
+			return new \WP_Error( $error_code, $error_prefix . $this->get_error_message( $body ) );
+		}
+
+		$data = \json_decode( $body, true );
+
+		if ( ! is_array( $data ) || JSON_ERROR_NONE !== json_last_error() ) {
+			return new \WP_Error( $error_code, $error_prefix . 'TaxCloud returned an invalid JSON response.' );
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Extract a useful message from a TaxCloud error response.
+	 *
+	 * @param string $body Raw response body.
+	 *
+	 * @return string Error message.
+	 * @since 8.4.17
+	 */
+	protected function get_error_message( $body ) {
+		$data = \json_decode( $body, true );
+
+		if ( is_array( $data ) ) {
+			foreach ( array( 'detail', 'message', 'title' ) as $key ) {
+				if ( ! empty( $data[ $key ] ) ) {
+					return (string) $data[ $key ];
+				}
+			}
+		}
+
+		return '' !== $body ? $body : 'Unknown TaxCloud API error.';
+	}
+
+	/**
 	 * Exchange v1 credentials for v3 Bearer token.
 	 *
-	 * @param string|null $api_login_id TaxCloud API Login ID.
-	 * @param string|null $api_key      TaxCloud API Key.
-	 *
-	 * @return string|WP_Error Access token on success, WP_Error on failure.
+	 * @return string|\WP_Error Access token on success, WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public function get_auth_token( $api_login_id = null, $api_key = null ) {
@@ -97,24 +184,24 @@ abstract class RequestBase {
 			return $cached_token;
 		}
 
-		$response = wp_remote_post( self::get_auth_url(), array(
+		$response = \wp_remote_post( self::get_auth_url(), array(
 			'headers' => array(
 				'Content-Type' => 'application/json',
 			),
-			'body'    => json_encode( array(
+			'body'    => \json_encode( array(
 				'apiLoginID' => $api_login_id,
 				'apiKey'     => $api_key,
 			) ),
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
+		if ( \is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
+		$code = \wp_remote_retrieve_response_code( $response );
+		$body = \wp_remote_retrieve_body( $response );
+		$data = \json_decode( $body, true );
 
 		if ( $code >= 400 ) {
 			return new \WP_Error( 'sst_v3_auth_error', 'Failed to authenticate with TaxCloud v3 API: ' . ( isset( $data['message'] ) ? $data['message'] : $body ) );
@@ -125,7 +212,7 @@ abstract class RequestBase {
 		}
 
 		if ( ! empty( $data['connection_id'] ) && strlen( $data['connection_id'] ) > 10 ) {
-			SST_Settings::set( 'tc_connection_id', $data['connection_id'] );
+			SST_Settings::set( 'tc_integration_id', $data['connection_id'] ); // Set integration id which returns from taxcloud
 		}
 
 		// Cache token for 12 hours (tokens are valid for 24 hours).
@@ -137,16 +224,16 @@ abstract class RequestBase {
 	/**
 	 * Get connection settings using Bearer token.
 	 *
-	 * @param string $api_key      TaxCloud API Key (used as connection ID).
+	 * @param string $api_key      TaxCloud API key/connection ID.
 	 * @param string $access_token Bearer token.
 	 *
-	 * @return array|WP_Error Settings array on success, WP_Error on failure.
+	 * @return array|\WP_Error Settings array on success, \WP_Error on failure.
 	 * @since 8.4.1
 	 */
 	public static function get_connection_settings( $api_key, $access_token ) {
 		$url = self::get_mgmt_url() . '/connections/' . $api_key;
 
-		$response = wp_remote_get( $url, array(
+		$response = \wp_remote_get( $url, array(
 			'headers' => array(
 				'Authorization' => 'Bearer ' . $access_token,
 				'Content-Type'  => 'application/json',
@@ -154,12 +241,12 @@ abstract class RequestBase {
 			'timeout' => 30,
 		) );
 
-		if ( is_wp_error( $response ) ) {
+		if ( \is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		$code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
+		$code = \wp_remote_retrieve_response_code( $response );
+		$body = \wp_remote_retrieve_body( $response );
 
 		if ( $code === 404 ) {
 			// Connection settings don't exist yet, which is normal for new connections.
@@ -168,7 +255,7 @@ abstract class RequestBase {
 		}
 
 		if ( $code >= 400 ) {
-			return new WP_Error( 'sst_v3_settings_error', 'Failed to retrieve connection settings: ' . $body );
+			return new \WP_Error( 'sst_v3_settings_error', 'Failed to retrieve connection settings: ' . $body );
 		}
 
 		return json_decode( $body, true );
@@ -179,7 +266,7 @@ abstract class RequestBase {
 	 *
 	 * @param array $args Request arguments.
 	 *
-	 * @return array|WP_Error Response object on success, or WP_Error object on failure.
+	 * @return array|\WP_Error Response object on success, or WP_Error object on failure.
 	 * @since 8.4.1
 	 */
 	public function prepare_item_for_request( $args ) {
