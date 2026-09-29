@@ -397,6 +397,27 @@ abstract class SST_Abstract_Cart {
 			);
 		}
 
+		// TaxCloud's legacy Lookup can honor an explicitly supplied certificate ID
+		// outside its covered states. Check the effective destination of each
+		// package before sending that ID (including local pickup and virtual goods).
+		if (
+			$package['certificate'] instanceof TaxCloud\ExemptionCertificateBase
+			&& ! SST_Certificates::certificate_covers_state(
+				$package['certificate'],
+				$package['destination']->getState(),
+				$package['user']['ID']
+			)
+		) {
+			SST_Logger::add(
+				__( 'Exemption certificate does not cover this package destination. Calculating tax without it.', 'simple-sales-tax' ),
+				array(
+					'certificate_id' => $package['certificate']->getCertificateID(),
+					'state'          => $package['destination']->getState(),
+				)
+			);
+			$package['certificate'] = null;
+		}
+
 		/* Build Lookup */
 		if( $data_mover ) {
 			/**

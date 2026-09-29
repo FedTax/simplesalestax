@@ -108,10 +108,19 @@ class SST_Blocks {
 
 		switch ( $action ) {
 			case 'set_certificate_id':
+				$certificate_id = sanitize_text_field( $data['certificate_id'] ?? '' );
 				WC()->session->set(
 					'sst_certificate_id',
-					$data['certificate_id']
+					$certificate_id
 				);
+				WC()->session->set( 'sst_cert_explicitly_cleared', '' === $certificate_id );
+				if ( 'new' === $certificate_id ) {
+					WC()->session->set( 'sst_new_certificate_state', '' );
+				}
+				break;
+			case 'set_new_certificate_state':
+				$state = strtoupper( sanitize_text_field( $data['state'] ?? '' ) );
+				WC()->session->set( 'sst_new_certificate_state', $state );
 				break;
 		}
 	}

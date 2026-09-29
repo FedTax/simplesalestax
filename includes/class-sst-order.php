@@ -67,6 +67,40 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
+	 * Recalculate tax and remove a saved certificate if no package used it.
+	 *
+	 * @return bool
+	 */
+	public function calculate_taxes() {
+		$result = parent::calculate_taxes();
+		$certificate_id = $this->get_certificate_id();
+
+		if ( ! $result || ! $certificate_id ) {
+			return $result;
+		}
+
+		$packages = $this->get_packages();
+		if ( ! $packages ) {
+			return $result;
+		}
+
+		foreach ( $packages as $package ) {
+			if (
+				! empty( $package['certificate_id'] )
+				&& (
+					SST_SINGLE_PURCHASE_CERT_ID === $certificate_id
+					|| $certificate_id === $package['certificate_id']
+				)
+			) {
+				return $result;
+			}
+		}
+
+		$this->set_certificate_id( '' );
+		return $result;
+	}
+
+	/**
 	 * Forward method calls to the encapsulated WC_Order instance.
 	 *
 	 * @param string $name Method name.

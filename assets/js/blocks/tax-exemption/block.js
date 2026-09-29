@@ -54,7 +54,7 @@ const Block = ( { className, children } ) => {
 		);
 	} else if ( certificateId ) {
 		selectionHelp = __(
-			'This certificate will be applied to this order. Certificates are ordered newest first.',
+			'A selected certificate applies only to destinations in its listed states. Certificates are ordered newest first.',
 			'simple-sales-tax'
 		);
 	}

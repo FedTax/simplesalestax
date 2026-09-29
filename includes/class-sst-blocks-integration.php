@@ -118,8 +118,11 @@ class SST_Blocks_Integration implements IntegrationInterface {
 			? WC()->session->get( 'sst_certificate_id', '' )
 			: '';
 
-		if ( empty( $selected ) && sst_is_user_tax_exempt() && ! empty( $certificates ) && ! ( WC()->session && WC()->session->get( 'sst_cert_explicitly_cleared' ) ) ) {
-			$selected = current( array_keys( $certificates ) );
+		if ( empty( $selected ) && sst_is_user_tax_exempt() && ! ( WC()->session && WC()->session->get( 'sst_cert_explicitly_cleared' ) ) ) {
+			$state    = WC()->customer
+				? ( WC()->customer->get_shipping_state() ?: WC()->customer->get_billing_state() )
+				: '';
+			$selected = SST_Certificates::get_default_certificate_id_for_state( $state );
 			if ( WC()->session ) {
 				WC()->session->set( 'sst_certificate_id', $selected );
 			}
