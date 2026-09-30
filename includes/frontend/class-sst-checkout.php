@@ -265,11 +265,17 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$this->errors = array();
 
 		if ( 'new' === $this->get_certificate_id() ) {
-			// Assume 0 tax until checkout is processed and new certificate is saved
-			$this->reset_taxes();
-			$this->update_taxes();
+			$post_data = $this->get_post_data();
+			$state     = $post_data['certificate']['ExemptState']
+				?? WC()->session->get( 'sst_new_certificate_state', '' );
+			if ( $this->new_certificate_covers_packages( $state ) ) {
+				// The new certificate is saved during checkout; all packages must
+				// be covered before showing an exempt tax estimate.
+				$this->reset_taxes();
+				$this->update_taxes();
 
-			return true;
+				return true;
+			}
 		}
 
 		// Try to use cached packages first, create new ones if needed
@@ -282,6 +288,40 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		return parent::calculate_taxes();
+	}
+
+	/**
+	 * Check every effective package destination for a new certificate.
+	 *
+	 * @param string $state State selected in the certificate form.
+	 * @return bool
+	 */
+	protected function new_certificate_covers_packages( $state ) {
+		$state = strtoupper( trim( (string) $state ) );
+		if ( ! $state || ! WC()->cart ) {
+			return false;
+		}
+
+		if ( ! $this->cart ) {
+			$this->cart = new SST_Cart_Proxy( WC()->cart );
+		}
+
+		$packages = $this->create_packages();
+		if ( ! $packages ) {
+			return false;
+		}
+
+		foreach ( $packages as $package ) {
+			if (
+				! isset( $package['destination'] )
+				|| ! $package['destination'] instanceof TaxCloud\Address
+				|| $state !== strtoupper( $package['destination']->getState() )
+			) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -681,13 +721,12 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return '';
 		}
 
-		// For users with an exempt role, select the first available certificate
-		$certificates   = SST_Certificates::get_certificates_formatted();
-		$certificate_id = count( $certificates ) > 0
-			? current( array_keys( $certificates ) )
-			: '';
+		if ( ! WC()->customer ) {
+			return '';
+		}
 
-		return $certificate_id;
+		$state = WC()->customer->get_shipping_state() ?: WC()->customer->get_billing_state();
+		return SST_Certificates::get_default_certificate_id_for_state( $state );
 	}
 
 	/**
@@ -941,8 +980,22 @@ class SST_Checkout extends SST_Abstract_Cart {
 		// Ensure we save packages from the 'main' cart
 		$this->cart = new SST_Cart_Proxy( WC()->cart );
 
+		$packages = $this->get_packages();
+		if ( $certificate_id ) {
+			$applied = false;
+			foreach ( $packages as $package ) {
+				if ( isset( $package['certificate_id'] ) && $certificate_id === $package['certificate_id'] ) {
+					$applied = true;
+					break;
+				}
+			}
+			if ( ! $applied ) {
+				$certificate_id = '';
+			}
+		}
+
 		$order->set_certificate_id( $certificate_id );
-		$order->set_packages( $this->get_packages() );
+		$order->set_packages( $packages );
 
 		// Fix tax totals for orders created via store API
 		if ( 'store-api' === $order->get_created_via() ) {
@@ -1072,6 +1125,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 	public function clear_session_data() {
 		WC()->session->set( 'sst_packages', array() );
 		WC()->session->set( 'sst_package_cache', array() );
+		WC()->session->set( 'sst_new_certificate_state', '' );
+		WC()->session->set( 'sst_cert_explicitly_cleared', false );
 
 		unset( WC()->session->sst_certificate_id );
 	}
@@ -1154,6 +1209,13 @@ class SST_Checkout extends SST_Abstract_Cart {
 				);
 				break;
 			}
+		}
+
+		if ( ! $errors->has_errors() && ! $this->new_certificate_covers_packages( $certificate['ExemptState'] ) ) {
+			$errors->add(
+				'certificate_state_mismatch',
+				__( 'The exemption certificate state must match every destination in this order.', 'simple-sales-tax' )
+			);
 		}
 	}
 

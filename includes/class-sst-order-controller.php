@@ -281,6 +281,21 @@ class SST_Order_Controller {
 		$certificate_id = sanitize_text_field(
 			wp_unslash( $_POST['exempt_cert'] ?? '' )
 		);
+		if ( $certificate_id && SST_SINGLE_PURCHASE_CERT_ID !== $certificate_id ) {
+			$packages = $order->get_packages();
+			if ( $packages ) {
+				$applied = false;
+				foreach ( $packages as $package ) {
+					if ( isset( $package['certificate_id'] ) && $certificate_id === $package['certificate_id'] ) {
+						$applied = true;
+						break;
+					}
+				}
+				if ( ! $applied ) {
+					$certificate_id = '';
+				}
+			}
+		}
 		$order->set_certificate_id( $certificate_id );
 		$order->save();
 	}
