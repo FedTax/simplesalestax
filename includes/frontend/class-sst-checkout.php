@@ -534,6 +534,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 			if ( SST_Shipping::is_local_pickup( array( $method->method_id ) ) ) {
 				$pickup_address = apply_filters( 'wootax_pickup_address', SST_Addresses::get_default_address(), null );
 
+				// Keep the customer destination when no pickup address is available.
+				if ( is_null( $pickup_address ) ) {
+					continue;
+				}
+
 				$raw_packages[ $key ]['destination'] = array(
 					'country'   => 'US',
 					'address'   => $pickup_address->getAddress1(),
