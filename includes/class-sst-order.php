@@ -72,6 +72,12 @@ class SST_Order extends SST_Abstract_Cart {
 	 * @return bool
 	 */
 	public function calculate_taxes() {
+		// Captured lookup data is needed for returns and must not be replaced
+		// when an order is edited or its totals are recalculated.
+		if ( 'pending' !== $this->get_taxcloud_status() || 0 < $this->order->get_total_refunded() ) {
+			return true;
+		}
+
 		$result = parent::calculate_taxes();
 		$certificate_id = $this->get_certificate_id();
 
@@ -917,7 +923,7 @@ class SST_Order extends SST_Abstract_Cart {
 			return true;
 		}
 
-		if ( 'captured' !== $this->get_taxcloud_status() ) {
+		if ( ! in_array( $this->get_taxcloud_status(), array( 'captured', 'partially_refunded' ), true ) ) {
 			// Logging
 			SST_Logger::order_log( __( 'Order must be captured first.', 'simple-sales-tax' ), $order->get_id() );
 
@@ -969,6 +975,18 @@ class SST_Order extends SST_Abstract_Cart {
 
 		// Logging
 		SST_Logger::order_log( __( 'Refunding order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
+
+		if ( empty( $packages ) ) {
+			$message = sprintf(
+				/* translators: WooCommerce order ID */
+				__( 'Failed to sync refund for order %d to TaxCloud: no saved TaxCloud packages were found.', 'simple-sales-tax' ),
+				$order->get_id()
+			);
+			SST_Logger::order_log( $message, $order->get_id() );
+			$this->handle_error( $message );
+			$order->add_order_note( $message );
+			return false;
+		}
 
 		foreach ( $packages as $package_key => $package ) {
 			$cart_items      = $package['cart_items'];
@@ -1066,14 +1084,14 @@ class SST_Order extends SST_Abstract_Cart {
 					// Logging
 					SST_Logger::order_log( __( 'Refund request failed.', 'simple-sales-tax' ), $order->get_id(), $ex->getMessage() );
 
-					$this->handle_error(
-						sprintf(
-							/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
-							__( 'Failed to refund order %1$d: %2$s.', 'simple-sales-tax' ),
-							$order->get_id(),
-							$ex->getMessage()
-						)
+					$message = sprintf(
+						/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
+						__( 'Failed to sync refund for order %1$d to TaxCloud: %2$s.', 'simple-sales-tax' ),
+						$order->get_id(),
+						$ex->getMessage()
 					);
+					$this->handle_error( $message );
+					$order->add_order_note( $message );
 
 					return false;
 				}
