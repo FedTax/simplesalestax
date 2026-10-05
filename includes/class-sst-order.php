@@ -350,15 +350,20 @@ class SST_Order extends SST_Abstract_Cart {
 					$this->order
 				);
 
-				$raw_packages[ $key ]['destination'] = array(
-					'country'   => 'US',
-					'address'   => $pickup_address->getAddress1(),
-					'address_2' => $pickup_address->getAddress2(),
-					'city'      => $pickup_address->getCity(),
-					'state'     => $pickup_address->getState(),
-					'postcode'  => $pickup_address->getZip5(),
-				);
-			} elseif ( ! isset( $package['destination'] ) ) {
+				// Keep the customer destination when no pickup address is available.
+				if ( ! is_null( $pickup_address ) ) {
+					$raw_packages[ $key ]['destination'] = array(
+						'country'   => 'US',
+						'address'   => $pickup_address->getAddress1(),
+						'address_2' => $pickup_address->getAddress2(),
+						'city'      => $pickup_address->getCity(),
+						'state'     => $pickup_address->getState(),
+						'postcode'  => $pickup_address->getZip5(),
+					);
+				}
+			}
+
+			if ( ! isset( $raw_packages[ $key ]['destination'] ) ) {
 				$raw_packages[ $key ]['destination'] = $this->get_shipping_address();
 			}
 		}
