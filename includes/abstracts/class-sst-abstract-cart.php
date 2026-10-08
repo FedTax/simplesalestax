@@ -457,6 +457,27 @@ abstract class SST_Abstract_Cart {
 			);
 		}
 
+		// TaxCloud's legacy Lookup can honor an explicitly supplied certificate ID
+		// outside its covered states. Check the effective destination of each
+		// package before sending that ID (including local pickup and virtual goods).
+		if (
+			$package['certificate'] instanceof TaxCloud\ExemptionCertificateBase
+			&& ! SST_Certificates::certificate_covers_state(
+				$package['certificate'],
+				$package['destination']->getState(),
+				$package['user']['ID']
+			)
+		) {
+			SST_Logger::add(
+				__( 'Exemption certificate does not cover this package destination. Calculating tax without it.', 'simple-sales-tax' ),
+				array(
+					'certificate_id' => $package['certificate']->getCertificateID(),
+					'state'          => $package['destination']->getState(),
+				)
+			);
+			$package['certificate'] = null;
+		}
+
 		/* Build Lookup */
 		if ( $data_mover ) {
 			/**
@@ -497,7 +518,24 @@ abstract class SST_Abstract_Cart {
 	 * @return array
 	 * @since 8.4.7
 	 */
-	protected function get_v3_lookup_for_package( $package, $key ) {
+	protected function get_v3_lookup_for_package( &$package, $key ) {
+		// Apply the same destination-state restriction as the legacy lookup.
+		// Admin orders store V3 exemption models; checkout uses SDK certificates.
+		if ( null !== $package['certificate'] ) {
+			$certificate = $package['certificate'];
+			if ( ! $certificate instanceof \TaxCloud\ExemptionCertificateBase ) {
+				$certificate_id = is_object( $certificate ) && method_exists( $certificate, 'getCertificateID' )
+					? $certificate->getCertificateID()
+					: ( is_array( $certificate ) ? ( $certificate['exemptionId'] ?? '' ) : '' );
+				$certificate = new \TaxCloud\ExemptionCertificateBase( $certificate_id );
+			}
+
+			if ( ! SST_Certificates::certificate_covers_state( $certificate, $package['destination']->getState(), $package['user']['ID'] ) ) {
+				SST_Logger::add( __( 'Exemption certificate does not cover this package destination. Calculating tax without it.', 'simple-sales-tax' ) );
+				$package['certificate'] = null;
+			}
+		}
+
 		$cart_id  = $this->get_package_order_id( $key, $package );
 		$items    = array();
 		$index    = 0;

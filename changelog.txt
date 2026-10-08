@@ -2,6 +2,27 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [8.4.19] - 2026-10-06 =
+
+Fixed:
+- local pickup fix (#468)
+
+
+- [8.4.18] - 2026-10-01 =
+
+Fixed:
+- NC-only certificate (#466)
+
+
+- [8.4.17] - 2026-09-24 =
+
+Added:
+- [DEV-9846] - Add dismissible WordPress.org review rating notice banner (#462)
+
+Fixed:
+- [DEV-9947] - Fix duplicate tax calculation for assembled composite product components (#464)
+
+
 - [8.4.16] - 2026-08-27 =
 
 Added:

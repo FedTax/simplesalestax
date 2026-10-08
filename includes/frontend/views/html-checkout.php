@@ -48,7 +48,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		);
 		?>
 		<p class="sst-certificate-selection-help">
-			<?php esc_html_e( 'The selected certificate will be applied to this order. Certificates are ordered newest first.', 'simple-sales-tax' ); ?>
+			<?php esc_html_e( 'A selected certificate applies only to destinations in its listed states. Certificates are ordered newest first.', 'simple-sales-tax' ); ?>
 		</p>
 
 		<p id="exemption_certificates_link">

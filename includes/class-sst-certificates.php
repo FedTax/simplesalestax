@@ -105,6 +105,88 @@ class SST_Certificates {
 	}
 
 	/**
+	 * Check whether a certificate covers a destination state.
+	 *
+	 * Saved certificates are resolved from the customer's TaxCloud records so an
+	 * arbitrary certificate ID cannot be used without its state information.
+	 * Unsaved single-purchase certificates carry their own details.
+	 *
+	 * @param TaxCloud\ExemptionCertificateBase $certificate Certificate to check.
+	 * @param string                             $state       Destination state abbreviation.
+	 * @param int                                $user_id     WordPress customer ID.
+	 * @return bool
+	 */
+	public static function certificate_covers_state( $certificate, $state, $user_id ) {
+		$state = strtoupper( trim( (string) $state ) );
+		if ( ! $state || ! $certificate instanceof TaxCloud\ExemptionCertificateBase ) {
+			return false;
+		}
+
+		$certificate_id = $certificate->getCertificateID();
+		if ( $certificate_id ) {
+			if ( ! $user_id ) {
+				return false;
+			}
+			try {
+				$certificate = self::get_certificate( $certificate_id, $user_id );
+			} catch ( Throwable $ex ) {
+				SST_Logger::debug( sprintf( 'Unable to verify exemption certificate %s: %s', $certificate_id, $ex->getMessage() ) );
+				return false;
+			}
+		}
+
+		if ( ! $certificate instanceof TaxCloud\ExemptionCertificate ) {
+			return false;
+		}
+
+		$detail = $certificate->getDetail();
+		if ( ! $detail ) {
+			return false;
+		}
+
+		foreach ( (array) $detail->getExemptStates() as $exempt_state ) {
+			if (
+				is_object( $exempt_state )
+				&& method_exists( $exempt_state, 'getStateAbbr' )
+				&& $state === strtoupper( trim( (string) $exempt_state->getStateAbbr() ) )
+			) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Get the newest saved certificate covering a destination state.
+	 *
+	 * @param string $state   Destination state abbreviation.
+	 * @param int    $user_id WordPress customer ID.
+	 * @return string Certificate ID, or an empty string if none matches.
+	 */
+	public static function get_default_certificate_id_for_state( $state, $user_id = 0 ) {
+		$state = strtoupper( trim( (string) $state ) );
+		if ( ! $state ) {
+			return '';
+		}
+
+		try {
+			$certificates = self::get_certificates_formatted( $user_id );
+		} catch ( Throwable $ex ) {
+			SST_Logger::debug( sprintf( 'Unable to select an exemption certificate for state %s: %s', $state, $ex->getMessage() ) );
+			return '';
+		}
+
+		foreach ( $certificates as $id => $certificate ) {
+			if ( in_array( $state, $certificate['ExemptStates'], true ) ) {
+				return $id;
+			}
+		}
+
+		return '';
+	}
+
+	/**
 	 * Get a certificate and return it formatted for display.
 	 *
 	 * @param string $id      Certificate ID.

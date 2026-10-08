@@ -2,9 +2,15 @@
  * External dependencies
  */
 import { __ } from '@wordpress/i18n';
-import { useSelect } from '@wordpress/data';
-import { VALIDATION_STORE_KEY } from '@woocommerce/block-data';
-import { CheckboxControl } from '@woocommerce/blocks-checkout';
+import { useDispatch, useSelect } from '@wordpress/data';
+import {
+	CHECKOUT_STORE_KEY,
+	VALIDATION_STORE_KEY,
+} from '@woocommerce/block-data';
+import {
+	CheckboxControl,
+	extensionCartUpdate,
+} from '@woocommerce/blocks-checkout';
 import {
 	RadioControl,
 	ValidatedTextInput,
@@ -36,12 +42,21 @@ export const NewCertificateForm = () => {
 		'certificate',
 		DEFAULT_CERTIFICATE
 	);
+	const { __internalIncrementCalculating, __internalDecrementCalculating } =
+		useDispatch( CHECKOUT_STORE_KEY );
 
 	const updateCertificate = ( key, value ) => {
 		setCertificate( {
 			...certificate,
 			[ key ]: value,
 		} );
+		if ( key === 'ExemptState' ) {
+			__internalIncrementCalculating();
+			extensionCartUpdate( {
+				namespace: 'simple-sales-tax',
+				data: { action: 'set_new_certificate_state', state: value },
+			} ).finally( __internalDecrementCalculating );
+		}
 	};
 
 	const { businessTypeOtherError, exemptionReasonOtherError } = useSelect(

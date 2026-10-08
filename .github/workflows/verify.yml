@@ -26,6 +26,15 @@ jobs:
       - name: Install PHP dependencies
         run: composer install
 
+      - name: Run PHP regression tests
+        run: |
+          php tests/exemption-state-regression.php
+          php tests/local-pickup-address-regression.php
+          php tests/order-refund-regression.php
+          php tests/api-version-regression.php
+          php tests/api-v3/run.php
+          php tests/api-v3/run.php --staging
+
       - name: Setup node
         uses: actions/setup-node@v2
 

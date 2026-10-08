@@ -16,6 +16,127 @@ class SST_Composite_Products {
 	 */
 	public function __construct() {
 		add_filter( 'wootax_product_price', array( $this, 'filter_composite_product_price' ), 10, 3 );
+		add_filter( 'wootax_cart_packages_before_split', array( $this, 'normalize_assembled_cart_packages' ), 10, 2 );
+	}
+
+	/**
+	 * Prevents assembled components from being taxed twice at checkout.
+	 *
+	 * Composite Products makes components that are shipped inside their parent
+	 * virtual, then adds their value to the parent item in WooCommerce's shipping
+	 * package. Simple Sales Tax normally creates a second package for virtual
+	 * products, which causes the component value to be sent to TaxCloud once in
+	 * the parent total and once as a separate line item.
+	 *
+	 * Restore the parent to its unaggregated cart total and move each assembled
+	 * component into the same package. This keeps one physical shipment while
+	 * preserving the component's own product ID, TIC, price, and tax mapping.
+	 *
+	 * @param array                   $packages Cart packages before they are split by origin.
+	 * @param WC_Cart|SST_Cart_Proxy $cart     WooCommerce cart or SST cart proxy instance.
+	 *
+	 * @return array
+	 */
+	public function normalize_assembled_cart_packages( $packages, $cart ) {
+		if ( empty( $packages ) || ! is_callable( array( $cart, 'get_cart' ) ) ) {
+			return $packages;
+		}
+
+		$cart_contents       = $cart->get_cart();
+		$parent_package_keys = array();
+
+		/*
+		 * Only WooCommerce shipping packages contain contents_cost. SST's virtual
+		 * package does not. A parent found here has already had the value of its
+		 * assembled components aggregated by Composite Products.
+		 */
+		foreach ( $packages as $package_key => $package ) {
+			if ( ! array_key_exists( 'contents_cost', $package ) || empty( $package['contents'] ) ) {
+				continue;
+			}
+
+			foreach ( $package['contents'] as $cart_item_key => $item ) {
+				if ( ! empty( $item['composite_children'] ) ) {
+					$parent_package_keys[ $cart_item_key ] = $package_key;
+				}
+			}
+		}
+
+		if ( empty( $parent_package_keys ) ) {
+			return $packages;
+		}
+
+		foreach ( $cart_contents as $cart_item_key => $item ) {
+			$parent_key = isset( $item['composite_parent'] ) ? $item['composite_parent'] : '';
+
+			if (
+				empty( $parent_key )
+				|| ! isset( $parent_package_keys[ $parent_key ] )
+				|| ! $this->is_component_assembled( $item, $cart_contents[ $parent_key ] )
+			) {
+				continue;
+			}
+
+			$target_package_key = $parent_package_keys[ $parent_key ];
+
+			/* Remove the component from SST's virtual package (if present). */
+			foreach ( $packages as $package_key => $package ) {
+				if ( $package_key !== $target_package_key && isset( $package['contents'][ $cart_item_key ] ) ) {
+					unset( $packages[ $package_key ]['contents'][ $cart_item_key ] );
+				}
+			}
+
+			/*
+			 * Replace the shipping representation of the parent with the original
+			 * cart item, then include the component as its own taxable line.
+			 */
+			$packages[ $target_package_key ]['contents'][ $parent_key ]    = $cart_contents[ $parent_key ];
+			$packages[ $target_package_key ]['contents'][ $cart_item_key ] = $item;
+		}
+
+		foreach ( $packages as $package_key => $package ) {
+			if ( empty( $package['contents'] ) ) {
+				unset( $packages[ $package_key ] );
+				continue;
+			}
+
+			if ( array_key_exists( 'contents_cost', $package ) ) {
+				$packages[ $package_key ]['contents_cost'] = array_sum( wp_list_pluck( $package['contents'], 'line_total' ) );
+			}
+		}
+
+		return $packages;
+	}
+
+	/**
+	 * Determines whether a component is physically assembled in its parent.
+	 *
+	 * @param array $item        Component cart item.
+	 * @param array $parent_item Composite parent cart item.
+	 *
+	 * @return bool
+	 */
+	private function is_component_assembled( $item, $parent_item ) {
+		if (
+			empty( $item['composite_item'] )
+			|| empty( $item['product_id'] )
+			|| empty( $parent_item['data'] )
+			|| ! is_a( $parent_item['data'], 'WC_Product_Composite' )
+		) {
+			return false;
+		}
+
+		$product_id = ! empty( $item['variation_id'] ) ? $item['variation_id'] : $item['product_id'];
+		$product    = wc_get_product( $product_id );
+
+		/* Genuinely virtual components are not aggregated into the parent. */
+		if ( ! $product || ! $product->needs_shipping() ) {
+			return false;
+		}
+
+		$component = $parent_item['data']->get_component_option( $item['composite_item'], $item['product_id'] );
+
+		return $component && ! $component->is_shipped_individually( $product );
 	}
 
 	/**

@@ -67,6 +67,46 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
+	 * Recalculate tax and remove a saved certificate if no package used it.
+	 *
+	 * @return bool
+	 */
+	public function calculate_taxes() {
+		// Captured lookup data is needed for returns and must not be replaced
+		// when an order is edited or its totals are recalculated.
+		if ( 'pending' !== $this->get_taxcloud_status() || 0 < $this->order->get_total_refunded() ) {
+			return true;
+		}
+
+		$result = parent::calculate_taxes();
+		$certificate_id = $this->get_certificate_id();
+
+		if ( ! $result || ! $certificate_id ) {
+			return $result;
+		}
+
+		$packages = $this->get_packages();
+		if ( ! $packages ) {
+			return $result;
+		}
+
+		foreach ( $packages as $package ) {
+			if (
+				! empty( $package['certificate_id'] )
+				&& (
+					SST_SINGLE_PURCHASE_CERT_ID === $certificate_id
+					|| $certificate_id === $package['certificate_id']
+				)
+			) {
+				return $result;
+			}
+		}
+
+		$this->set_certificate_id( '' );
+		return $result;
+	}
+
+	/**
 	 * Forward method calls to the encapsulated WC_Order instance.
 	 *
 	 * @param string $name Method name.
@@ -312,15 +352,20 @@ class SST_Order extends SST_Abstract_Cart {
 					$this->order
 				);
 
-				$raw_packages[ $key ]['destination'] = array(
-					'country'   => 'US',
-					'address'   => $pickup_address->getAddress1(),
-					'address_2' => $pickup_address->getAddress2(),
-					'city'      => $pickup_address->getCity(),
-					'state'     => $pickup_address->getState(),
-					'postcode'  => $pickup_address->getZip5(),
-				);
-			} elseif ( ! isset( $package['destination'] ) ) {
+				// Keep the customer destination when no pickup address is available.
+				if ( ! is_null( $pickup_address ) ) {
+					$raw_packages[ $key ]['destination'] = array(
+						'country'   => 'US',
+						'address'   => $pickup_address->getAddress1(),
+						'address_2' => $pickup_address->getAddress2(),
+						'city'      => $pickup_address->getCity(),
+						'state'     => $pickup_address->getState(),
+						'postcode'  => $pickup_address->getZip5(),
+					);
+				}
+			}
+
+			if ( ! isset( $raw_packages[ $key ]['destination'] ) ) {
 				$raw_packages[ $key ]['destination'] = $this->get_shipping_address();
 			}
 		}
@@ -944,7 +989,7 @@ class SST_Order extends SST_Abstract_Cart {
 			return true;
 		}
 
-		if ( 'captured' !== $this->get_taxcloud_status() ) {
+		if ( ! in_array( $this->get_taxcloud_status(), array( 'captured', 'partially_refunded' ), true ) ) {
 			// Logging
 			SST_Logger::order_log( __( 'Order must be captured first.', 'simple-sales-tax' ), $order->get_id() );
 
@@ -996,6 +1041,18 @@ class SST_Order extends SST_Abstract_Cart {
 
 		// Logging
 		SST_Logger::order_log( __( 'Refunding order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
+
+		if ( empty( $packages ) ) {
+			$message = sprintf(
+				/* translators: WooCommerce order ID */
+				__( 'Failed to sync refund for order %d to TaxCloud: no saved TaxCloud packages were found.', 'simple-sales-tax' ),
+				$order->get_id()
+			);
+			SST_Logger::order_log( $message, $order->get_id() );
+			$this->handle_error( $message );
+			$order->add_order_note( $message );
+			return false;
+		}
 
 		foreach ( $packages as $package_key => $package ) {
 			$cart_items      = $package['cart_items'];
@@ -1080,14 +1137,14 @@ class SST_Order extends SST_Abstract_Cart {
 
 					if ( is_wp_error( $response ) ) {
 						SST_Logger::order_log( sprintf( __( 'Failed to refund package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response->get_error_message() );
-						$this->handle_error(
-							sprintf(
-								/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
-								__( 'Failed to refund order %1$d: %2$s.', 'simple-sales-tax' ),
-								$order->get_id(),
-								$response->get_error_message()
-							)
+						$message = sprintf(
+							/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
+							__( 'Failed to sync refund for order %1$d to TaxCloud: %2$s.', 'simple-sales-tax' ),
+							$order->get_id(),
+							$response->get_error_message()
 						);
+						$this->handle_error( $message );
+						$order->add_order_note( $message );
 						return false;
 					} elseif ( ! empty( $response ) ) {
 						SST_Logger::order_log( sprintf( __( 'Refund request response for package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response );
@@ -1110,14 +1167,14 @@ class SST_Order extends SST_Abstract_Cart {
 						// Logging
 						SST_Logger::order_log( __( 'Refund request failed.', 'simple-sales-tax' ), $order->get_id(), $ex->getMessage() );
 
-						$this->handle_error(
-							sprintf(
-								/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
-								__( 'Failed to refund order %1$d: %2$s.', 'simple-sales-tax' ),
-								$order->get_id(),
-								$ex->getMessage()
-							)
+						$message = sprintf(
+							/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
+							__( 'Failed to sync refund for order %1$d to TaxCloud: %2$s.', 'simple-sales-tax' ),
+							$order->get_id(),
+							$ex->getMessage()
 						);
+						$this->handle_error( $message );
+						$order->add_order_note( $message );
 
 						return false;
 					}

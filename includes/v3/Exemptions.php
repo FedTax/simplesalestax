@@ -95,7 +95,19 @@ class Exemptions extends RequestBase {
 
 		$url = $this->get_fetch_api_url();
 		if ( ! empty( $args ) ) {
-			$url = add_query_arg( $args, $url );
+			$query_args = array();
+			foreach ( $args as $key => $value ) {
+				if ( is_bool( $value ) ) {
+					$query_args[ $key ] = $value ? 'true' : 'false';
+				} elseif ( is_string( $value ) ) {
+					$query_args[ $key ] = rawurlencode( $value );
+				} elseif ( is_scalar( $value ) || is_null( $value ) ) {
+					$query_args[ $key ] = $value;
+				} else {
+					return new \WP_Error( 'sst_v3_exemptions_invalid_request', 'Certificate query parameters must be scalar values.' );
+				}
+			}
+			$url = add_query_arg( $query_args, $url );
 		}
 
 		$response = wp_remote_get( $url, array(

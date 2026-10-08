@@ -101,6 +101,10 @@ class Orders extends RequestBase {
 			}
 		}
 
+		if ( ! is_array( $args['lineItems'] ) ) {
+			return new \WP_Error( 'sst_v3_orders_invalid_request', 'Order lineItems must be an array.' );
+		}
+
 		$request_args = array(
 			'channel' => isset( $args['channel'] ) ? $args['channel'] : 'woocommerce',
 			'completedDate' => $args['completedDate'],
