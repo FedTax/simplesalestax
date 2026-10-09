@@ -18,6 +18,11 @@ README.md
 composer.json
 composer.lock
 cypress.config.js
+cypress.api-v3.config.js
+cypress.plugin-v3.config.js
+cypress.api-v3.staging.config.js
+cypress.api-v3.staging.env.json
+cypress.api-v3.staging.env.example.json
 gruntfile.js
 package-lock.json
 package.json

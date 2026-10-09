@@ -142,6 +142,7 @@ namespace {
 	require dirname( __DIR__ ) . '/includes/class-sst-settings.php';
 	require dirname( __DIR__ ) . '/includes/sst-functions.php';
 	require dirname( __DIR__ ) . '/includes/class-sst-certificates.php';
+	require dirname( __DIR__ ) . '/includes/class-sst-origin-address.php';
 	require dirname( __DIR__ ) . '/includes/class-sst-addresses.php';
 	require dirname( __DIR__ ) . '/includes/abstracts/class-sst-abstract-cart.php';
 	require dirname( __DIR__ ) . '/includes/class-sst-order.php';
@@ -165,6 +166,21 @@ namespace {
 		SST_Settings::set( 'api_version', $value );
 		SST_Settings::load_settings();
 		expect_same( $value, sst_get_api_version(), 'Saved selection survives settings reload' );
+	}
+
+	// Saved origins may contain an empty ZIP+4. V3 rejects a trailing hyphen.
+	foreach ( array( 'v1', 'v3' ) as $version ) {
+		Routing_Http::reset( $version );
+		foreach ( array( null, '', '2427', '0000' ) as $zip4 ) {
+			$origin = new SST_Origin_Address( 'origin', true, '323 Washington Ave N', '', 'Minneapolis', 'MN', '55401', $zip4 );
+			$converted = SST_Addresses::to_address( $origin );
+			expect_same( '55401', $converted->getZip5(), 'Origin conversion preserves ZIP5 for ' . $version );
+			if ( 'v3' === $version ) {
+				expect_same( '' === (string) $zip4 ? '55401' : '55401-' . $zip4, $converted->getZip(), 'V3 origin uses a valid ZIP with optional extension' );
+			} else {
+				expect_same( $origin->getZip4(), $converted->getZip4(), 'V1 origin preserves ZIP4' );
+			}
+		}
 	}
 
 	foreach ( array( 'v1', 'v3' ) as $version ) {
