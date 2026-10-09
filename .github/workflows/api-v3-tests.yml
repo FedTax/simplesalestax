@@ -1,0 +1,30 @@
+name: TaxCloud V3 API contract tests
+
+on:
+  push:
+    paths:
+      - 'includes/v3/**'
+      - 'tests/api-v3/**'
+      - '.github/workflows/api-v3-tests.yml'
+  pull_request:
+    paths:
+      - 'includes/v3/**'
+      - 'tests/api-v3/**'
+      - '.github/workflows/api-v3-tests.yml'
+
+jobs:
+  contracts:
+    name: PHP ${{ matrix.php }} (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.2', '8.3']
+        environment: ['production', 'staging']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+      - name: Run V3 API contracts
+        run: php tests/api-v3/run.php ${{ matrix.environment == 'staging' && '--staging' || '' }}

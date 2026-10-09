@@ -3,6 +3,7 @@
 .github
 .git
 cypress
+tests
 node_modules
 releases
 docker
