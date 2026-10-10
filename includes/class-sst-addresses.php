@@ -335,6 +335,11 @@ class SST_Addresses {
 
 		try {
 			if ( sst_get_api_version() === 'v3' ) {
+				$zip = $address->getZip5();
+				if ( '' !== (string) $address->getZip4() ) {
+					$zip .= '-' . $address->getZip4();
+				}
+
 				return new \TaxCloud_V3\Model\Address(
 					array(
 						'city'        => $address->getCity(),
@@ -342,7 +347,7 @@ class SST_Addresses {
 						'line1'       => $address->getAddress1(),
 						'line2'       => $address->getAddress2(),
 						'state'       => $address->getState(),
-						'zip'         => $address->getZip(),
+						'zip'         => $zip,
 					)
 				);
 			}

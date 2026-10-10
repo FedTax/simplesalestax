@@ -16,11 +16,12 @@ describe('Settings page', () => {
         req.alias = 'verifyRequest';
       }
     });
-    cy.findByRole('button', {name: 'Verify Settings'}).click();
-    cy.wait('@verifyRequest', {timeout: 20000});
     cy.on('window:alert', (text) => {
       expect(text).to.eq('Success! Your TaxCloud settings are valid.');
     });
+    cy.findByRole('button', {name: 'Verify Settings'}).click();
+    cy.wait('@verifyRequest', {timeout: 20000})
+      .its('response.body.success').should('equal', true);
   });
 
   it('has a working Download Log button', () => {
@@ -38,23 +39,22 @@ describe('Settings page', () => {
       cy.findByText(/saved/i, {timeout: 15000}).should('exist');
     };
 
-    cy.findByRole('combobox', {name: 'API Version'})
+    // Select2 hides the native select from the accessibility tree.
+    const apiVersion = () => cy.get('#woocommerce_wootax_api_version');
+    apiVersion()
       .invoke('val')
       .then((originalVersion) => {
-        cy.wrap(originalVersion).as('originalApiVersion');
+        const changedVersion = originalVersion === 'v3' ? 'v1' : 'v3';
+        apiVersion().select(changedVersion, {force: true});
+        saveSettings();
+        cy.reload();
+        apiVersion().should('have.value', changedVersion);
+
+        apiVersion().select(originalVersion, {force: true});
+        saveSettings();
+        cy.reload();
+        apiVersion().should('have.value', originalVersion);
       });
-
-    cy.findByRole('combobox', {name: 'API Version'}).select('v3');
-    saveSettings();
-    cy.reload();
-    cy.findByRole('combobox', {name: 'API Version'}).should('have.value', 'v3');
-
-    cy.get('@originalApiVersion').then((originalVersion) => {
-      cy.findByRole('combobox', {name: 'API Version'}).select(originalVersion);
-      saveSettings();
-      cy.reload();
-      cy.findByRole('combobox', {name: 'API Version'}).should('have.value', originalVersion);
-    });
   });
 
   describe('when block cart/checkout is enabled', () => {
