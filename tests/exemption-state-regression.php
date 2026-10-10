@@ -15,6 +15,7 @@ function wp_date( $format, $timestamp = null ) { return date( $format, $timestam
 function get_option( $key, $default = null ) { return $default; }
 function sst_prettify( $value ) { return $value; }
 function WC() { global $test_woocommerce; return $test_woocommerce; }
+function get_woocommerce_currency() { return 'USD'; }
 
 class SST_Settings {
 	public static function get( $key, $default = null ) {
@@ -37,6 +38,8 @@ require dirname( __DIR__ ) . '/includes/frontend/class-sst-checkout.php';
 
 class Exemption_State_Test_Cart extends SST_Abstract_Cart {
 	public function request_for( &$package ) { return $this->get_lookup_for_package( $package ); }
+	public function v3_request_for( &$package ) { return $this->get_v3_lookup_for_package( $package, 0 ); }
+	protected function get_package_order_id( $key, $package = array() ) { return 'test-cart'; }
 	protected function get_packages() { return array(); }
 	protected function set_packages( $packages = array() ) {}
 	protected function get_base_packages() { return array(); }
@@ -146,5 +149,28 @@ expect_same( true, $checkout->new_certificate_covers( 'NC' ), 'New NC certificat
 expect_same( false, $checkout->new_certificate_covers( 'NY' ), 'New NY certificate does not cover NC package' );
 $checkout->test_packages[] = lookup_package( 'NY', 'nc-only' );
 expect_same( false, $checkout->new_certificate_covers( 'NC' ), 'New NC certificate does not cover mixed destinations' );
+
+// The V3 checkout and admin order use different certificate representations.
+// Both must respect the state restrictions introduced on develop.
+foreach ( array( 'checkout', 'order', 'array' ) as $context ) {
+	foreach ( array( 'NC', 'NY' ) as $state ) {
+		$package = lookup_package( $state, 'nc-only' );
+		$package['destination'] = new TaxCloud_V3\Model\Address( array(
+			'line1' => '1 Main St', 'city' => 'Test', 'state' => $state, 'zip' => '28043',
+		) );
+		if ( 'order' === $context ) {
+			$package['certificate'] = new TaxCloud_V3\Model\Exemption( 'nc-only' );
+		} elseif ( 'array' === $context ) {
+			$package['certificate'] = array( 'exemptionId' => 'nc-only' );
+		}
+		$request = $cart->v3_request_for( $package );
+		expect_same( 'NC' === $state, isset( $request['items'][0]['exemption'] ), "V3 $context: NC certificate applies only in NC" );
+		if ( 'NC' === $state ) {
+			expect_same( 'nc-only', $request['items'][0]['exemption']['exemptionId'], "V3 $context: certificate ID preserved" );
+		} else {
+			expect_same( null, $package['certificate'], "V3 $context: rejected certificate is removed before saving packages" );
+		}
+	}
+}
 
 echo "Exemption state regression checks passed.\n";
