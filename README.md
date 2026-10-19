@@ -25,3 +25,14 @@ If you find a bug in our plugin, [open a new issue](https://github.com/bporcelli
 
 * [Submit an issue](https://github.com/bporcelli/simplesalestax/issues/new) or work on a feature branch and [submit a pull request](https://github.com/bporcelli/simplesalestax/compare).
 * Follow [WordPress Coding Standards](http://codex.wordpress.org/WordPress_Coding_Standards)
+
+## Testing
+
+See the [local testing guide](tests/README.md) for Docker setup, Cypress commands,
+expected results, API coverage, cleanup, and troubleshooting.
+
+With the local Docker test site ready, run `npm run cypress:run` for the admin
+tests or `npm run cypress:plugin:v3:fixture` for the V3 plugin workflows with
+controlled TaxCloud responses. Use `npm run cypress:open` or
+`npm run cypress:plugin:v3:open:fixture` to watch and debug them in Cypress.
+The V3 suites and PHP regression tests remain local; they do not run in GitHub Actions.

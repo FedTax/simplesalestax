@@ -1,4 +1,116 @@
-# Offline regression tests
+# Local testing guide
+
+Run all commands below from the plugin repository root. For verifying the V3
+plugin implementation, start with the fixture E2E suite, then run the live E2E
+suite against a TaxCloud Test-mode connection.
+
+## Choose a suite
+
+| Command | What it verifies | Expected full-run result | Live TaxCloud requests? |
+| --- | --- | --- | --- |
+| `npm run cypress:run` | Admin product TIC editing, plugin settings link, settings actions and API-version persistence | **8 passing across 4 specs** | Yes: TIC search and Verify Settings use the saved connection |
+| `npm run cypress:plugin:v3:fixture` | Actual WooCommerce/SST workflows with controlled TaxCloud responses, including a rejected cart | **11 passing in `plugin.cy.js`** | No |
+| `npm run cypress:plugin:v3 -- --env taxcloudTestModeConfirmed=true` | Actual WooCommerce/SST workflows against the saved Test-mode connection | **10 passing in `plugin.cy.js`** | Yes; creates test records |
+| `npm run cypress:api:v3` | Isolated PHP-client request/response contracts | **302 passing in `contracts.cy.js`** | No |
+| `npm run cypress:api:v3:staging` | Direct calls to the legacy staging hosts; does not exercise WooCommerce workflows | **18 passing in `live.cy.js`**, with accepted staging credentials | Yes; creates staging records |
+| `npm run test:api:v3` | Isolated PHP contracts for both URL configurations | **316 passed, 0 failed**, twice | No |
+| `npm run test:regression` | Exemptions, pickup addresses, refunds and API routing | Four success messages and exit code **0** | No |
+
+Counts describe the current complete suites, without a spec/test filter. A
+successful headless Cypress run ends with **All specs passed!**, zero failing
+tests and exit code **0**. A setup/authentication error, skipped workflow or
+missing API coverage is not a successful verification. Passing isolated contracts
+checks the clients; passing plugin E2E also checks the WooCommerce integration.
+
+## Prepare the local Docker site
+
+You need Node.js/npm compatible with the installed dependencies, PHP CLI and
+Composer for host PHP commands, Docker Compose, and `rsync`. Install dependencies
+and build the plugin when setting up a checkout or after changing assets:
+
+```sh
+npm ci
+composer install
+npm run build
+```
+
+For the existing repository Docker fixture:
+
+```sh
+# Start/resume the site; omit this if it is already running.
+PHP_VERSION=8.2 docker compose -f docker/docker-compose.yml up -d --wait
+docker compose -f docker/docker-compose.yml ps
+```
+
+Both services should be healthy and WordPress should open at
+`http://localhost:8080`. A first-time image build can be requested with `--build`.
+The database seed is imported only when the MySQL volume is first initialized;
+starting containers preserves the existing site.
+
+Use the repository's seeded test site with:
+
+- Admin login `admin` / `password` (the Cypress helpers use these fixture values).
+- WooCommerce, Simple Sales Tax and SST Test Helper active, with the Storefront
+  theme installed. A fresh Docker site may need these installed/activated before
+  running tests; the containers do not install WooCommerce themselves.
+- The seeded products **General Product** and **Lumber**, and the seeded
+  cart/checkout pages. The standard admin suite uses their names/page IDs; the
+  V3 plugin suite creates its own products and pages.
+- For standard admin tests and live plugin tests, valid credentials saved in
+  **WooCommerce > Settings > Integration > TaxCloud for WooCommerce**. Select
+  **API Version: V3**, save, and check that **Verify Settings** succeeds. Fixture
+  mode supplies fake credentials for its scoped requests.
+
+Docker mounts `docker/plugin`, rather than this checkout's root. Before running
+the standard admin suite, sync the current plugin code into that directory:
+
+```sh
+mkdir -p docker/plugin
+rsync -a --exclude-from=.distignore ./ docker/plugin/
+```
+
+The V3 plugin suite performs this sync automatically. Keep the build and Composer
+dependencies current so the mounted plugin includes its compiled assets and
+autoload files. No Docker rebuild is needed for a PHP-only change after syncing.
+
+## Standard Cypress admin tests
+
+```sh
+# Headless: all four admin specs.
+npm run cypress:run
+
+# Visible Cypress app: choose E2E Testing, a browser, then a spec.
+npm run cypress:open
+
+# Debug only the settings spec in a visible browser.
+npm run cypress:run -- --spec cypress/e2e/admin/settings-page.cy.js --headed --browser electron
+```
+
+In Cypress Open, the Specs list should contain the four files below. Click a
+spec to run it, use the rerun control after an edit, and inspect commands in the
+left-hand log for browser snapshots and assertion details. Open mode lets you
+run specs individually; use the headless command to verify the complete suite.
+
+| Spec | Tests | Expected behavior |
+| --- | --- | --- |
+| `bulk-editor.cy.js` | 1 | Select General Product and Lumber, search for Uncategorized, apply it in bulk, see “2 products updated.” and verify both saved TICs |
+| `edit-product.cy.js` | 1 | Set General Product to Uncategorized, search/select Gift card, save and verify it; then save Uncategorized again |
+| `plugins-page.cy.js` | 1 | The plugin's Settings link opens the TaxCloud for WooCommerce settings page |
+| `settings-page.cy.js` | 5 | Heading appears; Verify Settings returns success; Download returns HTTP 200 with a debug-report filename; changing API version survives reload and the original version is restored; Show Zero Tax is disabled with Blocks pages selected |
+
+The helpers authenticate through the normal WordPress login form endpoint and
+validate the saved admin session. The suite edits the two seeded products,
+leaves their TICs as **Uncategorized**, and selects the seeded Blocks cart and
+checkout pages (IDs **10** and **11**). The API-version test restores the original
+selection after a successful run. If interrupted during that test, check the
+saved API version manually before continuing.
+
+This suite verifies admin behavior using the selected API version. Switching
+V1/V3 in the settings test checks persistence; it does not run a full checkout
+for both versions. Use the V3 plugin suite below for checkout, order, refund and
+certificate behavior.
+
+## Offline regression tests
 
 Run from the plugin directory with PHP CLI and Composer dependencies installed:
 
@@ -135,6 +247,38 @@ npm run cypress:plugin:v3:open -- --env taxcloudTestModeConfirmed=true
 npm run cypress:plugin:v3:open:fixture
 ```
 
+### Expected plugin results
+
+Fixture mode must finish with **11 passing**; live mode must finish with
+**10 passing**. The extra fixture test verifies a deliberately rejected cart.
+Expected behavior for the shared tests:
+
+| Check | Expected result |
+| --- | --- |
+| Verify Settings | Successful authentication, Ping and management-settings requests; the settings UI shows V3 |
+| Product TIC | Searching Uncategorized reaches the V3 TIC API and saves TIC `00000` |
+| Classic checkout, capture and refund | Verified address and valid quote; visible tax matches saved order tax; packages record `api_version: v3`; admin completion captures the order and manual refund records `refunded` |
+| Update Order client | A separate pending API order receives a completion date, verified by reading it back |
+| Cart quantity change | Recalculated displayed tax agrees with the latest TaxCloud quote |
+| Certificate creation and coverage | My Account creates/lists the certificate; it applies only to its covered destination state |
+| Certificate removal | The certificate created by this run is disabled |
+| Data Import | Admin completion submits through Create Order rather than realtime cart conversion |
+| Checkout Blocks | Store API totals and rendered cart/checkout agree with the plugin tax result |
+| API coverage | Successful recorded calls cover all 14 Sales Tax routes plus authentication and management settings |
+
+For the initial one-item fixture checkout, the $100 product has **$10 tax** and a
+**$110 total**. Live tax can legitimately be **$0**; the live tests compare the
+displayed and persisted amounts to the returned quote. A live pass alone does
+not prove positive-tax rendering; fixture mode supplies that check.
+
+The four supporting Get/Update client checks listed below run inside bootstrapped
+WordPress because those methods have no UI caller. Their coverage is integration
+coverage, while the other listed workflows exercise the browser UI and plugin
+hooks. The suite does not test payment-gateway money transfers or Blocks order
+placement.
+
+### Interactive runs and API coverage
+
 For the interactive commands, keep Docker running, select a browser and click
 `plugin.cy.js` in the Specs list. The full suite runs automatically. Use the
 runner's rerun button to run it again, and click commands in the left-hand log
@@ -217,3 +361,28 @@ Known validation mismatch: the certificate form treats the description for
 reasons such as Resale as optional, while the V3 client requires a nonempty
 `reasonDescription`. The valid certificate-flow test fills in the Resale ID
 description. Submitting it empty currently fails validation.
+
+## Troubleshooting and inspecting failures
+
+| Symptom | What to check or do |
+| --- | --- |
+| Cypress cannot reach `localhost:8080`, or Docker reports a missing container | Start Docker, run the Compose commands above and check both services. V3 runners default to `docker-wordpress-1`; use `--env apiV3WordpressContainer=YOUR_CONTAINER` if different |
+| Product names or cart/checkout pages cannot be found | Use the seeded Docker database. The standard admin tests depend on its products and page IDs |
+| Your PHP changes do not appear in the browser | Sync the checkout to `docker/plugin` before the standard suite; rebuild assets if JavaScript/CSS changed |
+| Admin login fails | Check that the local fixture still accepts `admin` / `password`. TaxCloud API credentials do not authenticate the WordPress admin |
+| Verify Settings or live E2E reports invalid credentials | Check the saved login ID, API key and selected API version. Use the WordPress Verify Settings button first |
+| Direct staging auth returns “Invalid connection credentials” | These legacy staging hosts need accepted staging credentials. A Test-mode connection working on the normal hosts does not imply staging access; use the plugin live command to verify the saved connection through the plugin |
+| Live plugin command asks for Test-mode confirmation | Confirm the saved connection is in Test mode, then append `-- --env taxcloudTestModeConfirmed=true`. The flag does not change the account's mode |
+| Checkout fails before billing fields appear | Inspect the first TaxCloud quote failure in the Cypress log and V3 evidence. A rejected quote can prevent the checkout form from rendering |
+| A previous-run/helper error blocks setup | Exit the old Cypress process, then run `npm run cypress:plugin:v3:cleanup` before retrying. For another container, prefix cleanup with `SST_E2E_WORDPRESS_CONTAINER=YOUR_CONTAINER` |
+| PHP is not found by the offline Cypress contracts | Use `npm run cypress:api:v3 -- --env apiV3PhpBinary=/path/to/php` or `npm run cypress:api:v3:docker` |
+
+For headless browser failures, inspect `cypress/screenshots/`. For plugin V3 API
+requests, inspect the redacted `cypress/results/plugin-v3/latest-live.json` or
+`latest-fixture.json` after cleanup; check the route, HTTP status and response
+against the first failing assertion. These files are local evidence, not test
+sources. A passing fixture run does not confirm live credentials or connectivity.
+
+The default GitHub Actions job still runs the four admin specs. All dedicated
+V3 Cypress suites reject CI execution, and neither PHP regression command is
+invoked by the current Verify workflow. Keep the V3 verification local.
