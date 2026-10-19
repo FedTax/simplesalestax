@@ -37,7 +37,7 @@ function createClient(root, env = {}) {
   let source;
   const loadCredentials = async () => {
     if (credentials) return;
-    const file = path.join(root, 'cypress.api-v3.staging.env.json');
+    const file = path.join(root, 'cypress/local/api-v3/staging.env.local.json');
     if (process.env.TAXCLOUD_V3_LOGIN_ID || process.env.TAXCLOUD_V3_API_KEY) {
       credentials = {
         apiLoginID: process.env.TAXCLOUD_V3_LOGIN_ID,
@@ -58,7 +58,7 @@ function createClient(root, env = {}) {
       source = 'local Docker WordPress settings';
     }
     if (!credentials.apiLoginID || !credentials.apiKey) {
-      throw new Error('Set staging apiLoginID and apiKey in cypress.api-v3.staging.env.json or TAXCLOUD_V3_LOGIN_ID/TAXCLOUD_V3_API_KEY.');
+      throw new Error('Set staging apiLoginID and apiKey in cypress/local/api-v3/staging.env.local.json or TAXCLOUD_V3_LOGIN_ID/TAXCLOUD_V3_API_KEY.');
     }
     credentials.connectionId = credentials.connectionId || credentials.apiKey;
   };

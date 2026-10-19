@@ -8,6 +8,19 @@ function sst_e2e_context() {
   return ! empty( $context['run'] ) && hash_equals( $context['run'], (string) $run ) ? $context : null;
 }
 
+function sst_e2e_credentials( $context ) {
+  if ( 'fixture' === $context['mode'] ) {
+    return array(
+      'apiLoginIDRealtime' => 'cypress-fixture-realtime-login', 'apiKeyRealtime' => 'cypress-fixture-realtime-connection',
+      'apiLoginIDDataImport' => 'cypress-fixture-import-login', 'apiKeyDataImport' => 'cypress-fixture-import-connection',
+    );
+  }
+  $file = '/tmp/sst-cypress-' . $context['run'] . '/credentials.json';
+  $credentials = is_readable( $file ) ? json_decode( file_get_contents( $file ), true ) : null;
+  if ( ! is_array( $credentials ) ) { throw new Exception( 'The local Cypress connection credentials are unavailable.' ); }
+  return $credentials;
+}
+
 // Overrides apply only to the run's cookie/CLI process. Other visitors keep their settings.
 add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
   $context = sst_e2e_context();
@@ -23,10 +36,13 @@ add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
       'State' => 'MN', 'Zip5' => '55401', 'Zip4' => '' ) ) ),
     'default_origin_addresses' => array( 'cypress-origin' ),
   ) );
-  if ( 'fixture' === $context['mode'] ) {
-    $settings['tc_id'] = 'cypress-fixture-login';
-    $settings['tc_key'] = 'cypress-fixture-connection';
-  }
+  $credentials = sst_e2e_credentials( $context );
+  $suffix = ! empty( $context['dataMover'] ) ? 'DataImport' : 'Realtime';
+  $settings['tc_id'] = $credentials[ 'apiLoginID' . $suffix ];
+  $settings['tc_key'] = $credentials[ 'apiKey' . $suffix ];
+  // An integration ID from the saved connection must not follow another key.
+  $settings['tc_integration_id'] = '';
+  $settings['tc_connection_id'] = '';
   return $settings;
 } );
 // Verification updates runtime SST settings. Do not persist the scoped fixture
@@ -60,17 +76,27 @@ function sst_e2e_record( $url, $args, $response ) {
   $context = sst_e2e_context();
   if ( ! $context ) { return; }
   $path = parse_url( $url, PHP_URL_PATH );
+  $credentials = sst_e2e_credentials( $context );
+  $suffix = ! empty( $context['dataMover'] ) ? 'DataImport' : 'Realtime';
+  $matched = null;
+  if ( preg_match( '#/connections/([^/]+)#', $path, $connection ) ) {
+    $matched = rawurldecode( $connection[1] ) === $credentials[ 'apiKey' . $suffix ];
+  }
   $path = preg_replace( '#/connections/[^/]+#', '/connections/:connection', $path );
   $body = json_decode( $args['body'] ?? '', true );
   $result = is_wp_error( $response ) ? null : json_decode( wp_remote_retrieve_body( $response ), true );
-  if ( false !== strpos( $path, '/auth/token' ) ) { $body = null; $result = null; }
+  if ( false !== strpos( $path, '/auth/token' ) ) {
+    $matched = ( $body['apiLoginID'] ?? '' ) === $credentials[ 'apiLoginID' . $suffix ] && ( $body['apiKey'] ?? '' ) === $credentials[ 'apiKey' . $suffix ];
+    $body = null; $result = null;
+  }
   $record = array( 'method' => $args['method'] ?? 'GET', 'path' => $path, 'request' => $body,
+    'connectionProfile' => ! empty( $context['dataMover'] ) ? 'dataImport' : 'realtime', 'credentialsMatched' => $matched,
     'status' => is_wp_error( $response ) ? 0 : wp_remote_retrieve_response_code( $response ),
     'response' => $result, 'error' => is_wp_error( $response ) ? $response->get_error_code() : null );
   // Never persist credentials, connection keys, or bearer tokens in evidence.
   $json = wp_json_encode( $record );
   $settings = get_option( 'woocommerce_wootax_settings' );
-  foreach ( array( $settings['tc_id'] ?? '', $settings['tc_key'] ?? '', $settings['tc_connection_id'] ?? '', $settings['tc_integration_id'] ?? '' ) as $secret ) {
+  foreach ( array_merge( array_values( $credentials ), array( $settings['tc_connection_id'] ?? '', $settings['tc_integration_id'] ?? '' ) ) as $secret ) {
     if ( $secret ) { $json = str_replace( $secret, '[redacted]', $json ); }
   }
   file_put_contents( '/tmp/sst-cypress-' . $context['run'] . '/requests.ndjson', $json . "\n", FILE_APPEND | LOCK_EX );
@@ -121,7 +147,7 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
   } elseif ( str_ends_with( $path, '/auth/token' ) ) {
     $result = array( 'access_token' => 'fixture-bearer', 'connection_id' => 'fixture-integration' );
   } elseif ( preg_match( '#^/mgmt/connections/[^/]+$#', $path ) ) {
-    $result = array( 'id' => 'fixture-integration', 'options' => array( 'data_mover' => array( 'flag' => false ) ) );
+    $result = array( 'id' => 'fixture-integration', 'options' => array( 'data_mover' => array( 'flag' => ! empty( $context['dataMover'] ) ) ) );
   } elseif ( str_ends_with( $path, '/ping' ) ) {
     $result = array( 'message' => 'Successfully authenticated' );
   } elseif ( '/tax/verify-address' === $path ) {

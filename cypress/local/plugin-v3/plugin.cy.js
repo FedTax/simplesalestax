@@ -1,5 +1,5 @@
 // Real browser -> WordPress/WooCommerce -> SST PHP -> TaxCloud -> order database.
-// Live mode uses the saved Test-mode connection. Fixture mode changes only the
+// Live mode switches between the configured Test-mode connections. Fixture mode changes only the
 // server's external HTTP boundary; the plugin and WooCommerce remain real.
 describe('WooCommerce TaxCloud V3 integration (local only)', () => {
   let site;
@@ -13,6 +13,7 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     expect(matched, `${method} ${pattern} reached through the plugin`).not.to.be.empty;
     const last = matched[matched.length - 1];
     expect(last.status, JSON.stringify(last.response)).to.be.within(200, 299);
+    if (last.credentialsMatched !== null) expect(last.credentialsMatched, 'request uses the selected connection').to.equal(true);
     return last;
   });
   const login = (role = 'customer') => {
@@ -72,6 +73,33 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     cy.get('#order_status').should('have.value', 'wc-completed');
     task('order', { id }).then((order) => expect(order.taxcloudStatus).to.equal('captured'));
   };
+  const verifyConnection = (profile, dataImport) => {
+    login('admin');
+    task('clearCaches');
+    cy.visit('/wp-admin/admin.php?page=wc-settings&tab=integration&section=wootax');
+    cy.get('#woocommerce_wootax_api_version').should('have.value', 'v3');
+    cy.intercept('POST', '/wp-admin/admin-ajax.php').as('verify');
+    cy.on('window:alert', (text) => expect(text).to.equal('Success! Your TaxCloud settings are valid.'));
+    cy.get('#verifySettings').click();
+    cy.wait('@verify', { timeout: 60000 }).its('response.body.success').should('equal', true);
+    call('POST', /\/auth\/token$/).its('connectionProfile').should('equal', profile);
+    call('GET', /\/ping$/).its('connectionProfile').should('equal', profile);
+    call('GET', /^\/mgmt\/connections\//).then((row) => {
+      expect(row.connectionProfile).to.equal(profile);
+      expect(row.response.options.data_mover.flag, 'TaxCloud reports the expected connection mode').to.equal(dataImport);
+    });
+  };
+  const refundOrder = (amount) => {
+    cy.intercept('POST', '/wp-admin/admin-ajax.php', (req) => {
+      if (String(req.body).includes('action=woocommerce_refund_line_items')) req.alias = 'refundOrder';
+    });
+    cy.on('window:confirm', () => true);
+    cy.get('button.refund-items').click();
+    cy.get('input.refund_order_item_qty').first().clear().type('1').blur();
+    cy.get('#refund_amount').should('have.value', amount.toFixed(2));
+    cy.get('button.do-manual-refund').click();
+    cy.wait('@refundOrder', { timeout: 60000 }).its('response.body.success').should('equal', true);
+  };
 
   before(() => task('begin').then((info) => {
     site = info;
@@ -84,17 +112,7 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
   afterEach(() => task('configure', { dataMover: false, blocks: false, failure: false }));
 
   it('Verify Settings exchanges credentials, pings V3 and loads management settings', () => {
-    login('admin');
-    task('clearCaches');
-    cy.visit('/wp-admin/admin.php?page=wc-settings&tab=integration&section=wootax');
-    cy.get('#woocommerce_wootax_api_version').should('have.value', 'v3');
-    cy.intercept('POST', '/wp-admin/admin-ajax.php').as('verify');
-    cy.on('window:alert', (text) => expect(text).to.equal('Success! Your TaxCloud settings are valid.'));
-    cy.get('#verifySettings').click();
-    cy.wait('@verify', { timeout: 60000 }).its('response.body.success').should('equal', true);
-    call('POST', /\/auth\/token$/);
-    call('GET', /\/ping$/);
-    call('GET', /^\/mgmt\/connections\//);
+    verifyConnection('realtime', false);
   });
 
   it('product TIC search reaches V3 and saves the selected TIC', () => {
@@ -138,15 +156,7 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
           expect(data.order.completedDate).to.be.a('string');
         });
       });
-      cy.intercept('POST', '/wp-admin/admin-ajax.php', (req) => {
-        if (String(req.body).includes('action=woocommerce_refund_line_items')) req.alias = 'refundOrder';
-      });
-      cy.on('window:confirm', () => true);
-      cy.get('button.refund-items').click();
-      cy.get('input.refund_order_item_qty').first().clear().type('1').blur();
-      cy.get('#refund_amount').should('have.value', (100 + expectedTax).toFixed(2));
-      cy.get('button.do-manual-refund').click();
-      cy.wait('@refundOrder', { timeout: 60000 }).its('response.body.success').should('equal', true);
+      refundOrder(100 + expectedTax);
       call('POST', /\/orders\/refunds\//);
       task('order', { id }).its('taxcloudStatus').should('equal', 'refunded');
     });
@@ -239,19 +249,33 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     call('DELETE', /\/exemption-certificates\//);
   });
 
-  it('Data Import captures through Orders rather than the realtime Carts API', () => {
+  it('Data Import uses its own connection, skips realtime carts, imports and refunds the order', () => {
     task('configure', { dataMover: true });
+    verifyConnection('dataImport', true);
     login(); cart(); checkout();
     placeOrder().then((id) => {
+      task('order', { id }).its('taxcloudStatus').should('not.equal', 'captured');
+      records().then((rows) => expect(rows.slice(recordOffset).some((row) => row.method === 'POST' && /\/orders$/.test(row.path))).to.equal(false));
       completeOrder(id);
       call('POST', /\/connections\/:connection\/orders$/).then((row) => {
+        expect(row.connectionProfile).to.equal('dataImport');
         expect(row.request.lineItems).not.to.be.empty;
         expect(row.request.currency.currencyCode).to.equal('USD');
+        task('clientReads', { orderId: row.request.orderId }).its('order.orderId').should('equal', row.request.orderId);
         task('order', { id }).then((order) => {
           const total = row.request.lineItems.reduce((sum, item) => sum + (item.tax ? item.tax.amount : 0), 0);
           expect(Number(total.toFixed(2))).to.equal(order.tax);
+          refundOrder(order.total);
         });
+        call('POST', /\/orders\/refunds\//).its('connectionProfile').should('equal', 'dataImport');
+        task('order', { id }).its('taxcloudStatus').should('equal', 'refunded');
       });
+    });
+    records().then((rows) => {
+      const imports = rows.slice(recordOffset);
+      expect(imports.every((row) => row.connectionProfile === 'dataImport')).to.equal(true);
+      expect(imports.some((row) => row.method === 'POST' && /\/carts(?:\/orders)?$/.test(row.path)), 'Data Import never calculates or converts a realtime cart').to.equal(false);
+      expect(imports.some((row) => row.credentialsMatched === false), 'Data Import never uses realtime credentials').to.equal(false);
     });
     task('configure', { dataMover: false });
   });
@@ -260,12 +284,18 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     let expectedTax;
     let expectedTotal;
     const displayedTotals = () => {
-      cy.get('.wc-block-components-totals-footer-item .wc-block-components-totals-item__value').should(($value) => {
-        expect(Number($value.text().replace(/[^\d.]/g, ''))).to.equal(expectedTotal);
+      cy.get('.wc-block-components-totals-footer-item .wc-block-components-totals-item__value').should(($values) => {
+        // Blocks can render separate responsive summaries. Never concatenate
+        // multiple amounts into one number or assert on a hidden summary.
+        const visible = $values.filter(':visible');
+        expect(visible.length, 'visible order totals').to.be.greaterThan(0);
+        visible.each((_, value) => expect(Number(value.textContent.replace(/[^\d.]/g, ''))).to.equal(expectedTotal));
       });
       if (expectedTax > 0) {
-        cy.get('.wc-block-components-totals-taxes').should('be.visible').find('.wc-block-components-totals-item__value').should(($value) => {
-          expect(Number($value.text().replace(/[^\d.]/g, ''))).to.equal(expectedTax);
+        cy.get('.wc-block-components-totals-taxes .wc-block-components-totals-item__value').should(($values) => {
+          const visible = $values.filter(':visible');
+          expect(visible.length, 'visible tax totals').to.be.greaterThan(0);
+          visible.each((_, value) => expect(Number(value.textContent.replace(/[^\d.]/g, ''))).to.equal(expectedTax));
         });
       } else {
         // WooCommerce Blocks omits its tax row when the quote is zero.

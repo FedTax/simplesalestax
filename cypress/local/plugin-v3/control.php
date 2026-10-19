@@ -94,6 +94,10 @@ if ( 'setup' === $action ) {
     'persistedOrder' => $persisted, 'completedDate' => $completed_date );
 } elseif ( 'cleanup' === $action ) {
   // Keep test orders for inspection. Remove only this run's disposable fixtures.
+  // Certificates belong to the realtime connection, even after an import failure.
+  $context['dataMover'] = false;
+  update_option( 'sst_cypress_v3_context', $context, false );
+  SST_Settings::load_settings();
   if ( 'live' === $context['mode'] ) {
     wp_set_current_user( $context['adminId'] );
     foreach ( SST_Certificates::get_certificates( $context['customerId'] ) as $cert ) {
@@ -101,6 +105,10 @@ if ( 'setup' === $action ) {
     }
   }
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock', 'productId' ) as $key ) { wp_trash_post( $context[ $key ] ); }
+  foreach ( array( 'Realtime', 'DataImport' ) as $profile ) {
+    $credentials = sst_e2e_credentials( $context );
+    delete_transient( 'sst_tc_v3_token_' . md5( $credentials[ 'apiLoginID' . $profile ] . ':' . $credentials[ 'apiKey' . $profile ] ) );
+  }
   // Retain the test customer with its orders; never delete existing customers.
   delete_option( 'sst_cypress_v3_context' ); delete_option( 'sst_cypress_v3_remote' );
   $result = true;

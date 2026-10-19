@@ -3,13 +3,14 @@ const { promisify } = require('node:util');
 const { randomUUID } = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const { loadCredentials } = require('./credentials');
 const exec = promisify(execFile);
 
 module.exports = (on, config) => {
   const mode = config.env.pluginV3Mode || 'live';
   if (!['live', 'fixture'].includes(mode)) throw new Error('pluginV3Mode must be live or fixture.');
   if (mode === 'live' && config.env.taxcloudTestModeConfirmed !== true && config.env.taxcloudTestModeConfirmed !== 'true') {
-    throw new Error('Confirm the saved TaxCloud connection is in Test mode, then pass --env taxcloudTestModeConfirmed=true. Live tests create orders, certificates and refunds.');
+    throw new Error('Confirm both configured connections are in Test mode, then run npm run test:e2e -- --live. Live tests create orders, certificates and refunds.');
   }
   const container = config.env.apiV3WordpressContainer || 'docker-wordpress-1';
   let run;
@@ -17,14 +18,31 @@ module.exports = (on, config) => {
   const helper = '/var/www/html/wp-content/mu-plugins/sst-cypress-v3.php';
   let installed = false;
   let prepared = false;
-  const docker = (...args) => exec('docker', args, { timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
+  let credentials;
+  const redact = (message) => Object.values(credentials || {}).reduce((text, secret) => text.split(secret).join('[redacted]'), message);
+  const docker = async (...args) => {
+    try {
+      return await exec('docker', args, { timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
+    } catch (error) {
+      throw new Error(redact(error.message));
+    }
+  };
+  const writeCredentials = () => new Promise((resolve, reject) => {
+    // Send secrets over stdin, not command arguments/Cypress env. Only www-data
+    // can read this temporary file, which cleanup removes with the run directory.
+    const child = execFile('docker', ['exec', '-i', '--user', 'www-data', container,
+      'sh', '-c', 'umask 077; cat > "$1"', 'sh', `${directory}/credentials.json`],
+    { timeout: 30000 }, (error) => error ? reject(new Error(redact(error.message))) : resolve());
+    child.stdin.on('error', () => {}); // The exit callback reports write failures.
+    child.stdin.end(JSON.stringify(credentials));
+  });
   const control = async (action, data = {}) => {
     const payload = Buffer.from(JSON.stringify({ action, run, mode, ...data })).toString('base64');
     const { stdout } = await docker('exec', '--user', 'www-data', '--env', `SST_E2E_RUN=${run}`, '--env', `SST_E2E_PAYLOAD=${payload}`,
       container, 'wp', 'eval-file', `${directory}/control.php`, '--allow-root');
     const marker = stdout.lastIndexOf('SST_E2E_RESULT:');
-    if (marker < 0) throw new Error(`WordPress test task failed: ${stdout}`);
-    return JSON.parse(stdout.slice(marker + 'SST_E2E_RESULT:'.length));
+    if (marker < 0) throw new Error(redact(`WordPress test task failed: ${stdout}`));
+    return JSON.parse(redact(stdout.slice(marker + 'SST_E2E_RESULT:'.length)));
   };
   const cleanup = async () => {
     if (!installed && !prepared) return;
@@ -47,6 +65,7 @@ module.exports = (on, config) => {
     }
   };
   const prepare = async () => {
+    credentials = mode === 'live' ? await loadCredentials(config.projectRoot, config.env.pluginV3CredentialsFile) : null;
     run = randomUUID();
     directory = `/tmp/sst-cypress-${run}`;
     const probe = await docker('exec', container, 'test', '!', '-e', helper);
@@ -58,6 +77,7 @@ module.exports = (on, config) => {
     await docker('cp', path.join(config.projectRoot, 'cypress/local/plugin-v3/control.php'), `${container}:${directory}/control.php`);
     await docker('exec', container, 'chown', 'www-data:www-data', directory);
     try {
+      if (credentials) await writeCredentials();
       prepared = true;
       await control('setup');
     } catch (error) {
