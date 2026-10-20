@@ -25,8 +25,8 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **11 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax and rejected-cart handling; only TaxCloud HTTP responses are replaced |
-| `--live` | **10 passing**, zero failures | The same supported workflows authenticate and work against both configured TaxCloud connections |
+| Default (fixture) | **21 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
 Setup failures or skipped workflows do not count as successful verification.
@@ -81,11 +81,16 @@ credentials are preserved.
 | Product TIC | Search/select Uncategorized and save TIC `00000` through the product editor |
 | Classic checkout | Verify the address, calculate tax, and match the visible quote to persisted WooCommerce order totals; saved packages record `api_version: v3` |
 | Capture and refund | Admin completion captures the order; a manual admin refund calls TaxCloud and saves `refunded` |
+| Partial refunds and duplicate completion | In both modes, completing the same order twice sends one capture; two one-unit refunds have different idempotency keys, refund only two units in total, and preserve the original packages |
+| Cancellation | In both modes, cancelling an uncaptured order sends neither capture nor refund requests |
+| Empty cart | Removing all items clears tax and order totals, including on the next Store API read |
 | Quantity change | Changing quantity recalculates tax and the displayed amount matches the new quote |
 | Certificates | My Account creates/lists a certificate, checkout applies it only to the covered state, and the test disables it |
 | Data Import | Its own credentials authenticate and report Data Import mode; checkout avoids realtime cart calls; admin completion imports the order; GET reads it back; manual refund uses the Data Import connection |
 | Checkout Blocks | Store API totals and rendered cart/checkout agree with the plugin tax result |
 | API coverage | Successful requests cover all 14 V3 Sales Tax routes plus authentication and management settings |
+| Failure recovery (fixture only) | Rejected capture preserves the prior sync state and can be retried from admin; rejected refund preserves capture state and records an error note, then resends the same refund/idempotency key successfully |
+| Zero-tax destination (fixture only) | Changing from a positive-tax destination to the fixture's zero-tax destination clears tax without applying an exemption |
 
 For the initial $100 fixture checkout, expect **$10 tax / $110 total**. Quantity
 2 produces **$20 tax**; an exempt checkout produces **$0 tax**. Live quotes can
@@ -98,6 +103,15 @@ they are checked through PHP clients in bootstrapped WordPress. Update Order
 completes a separate pending remote order and reads the completion date back.
 Blocks checks cover rendering/totals; order placement uses classic checkout.
 Manual refunds do not transfer money through a payment gateway.
+
+Failure injection is restricted to fixture mode and affects only the chosen
+capture/refund HTTP request. After a failed TaxCloud refund, WooCommerce can still
+retain the local refund. The test verifies the error note and unchanged TaxCloud
+sync state, then invokes the plugin's PHP refund method with that existing refund
+ID to recover without creating another local refund. There is no browser UI for
+that retry, so it is a supporting integration check. Other capture/refund actions
+and capture retries use the WooCommerce admin UI. No automatic retries of live
+mutations are enabled.
 
 The valid certificate test supplies the Resale ID description. The form currently
 allows an empty description while V3 validation requires `reasonDescription`;

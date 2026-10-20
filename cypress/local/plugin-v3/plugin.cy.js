@@ -27,9 +27,9 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     });
     cy.setCookie('sst_e2e_run', Cypress.env('pluginV3Run'));
   };
-  const cart = () => {
+  const cart = (quantity = 1) => {
     cy.request({ method: 'DELETE', url: '/wp-json/wc/store/v1/cart/items' });
-    cy.visit(`/?add-to-cart=${site.productId}`);
+    cy.visit(`/?add-to-cart=${site.productId}&quantity=${quantity}`);
   };
   const observeReview = (alias, predicate) => cy.intercept('POST', '**/*wc-ajax=update_order_review*', (req) => {
     const outer = typeof req.body === 'string' ? new URLSearchParams(req.body) : null;
@@ -65,14 +65,19 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     cy.location('pathname', { timeout: 60000 }).should('include', '/order-received/');
     return cy.location('pathname').then((pathname) => Number(pathname.match(/order-received\/(\d+)/)[1]));
   };
-  const completeOrder = (id) => {
+  const setOrderStatus = (id, status) => {
     login('admin');
     cy.visit(`/wp-admin/post.php?post=${id}&action=edit`);
-    cy.get('#order_status').select('wc-completed', { force: true });
+    cy.get('#order_status').select(`wc-${status}`, { force: true });
     cy.get('#save-order, button.save_order').first().click();
-    cy.get('#order_status').should('have.value', 'wc-completed');
+    cy.get('#order_status').should('have.value', `wc-${status}`);
+  };
+  const completeOrder = (id) => {
+    setOrderStatus(id, 'completed');
     task('order', { id }).then((order) => expect(order.taxcloudStatus).to.equal('captured'));
   };
+  const captureCalls = (rows) => rows.filter((row) => row.method === 'POST' && /\/(?:carts\/orders|connections\/:connection\/orders)$/.test(row.path));
+  const refundCalls = (rows) => rows.filter((row) => row.method === 'POST' && /\/orders\/refunds\//.test(row.path));
   const verifyConnection = (profile, dataImport) => {
     login('admin');
     task('clearCaches');
@@ -325,7 +330,180 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     task('configure', { blocks: false });
   });
 
+  it('emptying a taxed cart removes its items and stale tax totals', () => {
+    login(); cart(); checkout();
+    call('POST', /\/carts$/);
+    cy.request({ method: 'DELETE', url: '/wp-json/wc/store/v1/cart/items' }).then(({ status, body }) => {
+      expect(status).to.equal(200);
+      expect(body).to.deep.equal([]);
+    });
+    cy.request('/wp-json/wc/store/v1/cart').then(({ body }) => {
+      expect(body.items).to.be.empty;
+      expect(Number(body.totals.total_tax)).to.equal(0);
+      expect(Number(body.totals.total_price)).to.equal(0);
+    });
+  });
+
+  [
+    { profile: 'realtime', dataMover: false },
+    { profile: 'dataImport', dataMover: true },
+  ].forEach(({ profile, dataMover }) => {
+    it(`${profile}: cancelling an uncaptured order never captures or refunds it`, () => {
+      task('configure', { dataMover });
+      login(); cart(); checkout();
+      placeOrder().then((id) => {
+        task('order', { id }).its('taxcloudStatus').should('not.equal', 'captured');
+        setOrderStatus(id, 'cancelled');
+        task('order', { id }).then((order) => {
+          expect(order.status).to.equal('cancelled');
+          expect(order.taxcloudStatus).not.to.equal('captured');
+          expect(order.refunded).to.equal(0);
+        });
+      });
+      records().then((rows) => {
+        const changes = rows.slice(recordOffset);
+        expect(captureCalls(changes)).to.be.empty;
+        expect(refundCalls(changes)).to.be.empty;
+        expect(changes.every((row) => row.connectionProfile === profile)).to.equal(true);
+      });
+    });
+
+    it(`${profile}: repeated completion never recaptures; two partial refunds return only their own quantities`, () => {
+      task('configure', { dataMover });
+      login(); cart(2); checkout();
+      placeOrder().then((id) => {
+        let originalPackages;
+        completeOrder(id);
+        task('order', { id }).then((order) => { originalPackages = order.packages; });
+        setOrderStatus(id, 'processing');
+        completeOrder(id);
+        records().then((rows) => expect(captureCalls(rows.slice(recordOffset)), 'one remote capture despite two completion events').to.have.length(1));
+        task('order', { id }).then((order) => {
+          const unitTotal = Number((order.total / 2).toFixed(2));
+          expect(order.packages).to.deep.equal(originalPackages);
+          refundOrder(unitTotal);
+          call('POST', /\/orders\/refunds\//).then((row) => {
+            expect(row.connectionProfile).to.equal(profile);
+            expect(row.request.items).to.have.length(1);
+            expect(row.request.items[0].quantity).to.equal(1);
+            expect(row.request.idempotencyKey).to.match(/^woocommerce-refund-\d+$/);
+          });
+          task('order', { id }).then((partial) => {
+            expect(partial.taxcloudStatus).to.equal('partially_refunded');
+            expect(partial.refunded).to.equal(unitTotal);
+            expect(partial.remainingRefund).to.equal(unitTotal);
+            expect(partial.packages).to.deep.equal(originalPackages);
+          });
+          cy.reload();
+          refundOrder(unitTotal);
+          records().then((rows) => {
+            const refunds = refundCalls(rows.slice(recordOffset));
+            expect(refunds).to.have.length(2);
+            expect(new Set(refunds.map((row) => row.request.idempotencyKey)).size).to.equal(2);
+            expect(new Set(refunds.map((row) => row.path)).size).to.equal(1);
+            expect(refunds.flatMap((row) => row.request.items).reduce((sum, item) => sum + item.quantity, 0)).to.equal(2);
+            refunds.forEach((row) => {
+              expect(row.status).to.equal(201);
+              expect(row.connectionProfile).to.equal(profile);
+              expect(row.credentialsMatched).to.equal(true);
+            });
+          });
+          task('order', { id }).then((refunded) => {
+            expect(refunded.taxcloudStatus).to.equal('refunded');
+            expect(refunded.refunded).to.equal(order.total);
+            expect(refunded.remainingRefund).to.equal(0);
+            expect(refunded.packages).to.deep.equal(originalPackages);
+          });
+        });
+      });
+    });
+
+    if (fixture) {
+      it(`${profile}: a rejected capture preserves sync state and succeeds after an admin retry`, () => {
+        task('configure', { dataMover });
+        login(); cart(); checkout();
+        placeOrder().then((id) => {
+          let originalStatus;
+          task('order', { id }).then((order) => { originalStatus = order.taxcloudStatus; });
+          task('configure', { failure: 'capture' });
+          setOrderStatus(id, 'completed');
+          task('order', { id }).then((order) => {
+            expect(order.status).to.equal('completed');
+            expect(order.taxcloudStatus).to.equal(originalStatus);
+            expect(order.taxcloudStatus).not.to.equal('captured');
+          });
+          records().then((rows) => {
+            const attempts = captureCalls(rows.slice(recordOffset));
+            expect(attempts).to.have.length(1);
+            expect(attempts[0].status).to.equal(503);
+          });
+          task('configure', { failure: false });
+          setOrderStatus(id, 'processing');
+          completeOrder(id);
+          records().then((rows) => {
+            const attempts = captureCalls(rows.slice(recordOffset));
+            expect(attempts.map((row) => row.status)).to.deep.equal([503, 201]);
+            expect(attempts[1].request.orderId).to.equal(attempts[0].request.orderId);
+            expect(attempts.every((row) => row.connectionProfile === profile && row.credentialsMatched)).to.equal(true);
+          });
+          task('order', { id }).then((order) => refundOrder(order.total));
+          task('order', { id }).its('taxcloudStatus').should('equal', 'refunded');
+        });
+      });
+
+      it(`${profile}: a rejected refund records an error and retries with the same idempotency key`, () => {
+        task('configure', { dataMover });
+        login(); cart(); checkout();
+        placeOrder().then((id) => {
+          completeOrder(id);
+          task('configure', { failure: 'refund' });
+          task('order', { id }).then((order) => refundOrder(order.total));
+          task('order', { id }).then((order) => {
+            expect(order.taxcloudStatus).to.equal('captured');
+            expect(order.refundIds).to.have.length(1);
+            expect(order.notes.join(' ')).to.contain('Cypress injected refund rejection');
+            records().then((rows) => {
+              const attempts = refundCalls(rows.slice(recordOffset));
+              expect(attempts).to.have.length(1);
+              expect(attempts[0].status).to.equal(503);
+            });
+            task('configure', { failure: false });
+            task('retryRefund', { id, refundId: order.refundIds[0] }).its('success').should('equal', true);
+            records().then((rows) => {
+              const attempts = refundCalls(rows.slice(recordOffset));
+              expect(attempts.map((row) => row.status)).to.deep.equal([503, 201]);
+              expect(attempts[1].request).to.deep.equal(attempts[0].request);
+              expect(attempts.every((row) => row.connectionProfile === profile && row.credentialsMatched)).to.equal(true);
+            });
+            task('order', { id }).then((retried) => {
+              expect(retried.taxcloudStatus).to.equal('refunded');
+              expect(retried.refundIds).to.deep.equal(order.refundIds);
+            });
+          });
+        });
+      });
+    }
+  });
+
   if (fixture) {
+    it('changing to a zero-tax destination removes the previous positive tax without an exemption', () => {
+      login(); cart(); checkout();
+      visibleTax(10);
+      observeReview('zeroTaxDestination', (fields) => fields.get('billing_state') === 'OR' && fields.get('billing_postcode') === '97201');
+      cy.get('#billing_state').select('OR', { force: true });
+      cy.get('#billing_city').clear().type('Portland');
+      cy.get('#billing_address_1').clear().type('1037 SW Broadway');
+      cy.get('#billing_postcode').clear().type('97201').blur();
+      cy.wait('@zeroTaxDestination', { timeout: 60000 });
+      cy.get('.blockUI', { timeout: 60000 }).should('not.exist');
+      call('POST', /\/carts$/).then((row) => {
+        expect(row.request.items[0].destination.state).to.equal('OR');
+        expect(row.request.items[0]).not.to.have.property('exemption');
+        expect(row.response.items[0].lineItems.reduce((sum, item) => sum + item.tax.amount, 0)).to.equal(0);
+      });
+      visibleTax(0);
+    });
+
     it('a rejected TaxCloud cart is surfaced by the WooCommerce Store API', () => {
       task('configure', { failure: true });
       task('clearCaches');

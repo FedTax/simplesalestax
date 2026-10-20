@@ -44,7 +44,12 @@ if ( 'setup' === $action ) {
   $result = array_intersect_key( $context, array_flip( array( 'username', 'password', 'productId', 'customerId', 'mode' ) ) );
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock' ) as $key ) { $result[ $key ] = get_permalink( $context[ $key ] ); }
 } elseif ( 'configure' === $action ) {
-  foreach ( array( 'dataMover', 'blocks', 'failure' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
+  foreach ( array( 'dataMover', 'blocks' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
+  if ( array_key_exists( 'failure', $input ) ) {
+    if ( ! in_array( $input['failure'], array( false, true, 'capture', 'refund' ), true ) ) { throw new Exception( 'Unknown fixture failure.' ); }
+    if ( 'live' === $context['mode'] && false !== $input['failure'] ) { throw new Exception( 'Failure injection is fixture only.' ); }
+    $context['failure'] = $input['failure'];
+  }
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
 } elseif ( 'records' === $action ) {
@@ -60,7 +65,20 @@ if ( 'setup' === $action ) {
   if ( ! $order || (int) $order->get_customer_id() !== (int) $context['customerId'] ) { throw new Exception( 'This is not an order belonging to the test customer.' ); }
   $result = array( 'id' => $order->get_id(), 'status' => $order->get_status(), 'tax' => (float) $order->get_total_tax(),
     'total' => (float) $order->get_total(), 'taxcloudStatus' => $order->get_meta( '_wootax_status' ),
+    'refunded' => (float) $order->get_total_refunded(), 'remainingRefund' => (float) $order->get_remaining_refund_amount(),
+    'refundIds' => array_map( function( $refund ) { return $refund->get_id(); }, $order->get_refunds() ),
+    'notes' => array_map( function( $note ) { return $note->content; }, wc_get_order_notes( array( 'order_id' => $order->get_id(), 'limit' => 10 ) ) ),
     'packages' => maybe_unserialize( $order->get_meta( '_wootax_packages' ) ), 'certificate' => $order->get_meta( '_wootax_exempt_cert' ) );
+} elseif ( 'retryRefund' === $action ) {
+  // No UI exists for resending an already-created WooCommerce refund. Exercise
+  // the plugin's retry boundary with the same refund ID/idempotency key.
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Refund recovery simulation is fixture only.' ); }
+  $order = wc_get_order( $input['id'] );
+  $refund = wc_get_order( $input['refundId'] );
+  if ( ! $order || (int) $order->get_customer_id() !== (int) $context['customerId'] || ! $refund instanceof WC_Order_Refund || $refund->get_parent_id() !== $order->get_id() ) {
+    throw new Exception( 'Refund must belong to this run and order.' );
+  }
+  $result = array( 'success' => ( new SST_Order( $order ) )->do_refund( $refund ) );
 } elseif ( 'clientReads' === $action ) {
   // These four methods have no WooCommerce UI caller; this is integration coverage.
   $carts = new TaxCloud_V3\Carts(); $orders = new TaxCloud_V3\Orders(); $certs = new TaxCloud_V3\Exemptions();

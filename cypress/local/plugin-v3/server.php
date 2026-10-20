@@ -142,8 +142,12 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
   }
   if ( $invalid_cart ) {
     $status = 422; $result = array( 'detail' => 'validation failed', 'errors' => array( $invalid_cart ) );
-  } elseif ( ! empty( $context['failure'] ) && preg_match( '#/carts$#', $path ) ) {
+  } elseif ( true === ( $context['failure'] ?? false ) && preg_match( '#/carts$#', $path ) ) {
     $status = 422; $result = array( 'detail' => 'Cypress injected cart rejection' );
+  } elseif ( 'capture' === ( $context['failure'] ?? false ) && 'POST' === $method && preg_match( '#/(?:carts/orders|connections/[^/]+/orders)$#', $path ) ) {
+    $status = 503; $result = array( 'detail' => 'Cypress injected capture rejection' );
+  } elseif ( 'refund' === ( $context['failure'] ?? false ) && 'POST' === $method && preg_match( '#/orders/refunds/[^/]+$#', $path ) ) {
+    $status = 503; $result = array( 'detail' => 'Cypress injected refund rejection' );
   } elseif ( str_ends_with( $path, '/auth/token' ) ) {
     $result = array( 'access_token' => 'fixture-bearer', 'connection_id' => 'fixture-integration' );
   } elseif ( preg_match( '#^/mgmt/connections/[^/]+$#', $path ) ) {
