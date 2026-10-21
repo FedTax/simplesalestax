@@ -17,10 +17,27 @@ load WordPress, contact TaxCloud or create database/remote records.
 
 `test:regression` prints four success messages and exits 0. It checks destination
 state exemptions for V1/V3, local pickup, captured order/refund preservation, and
-API routing/persistence. Missing settings default to V1, explicit V3 persists,
-and API failures never trigger calls to the other version. Capture/refund use
-the original package's version; historical unmarked packages remain V1. Data
-Import continues to skip realtime lookups.
+API routing/persistence. Missing settings default to V1 and explicit V3 persists.
+New realtime lookups use the selected API without switching versions on failure.
+Capture/refund use the original package's version; historical unmarked packages
+remain V1. Existing V3 services from `develop` are preserved: saved certificates
+are discovered through V3 first (with the legacy fallback on V1 sites), management
+settings use V3, and Data Import creates/refunds through V3 in either setting.
+Data Import continues to skip realtime lookups.
+
+For a direct V1 behavior comparison against an exported `develop` checkout, run:
+
+```sh
+php tests/api-version-regression.php --legacy-snapshot > /tmp/sst-v1-current.json
+SST_ROUTING_PLUGIN_ROOT=/path/to/develop php tests/api-version-regression.php --legacy-snapshot > /tmp/sst-v1-develop.json
+diff -u /tmp/sst-v1-develop.json /tmp/sst-v1-current.json
+```
+
+The same test driver runs against both source trees using this checkout's Composer
+dependencies. It compares 15 scenarios: both price modes, products/fees/shipping,
+saved/single-purchase exemptions, address verification, origin fetching, TICs,
+certificate creation/deletion, capture and refund success/failure. Only generated
+timestamps and the new package ownership marker are excluded from the comparison.
 
 `test:api:v3` covers all 14 Sales Tax endpoints, auth, request bodies, encoding,
 responses and errors. Expect **316 passed, 0 failed** for each of the production

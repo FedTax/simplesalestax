@@ -493,26 +493,27 @@ class SST_Certificates {
 		try {
 			$final_certs = array();
 
-			if ( 'v3' === $api_version ) {
-				// Query only the selected TaxCloud V3 exemption certificates API.
-				$v3_exemptions = new \TaxCloud_V3\Exemptions();
-				$v3_items      = $v3_exemptions->get_certificates_for_customer_ids( $lookup_ids );
+			// Saved certificates already use V3 first on develop, including V1 sites.
+			$v3_exemptions = new \TaxCloud_V3\Exemptions();
+			$v3_items      = $v3_exemptions->get_certificates_for_customer_ids( $lookup_ids );
 
-				if ( ! empty( $v3_items ) && is_array( $v3_items ) ) {
-					foreach ( $v3_items as $item ) {
-						if ( empty( $item['singlePurchase'] ) ) { /* Skip single certs */
-							$cert = self::build_v1_cert_from_v3( $item );
-							if ( $cert && $cert->getCertificateID() ) {
-								$final_certs[ $cert->getCertificateID() ] = $cert;
-							}
+			if ( ! empty( $v3_items ) && is_array( $v3_items ) ) {
+				foreach ( $v3_items as $item ) {
+					if ( empty( $item['singlePurchase'] ) ) { /* Skip single certs */
+						$cert = self::build_v1_cert_from_v3( $item );
+						if ( $cert && $cert->getCertificateID() ) {
+							$final_certs[ $cert->getCertificateID() ] = $cert;
 						}
 					}
 				}
+			}
 
+			if ( ! empty( $final_certs ) || 'v3' === $api_version ) {
 				return $final_certs;
 			}
 
-			// Query only the selected legacy V1 TaxCloud endpoint.
+			// Preserve develop's legacy fallback for V1 sites. Explicit V3 sites
+			// do not send new Sales Tax requests to the legacy API on failure.
 			foreach ( $lookup_ids as $lookup_id ) {
 				try {
 					$request = new \TaxCloud\Request\GetExemptCertificates(
