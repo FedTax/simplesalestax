@@ -3,6 +3,7 @@
 .github
 .git
 cypress
+tests
 node_modules
 releases
 docker
@@ -17,6 +18,9 @@ README.md
 composer.json
 composer.lock
 cypress.config.js
+# Never package legacy local credentials during migration.
+cypress.api-v3.staging.env.json
+cypress.plugin-v3.env.json
 gruntfile.js
 package-lock.json
 package.json

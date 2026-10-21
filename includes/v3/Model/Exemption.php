@@ -28,12 +28,35 @@ class Exemption extends Serializable {
 	/**
 	 * Constructor.
 	 *
-	 * @param string|null $exemptionId Exemption ID.
-	 * @param bool|null   $isExempt    Is exempt.
+	 * @param array|string|null $data     Exemption data or exemption ID.
+	 * @param bool|null         $isExempt Is exempt.
 	 * @since 8.4.1
 	 */
-	public function __construct( $exemptionId = null, $isExempt = null ) {
-		$this->exemptionId = $exemptionId;
-		$this->isExempt    = $isExempt;
+	public function __construct( $data = null, $isExempt = null ) {
+		if ( is_array( $data ) ) {
+			if ( array_key_exists( 'exemptionId', $data ) && ! is_null( $data['exemptionId'] ) ) {
+				$this->exemptionId = (string) $data['exemptionId'];
+			}
+
+			if ( array_key_exists( 'isExempt', $data ) && ! is_null( $data['isExempt'] ) ) {
+				$this->isExempt = (bool) $data['isExempt'];
+			}
+
+			return;
+		}
+
+		$this->exemptionId = is_null( $data ) ? null : (string) $data;
+		$this->isExempt    = is_null( $isExempt ) ? null : (bool) $isExempt;
 	}
+
+	/**
+	 * Get exemption certificate ID.
+	 *
+	 * @return string|null
+	 * @since 8.4.10
+	 */
+	public function getCertificateID() {
+		return $this->exemptionId;
+	}
+
 }

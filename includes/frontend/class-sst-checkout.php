@@ -314,7 +314,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		foreach ( $packages as $package ) {
 			if (
 				! isset( $package['destination'] )
-				|| ! $package['destination'] instanceof TaxCloud\Address
+				|| ! SST_Addresses::is_address_object( $package['destination'] )
 				|| $state !== strtoupper( $package['destination']->getState() )
 			) {
 				return false;
@@ -944,7 +944,9 @@ class SST_Checkout extends SST_Abstract_Cart {
 			}
 
 			// Do a tax lookup
-			$order->calculate_taxes();
+			if ( ! $order->calculate_taxes() ) {
+				throw new Exception( __( 'Unable to apply the exemption certificate. Please try again.', 'simple-sales-tax' ) );
+			}
 			$order->calculate_totals( false );
 		} catch ( Throwable $ex ) {
 			SST_Logger::add(
@@ -1198,6 +1200,9 @@ class SST_Checkout extends SST_Abstract_Cart {
 				'value' => 'Other',
 			],
 		];
+		if ( 'v3' === sst_get_api_version() ) {
+			$required_fields['PurchaserExemptionReasonOtherValue'] = [];
+		}
 
 		foreach ( $required_fields as $field_key => $condition ) {
 			$required = true;
@@ -1207,10 +1212,17 @@ class SST_Checkout extends SST_Abstract_Cart {
 				$required    = $field_value === $condition['value'];
 			}
 
-			if ( $required && empty( $certificate[ $field_key ] ) ) {
+			$missing = empty( $certificate[ $field_key ] );
+			if ( 'v3' === sst_get_api_version() && 'PurchaserExemptionReasonOtherValue' === $field_key ) {
+				$missing = '' === trim( (string) ( $certificate[ $field_key ] ?? '' ) );
+			}
+
+			if ( $required && $missing ) {
 				$errors->add(
 					$field_key . '_required',
-					__( 'Required exemption certificate fields are missing', 'simple-sales-tax' )
+					'PurchaserExemptionReasonOtherValue' === $field_key
+						? __( 'Please enter the exemption reason description.', 'simple-sales-tax' )
+						: __( 'Required exemption certificate fields are missing', 'simple-sales-tax' )
 				);
 				break;
 			}

@@ -18,12 +18,18 @@ import {
 import { Select } from '@woocommerce/base-components/select/index';
 import { StateInput } from '@woocommerce/base-components/state-input/index';
 import { ALLOWED_STATES } from '@woocommerce/block-settings';
+import { getSetting } from '@woocommerce/settings';
 
 /**
  * Internal dependencies
  */
 import { BUSINESS_TYPE_OPTIONS, EXEMPTION_REASON_OPTIONS } from './constants';
 import { useExtensionState } from './use-extension-state';
+
+const { requireExemptionReasonDescription = false } = getSetting(
+	'simple-sales-tax_data',
+	{}
+);
 
 const DEFAULT_CERTIFICATE = {
 	SinglePurchase: false,
@@ -207,11 +213,20 @@ export const NewCertificateForm = () => {
 				value={ certificate.PurchaserExemptionReason }
 				required
 			/>
-			{ certificate.PurchaserExemptionReason === 'Other' && (
+			{ ( certificate.PurchaserExemptionReason === 'Other' ||
+				( requireExemptionReasonDescription &&
+					certificate.PurchaserExemptionReason ) ) && (
 				<ValidatedTextInput
 					id="purchaser_exemption_reason_value"
 					errorId="purchaser_exemption_reason_value_error"
-					label={ __( 'Please explain', 'simple-sales-tax' ) }
+					label={
+						certificate.PurchaserExemptionReason === 'Other'
+							? __( 'Please explain', 'simple-sales-tax' )
+							: __(
+									'Exemption reason description',
+									'simple-sales-tax'
+							  )
+					}
 					required
 					type="text"
 					value={ certificate.PurchaserExemptionReasonOtherValue }
@@ -223,7 +238,7 @@ export const NewCertificateForm = () => {
 					}
 					showError={ showError( exemptionReasonOtherError ) }
 					errorMessage={ __(
-						'Please explain why you are tax exempt',
+						'Please enter the exemption reason description.',
 						'simple-sales-tax'
 					) }
 				/>

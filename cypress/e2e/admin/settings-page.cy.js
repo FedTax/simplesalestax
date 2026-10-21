@@ -16,11 +16,12 @@ describe('Settings page', () => {
         req.alias = 'verifyRequest';
       }
     });
-    cy.findByRole('button', {name: 'Verify Settings'}).click();
-    cy.wait('@verifyRequest', {timeout: 20000});
     cy.on('window:alert', (text) => {
       expect(text).to.eq('Success! Your TaxCloud settings are valid.');
     });
+    cy.findByRole('button', {name: 'Verify Settings'}).click();
+    cy.wait('@verifyRequest', {timeout: 20000})
+      .its('response.body.success').should('equal', true);
   });
 
   it('has a working Download Log button', () => {
@@ -30,6 +31,30 @@ describe('Settings page', () => {
       expect(intercepted.response.statusCode).to.eq(200);
       expect(intercepted.response.headers['content-disposition']).to.match(/filename=sst_debug_report_(.*).txt$/);
     });
+  });
+
+  it('saves and restores the selected TaxCloud API version', () => {
+    const saveSettings = () => {
+      cy.findByRole('button', {name: 'Save changes'}).click();
+      cy.findByText(/saved/i, {timeout: 15000}).should('exist');
+    };
+
+    // Select2 hides the native select from the accessibility tree.
+    const apiVersion = () => cy.get('#woocommerce_wootax_api_version');
+    apiVersion()
+      .invoke('val')
+      .then((originalVersion) => {
+        const changedVersion = originalVersion === 'v3' ? 'v1' : 'v3';
+        apiVersion().select(changedVersion, {force: true});
+        saveSettings();
+        cy.reload();
+        apiVersion().should('have.value', changedVersion);
+
+        apiVersion().select(originalVersion, {force: true});
+        saveSettings();
+        cy.reload();
+        apiVersion().should('have.value', originalVersion);
+      });
   });
 
   describe('when block cart/checkout is enabled', () => {
