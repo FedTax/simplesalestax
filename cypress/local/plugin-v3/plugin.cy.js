@@ -516,6 +516,58 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     });
   }
 
+  if (fixture) {
+    it('new single-purchase checkout limits descriptions, exempts the order and reuses its saved ID on recalculation', () => {
+      // Legal exemption creation is simulated at the HTTP boundary in this case.
+      login(); cart(); checkout();
+      cy.get('#certificate_id').select('new', { force: true });
+      cy.get('#exempt_certificate_form').should('be.visible');
+      cy.get('#single_purchase').check();
+      cy.get('#exempt_state').select('MN', { force: true });
+      cy.get('#tax_type').select('StateIssued', { force: true });
+      cy.get('#state_of_issue').select('MN', { force: true });
+      cy.get('#id_number').type('QA-TEST-ONLY');
+      cy.get('#purchaser_business_type').select('Other', { force: true });
+      cy.get('#purchase_business_type_other_value').type('Software QA test — long business description');
+      cy.get('#purchaser_exemption_reason').select('Other', { force: true });
+      cy.get('#purchaser_exemption_reason_value').type('QA TEST ONLY — not valid for actual exempt purchases');
+      cy.get('.blockUI', { timeout: 60000 }).should('not.exist');
+      placeOrder().then((id) => {
+        let registeredId;
+        call('POST', /\/exemption-certificates$/).then((row) => {
+          expect(row.request.customerBusinessDescription).to.equal('Software QA test — l');
+          expect(row.request.reasonDescription).to.equal('QA TEST ONLY — not v');
+          registeredId = row.response.certificateId;
+        });
+        const verifyOrder = () => task('order', { id }).then((order) => {
+          expect(order.tax).to.equal(0);
+          expect(order.total).to.equal(100);
+          expect(order.certificate).to.equal('single-purchase');
+          expect(order.singlePurchaseCertificate.CertificateID).to.equal(registeredId);
+          expect(order.singlePurchaseCertificate.Detail.SinglePurchase).to.equal(true);
+          order.packages.forEach((pack) => expect(pack.certificate_id).to.equal(registeredId));
+          expect(order.taxcloudStatus).not.to.equal('captured');
+        });
+        verifyOrder();
+        // The seeded test helper marks cheques paid when put On hold. Return
+        // this uncaptured fixture order to Pending payment to allow editing.
+        setOrderStatus(id, 'pending');
+        cy.on('window:confirm', () => true);
+        cy.intercept('POST', '/wp-admin/admin-ajax.php', (req) => {
+          if (String(req.body).includes('action=woocommerce_calc_line_taxes')) req.alias = 'recalculateExemptOrder';
+        });
+        cy.get('button.calculate-action').click();
+        cy.wait('@recalculateExemptOrder', { timeout: 60000 });
+        cy.get('.blockUI', { timeout: 60000 }).should('not.exist');
+        verifyOrder();
+        records().then((rows) => {
+          const creates = rows.slice(recordOffset).filter((row) => row.method === 'POST' && /\/exemption-certificates$/.test(row.path));
+          expect(creates, 'only one certificate registered for checkout and recalculation').to.have.length(1);
+        });
+      });
+    });
+  }
+
   it('records successful coverage for all 14 V3 Sales Tax routes plus auth/settings', () => {
     [
       ['POST', /\/auth\/token$/], ['GET', /^\/mgmt\/connections\//], ['GET', /\/ping$/],

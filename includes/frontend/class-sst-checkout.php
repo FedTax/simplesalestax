@@ -314,7 +314,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		foreach ( $packages as $package ) {
 			if (
 				! isset( $package['destination'] )
-				|| ! $package['destination'] instanceof TaxCloud\Address
+				|| ! SST_Addresses::is_address_object( $package['destination'] )
 				|| $state !== strtoupper( $package['destination']->getState() )
 			) {
 				return false;
@@ -944,7 +944,9 @@ class SST_Checkout extends SST_Abstract_Cart {
 			}
 
 			// Do a tax lookup
-			$order->calculate_taxes();
+			if ( ! $order->calculate_taxes() ) {
+				throw new Exception( __( 'Unable to apply the exemption certificate. Please try again.', 'simple-sales-tax' ) );
+			}
 			$order->calculate_totals( false );
 		} catch ( Throwable $ex ) {
 			SST_Logger::add(

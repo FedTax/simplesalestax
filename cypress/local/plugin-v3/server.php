@@ -166,9 +166,13 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
   } elseif ( preg_match( '#/exemption-certificates(?:/([^/]+))?$#', $path, $match ) ) {
     $id = isset( $match[1] ) ? rawurldecode( $match[1] ) : null;
     if ( 'POST' === $method ) {
-      $id = 'cert-' . wp_generate_uuid4(); $status = 201;
-      $result = array_merge( $body, array( 'certificateId' => $id, 'disabledAt' => null, 'createdDate' => gmdate( 'c' ) ) );
-      $state['certificates'][ $id ] = $result;
+      if ( mb_strlen( $body['customerBusinessDescription'] ?? '', 'UTF-8' ) > 20 || mb_strlen( $body['reasonDescription'] ?? '', 'UTF-8' ) > 20 ) {
+        $status = 422; $result = array( 'detail' => 'Certificate descriptions must be at most 20 characters.' );
+      } else {
+        $id = 'cert-' . wp_generate_uuid4(); $status = 201;
+        $result = array_merge( $body, array( 'certificateId' => $id, 'disabledAt' => null, 'createdDate' => gmdate( 'c' ) ) );
+        $state['certificates'][ $id ] = $result;
+      }
     } elseif ( isset( $state['certificates'][ $id ] ) ) {
       $result = $state['certificates'][ $id ];
       if ( 'DELETE' === $method ) { $state['certificates'][ $id ]['disabledAt'] = gmdate( 'c' ); $result = null; $status = 204; }

@@ -31,6 +31,7 @@ class SST_Logger {
 }
 
 require dirname( __DIR__ ) . '/includes/vendor/autoload.php';
+require dirname( __DIR__ ) . '/includes/class-sst-addresses.php';
 require dirname( __DIR__ ) . '/includes/class-sst-certificates.php';
 require dirname( __DIR__ ) . '/includes/abstracts/class-sst-abstract-cart.php';
 require dirname( __DIR__ ) . '/includes/frontend/class-sst-cart-proxy.php';
@@ -144,11 +145,35 @@ expect_same( false, SST_Certificates::certificate_covers_state( $single_purchase
 
 $test_woocommerce = (object) array( 'cart' => new stdClass() );
 $checkout         = new Exemption_State_Test_Checkout();
-$checkout->test_packages = array( lookup_package( 'NC', 'nc-only' ) );
-expect_same( true, $checkout->new_certificate_covers( 'NC' ), 'New NC certificate covers NC package' );
-expect_same( false, $checkout->new_certificate_covers( 'NY' ), 'New NY certificate does not cover NC package' );
-$checkout->test_packages[] = lookup_package( 'NY', 'nc-only' );
-expect_same( false, $checkout->new_certificate_covers( 'NC' ), 'New NC certificate does not cover mixed destinations' );
+foreach ( array( 'v1', 'v3' ) as $version ) {
+	$packages = array();
+	foreach ( array( 'NC', 'NC', 'NY' ) as $state ) {
+		$package = lookup_package( $state, 'nc-only' );
+		if ( 'v3' === $version ) {
+			$package['destination'] = new TaxCloud_V3\Model\Address( array(
+				'line1' => '1 Main St', 'city' => 'Test', 'state' => $state, 'zip' => '28043',
+			) );
+		}
+		$packages[] = $package;
+	}
+
+	$checkout->test_packages = array( $packages[0] );
+	expect_same( true, $checkout->new_certificate_covers( 'NC' ), "$version: new NC certificate covers NC package" );
+	expect_same( true, $checkout->new_certificate_covers( ' nc ' ), "$version: certificate state is normalized" );
+	expect_same( false, $checkout->new_certificate_covers( 'NY' ), "$version: new NY certificate does not cover NC package" );
+	expect_same( false, $checkout->new_certificate_covers( '' ), "$version: an empty certificate state is rejected" );
+	$checkout->test_packages[] = $packages[1];
+	expect_same( true, $checkout->new_certificate_covers( 'NC' ), "$version: new certificate covers all same-state packages" );
+	$checkout->test_packages[] = $packages[2];
+	expect_same( false, $checkout->new_certificate_covers( 'NC' ), "$version: new NC certificate does not cover mixed destinations" );
+}
+
+foreach ( array( array(), array( 'destination' => null ), array( 'destination' => new stdClass() ) ) as $invalid_package ) {
+	$checkout->test_packages = array( $invalid_package );
+	expect_same( false, $checkout->new_certificate_covers( 'NC' ), 'Invalid package destination cannot claim exemption' );
+}
+$checkout->test_packages = array();
+expect_same( false, $checkout->new_certificate_covers( 'NC' ), 'An empty cart cannot claim exemption' );
 
 // The V3 checkout and admin order use different certificate representations.
 // Both must respect the state restrictions introduced on develop.

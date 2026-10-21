@@ -109,7 +109,7 @@ class SST_Certificates {
 	 *
 	 * Saved certificates are resolved from the customer's TaxCloud records so an
 	 * arbitrary certificate ID cannot be used without its state information.
-	 * Unsaved single-purchase certificates carry their own details.
+	 * Single-purchase certificates stored on the order carry their own details.
 	 *
 	 * @param TaxCloud\ExemptionCertificateBase $certificate Certificate to check.
 	 * @param string                             $state       Destination state abbreviation.
@@ -123,7 +123,11 @@ class SST_Certificates {
 		}
 
 		$certificate_id = $certificate->getCertificateID();
-		if ( $certificate_id ) {
+		// Order-specific certificates retain their submitted states and are not
+		// part of the customer's cached list of reusable certificates.
+		$single_purchase = $certificate instanceof TaxCloud\ExemptionCertificate
+			&& $certificate->getDetail()->getSinglePurchase();
+		if ( $certificate_id && ! $single_purchase ) {
 			if ( ! $user_id ) {
 				return false;
 			}
@@ -775,11 +779,9 @@ class SST_Certificates {
 				$v1_reason = $detail->getPurchaserExemptionReason() ?: 'Other';
 				$v3_reason = isset( $v1_to_v3_reason_map[ $v1_reason ] ) ? $v1_to_v3_reason_map[ $v1_reason ] : 'Other';
 
-				// v3 API enforces a strict 20-character limit on reasonDescription.
-				$reason_description = $detail->getPurchaserExemptionReasonValue();
-				if ( strlen( $reason_description ) > 20 ) {
-					$reason_description = substr( $reason_description, 0, 20 );
-				}
+				// V3 limits both descriptions to 20 characters. Preserve valid UTF-8.
+				$reason_description   = mb_substr( (string) $detail->getPurchaserExemptionReasonValue(), 0, 20, 'UTF-8' );
+				$business_description = mb_substr( (string) $detail->getPurchaserBusinessTypeOtherValue(), 0, 20, 'UTF-8' );
 
 				// Map v1 business type names to v3 API enum values.
 				$v1_to_v3_business_map = array(
@@ -794,7 +796,7 @@ class SST_Certificates {
 					'customerId'                  => (string) $user->ID,
 					'customerName'                => trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() ),
 					'customerBusinessType'        => $v3_business,
-					'customerBusinessDescription' => $detail->getPurchaserBusinessTypeOtherValue(),
+					'customerBusinessDescription' => $business_description,
 					'reason'                      => $v3_reason,
 					'reasonDescription'           => $reason_description,
 					'address'                     => array(
@@ -820,7 +822,7 @@ class SST_Certificates {
 					throw new \Exception( $response->get_error_message() );
 				}
 
-				$certificate_id = $response['certificateId'];
+				$certificate_id = $response['certificateId'] ?? '';
 			} else {
 				$request = new \TaxCloud\Request\AddExemptCertificate(
 					SST_Settings::get( 'tc_id' ),

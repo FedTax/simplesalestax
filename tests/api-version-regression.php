@@ -24,6 +24,7 @@ namespace {
 	define( 'WEEK_IN_SECONDS', 604800 );
 	define( 'HOUR_IN_SECONDS', 3600 );
 	define( 'SST_DEFAULT_FEE_TIC', 10010 );
+	define( 'SST_SINGLE_PURCHASE_CERT_ID', 'single-purchase' );
 
 	class Routing_Http {
 		public static $v1 = array();
@@ -83,6 +84,10 @@ namespace {
 	function get_transient( $key ) { return Routing_Http::$transients[ $key ] ?? false; }
 	function set_transient( $key, $value, $ttl = 0 ) { Routing_Http::$transients[ $key ] = $value; }
 	function get_current_user_id() { return 42; }
+	function get_user_by( $field, $id ) { return new WP_User( $id ); }
+	function wc_get_order( $id ) { return $GLOBALS['routing_order']; }
+	function wp_unslash( $value ) { return $value; }
+	function sanitize_text_field( $value ) { return trim( (string) $value ); }
 	function get_user_meta() { return ''; }
 	function wp_json_encode( $value ) { return json_encode( $value ); }
 	function is_wp_error( $value ) { return $value instanceof WP_Error; }
@@ -146,9 +151,11 @@ namespace {
 	require dirname( __DIR__ ) . '/includes/class-sst-addresses.php';
 	require dirname( __DIR__ ) . '/includes/abstracts/class-sst-abstract-cart.php';
 	require dirname( __DIR__ ) . '/includes/class-sst-order.php';
+	require dirname( __DIR__ ) . '/includes/class-sst-order-controller.php';
 
 	class Routing_Order extends SST_Order {
 		public $errors = array();
+		public function v3_request( &$package ) { return $this->get_v3_lookup_for_package( $package, 0 ); }
 		public function lookup( $package ) {
 			if ( 'v1' === sst_get_api_version() ) { $package['request'] = $this->get_lookup_for_package( $package ); }
 			return $this->do_package_lookup( $package, 0 );
@@ -207,6 +214,67 @@ namespace {
 			assert_route( $version, 'GetExemptCertificates', '/tax/exemption-certificates', 'Empty or failed certificates never fall back' );
 		}
 	}
+
+	// Register the real SDK single-purchase object through the plugin's V3 mapper,
+	// then reload order metadata and force another quote. It must not register twice.
+	foreach ( array( 'Software QA test — certificate review', str_repeat( 'é', 19 ) . '😀more' ) as $description ) {
+		Routing_Http::reset( 'v3' );
+		Routing_Http::$body = array( 'certificateId' => 'registered-certificate' );
+		$certificate = new TaxCloud\ExemptionCertificate(
+			array( new TaxCloud\ExemptState( 'TX', 'Other', 'QA-TEST-ONLY' ) ), true, '42',
+			'QA', 'Test', '', '1100 Congress Ave', '', 'Austin', 'TX', '78701',
+			new TaxCloud\TaxID( 'StateIssued', 'QA-TEST-ONLY', 'TX' ), 'Other', $description, 'Other', $description
+		);
+		$address = new TaxCloud_V3\Model\Address( array( 'line1' => '1100 Congress Ave', 'city' => 'Austin', 'state' => 'TX', 'zip' => '78701' ) );
+		$package = array( 'contents' => array(), 'fees' => array(), 'shipping' => null, 'user' => array( 'ID' => 42 ), 'origin' => $address, 'destination' => $address, 'certificate' => $certificate );
+		$order = new WC_Order();
+		$sst = new Routing_Order( $order );
+		$request = $sst->v3_request( $package );
+		$payload = json_decode( Routing_Http::$v3[0][2]['body'], true );
+		foreach ( array( 'customerBusinessDescription', 'reasonDescription' ) as $field ) {
+			expect_same( mb_substr( $description, 0, 20, 'UTF-8' ), $payload[ $field ], 'V3 descriptions fit the character limit without corrupting UTF-8' );
+		}
+		expect_same( 'registered-certificate', $request['items'][0]['exemption']['exemptionId'], 'Quote applies the newly registered certificate' );
+		expect_same( 'registered-certificate', $package['certificate']->getCertificateID(), 'Package retains the remote certificate ID' );
+		$reloaded = new Routing_Order( $order );
+		$package['certificate'] = $reloaded->get_single_purchase_certificate();
+		expect_same( 'registered-certificate', $package['certificate']->getCertificateID(), 'Order metadata persists the certificate ID' );
+		$request = $reloaded->v3_request( $package );
+		expect_same( 1, count( Routing_Http::$v3 ), 'Recalculation reuses the certificate without registration or customer-list lookup' );
+		expect_same( 'registered-certificate', $request['items'][0]['exemption']['exemptionId'], 'Recalculation remains exempt' );
+		$package['destination'] = new TaxCloud_V3\Model\Address( array( 'line1' => '1 Main St', 'city' => 'Raleigh', 'state' => 'NC', 'zip' => '27601' ) );
+		$request = $reloaded->v3_request( $package );
+		expect_same( false, isset( $request['items'][0]['exemption'] ), 'Persisted single-purchase certificate cannot exempt a different state' );
+
+		// Failure must stop lookup rather than silently calculating a taxable cart.
+		Routing_Http::reset( 'v3' );
+		Routing_Http::$fail = true;
+		$package['destination'] = $address;
+		$package['certificate'] = $certificate;
+		$result = ( new Routing_Order( new WC_Order() ) )->lookup( $package );
+		expect_same( true, is_wp_error( $result['response'] ), 'Registration failure propagates to the checkout tax error handler' );
+		assert_route( 'v3', '', '/tax/connections/test-connection/exemption-certificates', 'Failed registration never submits a taxable cart' );
+
+		Routing_Http::reset( 'v3' );
+		$failed_order = new Routing_Order( new WC_Order() );
+		$result = $failed_order->lookup( $package );
+		expect_same( true, is_wp_error( $result['response'] ), 'A successful HTTP response without a certificate ID is still a registration failure' );
+		expect_same( null, $failed_order->get_single_purchase_certificate(), 'An invalid certificate response is not persisted as registered' );
+		assert_route( 'v3', '', '/tax/connections/test-connection/exemption-certificates', 'Missing ID never submits an unexempted cart' );
+	}
+
+	// A disabled admin selector is not posted when changing a Processing order
+	// back to Pending payment. Preserve the certificate unless explicitly cleared.
+	$routing_order = new WC_Order();
+	$routing_order->update_meta_data( '_wootax_exempt_cert', SST_SINGLE_PURCHASE_CERT_ID );
+	$controller = new SST_Order_Controller();
+	$_POST = array( 'order_status' => 'wc-pending' );
+	$controller->save_certficiate( 42 );
+	expect_same( SST_SINGLE_PURCHASE_CERT_ID, $routing_order->get_meta( '_wootax_exempt_cert' ), 'Saving an unrelated field preserves a disabled exemption selection' );
+	$_POST['exempt_cert'] = '';
+	$controller->save_certficiate( 42 );
+	expect_same( '', $routing_order->get_meta( '_wootax_exempt_cert' ), 'An explicitly cleared selector removes the exemption' );
+	$_POST = array();
 
 	// Capture/refund must use the API that owns the stored cart, even after an option switch.
 	// Existing unmarked packages remain V1; this is historical ownership, not failure fallback.

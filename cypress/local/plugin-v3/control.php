@@ -68,7 +68,8 @@ if ( 'setup' === $action ) {
     'refunded' => (float) $order->get_total_refunded(), 'remainingRefund' => (float) $order->get_remaining_refund_amount(),
     'refundIds' => array_map( function( $refund ) { return $refund->get_id(); }, $order->get_refunds() ),
     'notes' => array_map( function( $note ) { return $note->content; }, wc_get_order_notes( array( 'order_id' => $order->get_id(), 'limit' => 10 ) ) ),
-    'packages' => maybe_unserialize( $order->get_meta( '_wootax_packages' ) ), 'certificate' => $order->get_meta( '_wootax_exempt_cert' ) );
+    'packages' => maybe_unserialize( $order->get_meta( '_wootax_packages' ) ), 'certificate' => $order->get_meta( '_wootax_exempt_cert' ),
+    'singlePurchaseCertificate' => json_decode( $order->get_meta( '_wootax_single_purchase_cert' ) ?: 'null', true ) );
 } elseif ( 'retryRefund' === $action ) {
   // No UI exists for resending an already-created WooCommerce refund. Exercise
   // the plugin's retry boundary with the same refund ID/idempotency key.

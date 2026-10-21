@@ -25,7 +25,7 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **21 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **22 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
@@ -86,6 +86,7 @@ credentials are preserved.
 | Empty cart | Removing all items clears tax and order totals, including on the next Store API read |
 | Quantity change | Changing quantity recalculates tax and the displayed amount matches the new quote |
 | Certificates | My Account creates/lists a certificate, checkout applies it only to the covered state, and the test disables it |
+| New single-purchase certificate (fixture only) | Checkout accepts matching V3 destinations, bounds both descriptions to 20 Unicode characters, saves a remote certificate ID and $0 tax, preserves it when changing an order back to Pending payment, and reuses that ID on admin recalculation without registering a duplicate |
 | Data Import | Its own credentials authenticate and report Data Import mode; checkout avoids realtime cart calls; admin completion imports the order; GET reads it back; manual refund uses the Data Import connection |
 | Checkout Blocks | Store API totals and rendered cart/checkout agree with the plugin tax result |
 | API coverage | Successful requests cover all 14 V3 Sales Tax routes plus authentication and management settings |

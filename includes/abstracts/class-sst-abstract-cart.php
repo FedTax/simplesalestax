@@ -278,9 +278,9 @@ abstract class SST_Abstract_Cart {
 	 */
 	protected function do_v3_package_lookup( $package, $key, $rate_limit ) {
 		$carts_api = new TaxCloud_V3\Carts();
-		$request   = $this->get_v3_lookup_for_package( $package, $key );
 
 		try {
+			$request = $this->get_v3_lookup_for_package( $package, $key );
 			$response = $carts_api->calculate_tax( $request );
 
 			if ( is_wp_error( $response ) ) {
@@ -631,12 +631,24 @@ abstract class SST_Abstract_Cart {
 					$user_id = isset( $package['user']['ID'] ) ? $package['user']['ID'] : 0;
 					$certificate_id = SST_Certificates::add_certificate_object( $certificate, $user_id );
 
+					if ( empty( $certificate_id ) ) {
+						throw new UnexpectedValueException( __( 'TaxCloud did not return an exemption certificate ID.', 'simple-sales-tax' ) );
+					}
+
+					// The legacy SDK has no ID setter. Rebuild it with the registered
+					// ID before saving so subsequent lookups reuse the same certificate.
+					$certificate_data = $certificate->jsonSerialize();
+					$certificate_data['CertificateID'] = $certificate_id;
+					$certificate = \TaxCloud\ExemptionCertificate::fromArray( $certificate_data );
+					$package['certificate'] = $certificate;
+
 					if ( ! empty( $certificate_id ) && is_a( $this, 'SST_Order' ) ) {
 						$this->set_single_purchase_certificate( $certificate );
 						$this->save();
 					}
 				} catch ( Exception $ex ) {
 					SST_Logger::add( 'Failed to register single-purchase certificate in V3: ' . $ex->getMessage() );
+					throw $ex;
 				}
 			}
 
@@ -1038,7 +1050,7 @@ abstract class SST_Abstract_Cart {
 			$package['certificate_id'] = md5( wp_json_encode( $detail_array ) );
 		} elseif ( 'v3' !== sst_get_api_version() && $certificate instanceof \TaxCloud\ExemptionCertificateBase ) {
 			$package['certificate_id'] = $certificate->getCertificateId();
-		} elseif ( is_object( $certificate ) && method_exists( $certificate, 'getDetail' ) ) {
+		} elseif ( is_object( $certificate ) && method_exists( $certificate, 'getDetail' ) && empty( $certificate->getCertificateID() ) ) {
 			// Single-purchase certificate without an ID. Use a stable hash of the certificate detail object as the ID.
 			$detail       = $certificate->getDetail();
 			$detail_array = json_decode( wp_json_encode( $detail ), true );
