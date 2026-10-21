@@ -82,7 +82,32 @@ class SST_Certificates {
 			self::set_certificates( $user_id, $certificates );
 		}
 
+		// V3 does not return tax ID details. Restore locally submitted details
+		// after both cached reads and refreshes, without adding certificates that
+		// TaxCloud no longer returns or replacing authoritative legacy details.
+		foreach ( $certificates as $key => $certificate ) {
+			$data = $certificate->jsonSerialize();
+			if ( '' !== (string) $data['Detail']['PurchaserTaxID']['IDNumber'] ) {
+				continue;
+			}
+			$tax_id = get_user_meta( $user_id, self::get_tax_id_meta_key( $certificate->getCertificateID() ), true );
+			if ( is_array( $tax_id ) && isset( $tax_id['IDNumber'] ) && '' !== (string) $tax_id['IDNumber'] ) {
+				$data['Detail']['PurchaserTaxID'] = array_merge( $data['Detail']['PurchaserTaxID'], $tax_id );
+				$certificates[ $key ] = TaxCloud\ExemptionCertificate::fromArray( $data );
+			}
+		}
+
 		return $certificates;
+	}
+
+	/**
+	 * Scope locally retained tax ID details to the connection and certificate.
+	 *
+	 * @param string $certificate_id TaxCloud certificate ID.
+	 * @return string User meta key.
+	 */
+	private static function get_tax_id_meta_key( $certificate_id ) {
+		return '_sst_certificate_tax_id_' . md5( SST_Settings::get( 'tc_id' ) . ':' . SST_Settings::get( 'tc_key' ) . ':' . $certificate_id );
 	}
 
 	/**
@@ -225,6 +250,8 @@ class SST_Certificates {
 		$exempt_states  = self::get_exempt_state_abbreviations( $detail );
 		$purchaser_name = trim( $detail->getPurchaserFirstName() . ' ' . $detail->getPurchaserLastName() );
 		$short_id       = self::get_short_certificate_id( $certificate_id );
+		$tax_id         = $detail->getPurchaserTaxID();
+		$has_tax_id     = '' !== (string) $tax_id->getIDNumber();
 		$formatted      = array(
 			'CertificateID'              => $certificate_id,
 			'CertificateLabel'           => $short_id
@@ -242,8 +269,12 @@ class SST_Certificates {
 			'PurchaserExemptionReason'   => sst_prettify( $detail->getPurchaserExemptionReason() ) ?: __( 'Exemption certificate', 'simple-sales-tax' ),
 			'SinglePurchase'             => $detail->getSinglePurchase(),
 			'SinglePurchaserOrderNumber' => $detail->getSinglePurchaseOrderNumber(),
-			'TaxType'                    => sst_prettify( $detail->getPurchaserTaxID()->getTaxType() ),
-			'IDNumber'                   => $detail->getPurchaserTaxID()->getIDNumber(),
+			'TaxType'                    => $has_tax_id
+				? sst_prettify( $tax_id->getTaxType() )
+				: __( 'Not available', 'simple-sales-tax' ),
+			'IDNumber'                   => $has_tax_id
+				? $tax_id->getIDNumber()
+				: __( 'Not available', 'simple-sales-tax' ),
 			'PurchaserBusinessType'      => sst_prettify( $detail->getPurchaserBusinessType() ) ?: __( 'Business type not specified', 'simple-sales-tax' ),
 			'Description'                => self::get_certificate_description(
 				$detail,
@@ -604,7 +635,7 @@ class SST_Certificates {
 			'Detail'        => array(
 				'ExemptStates'                    => $exempt_states,
 				'PurchaserTaxID'                  => array(
-					'TaxType'      => 'FEIN',
+					'TaxType'      => '',
 					'IDNumber'     => '',
 					'StateOfIssue' => '',
 				),
@@ -840,6 +871,11 @@ class SST_Certificates {
 
 			// Invalidate cached certificates if not a single purchase certificate
 			if ( ! $certificate->getDetail()->getSinglePurchase() ) {
+				if ( '' !== (string) $certificate_id ) {
+					// The V3 schema has no tax ID fields. Retain only these missing
+					// details locally; certificate availability still comes from TaxCloud.
+					update_user_meta( $user->ID, self::get_tax_id_meta_key( $certificate_id ), $certificate->getDetail()->getPurchaserTaxID()->jsonSerialize() );
+				}
 				SST_Certificates::delete_certificates( $user->ID );
 			}
 
@@ -895,6 +931,7 @@ class SST_Certificates {
 		}
 
 		// Invalidate cached certificates.
+		delete_user_meta( $user_id, self::get_tax_id_meta_key( $certificate_id ) );
 		SST_Certificates::delete_certificates( $user_id );
 	}
 

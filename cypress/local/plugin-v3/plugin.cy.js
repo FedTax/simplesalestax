@@ -202,8 +202,9 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     cy.get('.sst-certificate-add').click();
     cy.get('.wc-backbone-modal').within(() => {
       cy.get('#exempt_state').select('MN', { force: true });
-      cy.get('#tax_type').select('FEIN', { force: true });
-      cy.get('#id_number').type('123456789');
+      cy.get('#tax_type').select('StateIssued', { force: true });
+      cy.get('#id_number').type('QA-TAX-ID');
+      cy.get('#state_of_issue').select('MN', { force: true });
       cy.get('#purchaser_business_type').select('RetailTrade', { force: true });
       cy.get('#purchaser_exemption_reason').select('Resale', { force: true });
       cy.get('#purchaser_exemption_reason_value_field').should('have.class', 'validate-required');
@@ -228,6 +229,10 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     cy.get('.sst-certificate-refresh').click();
     cy.get('#sst-certificates tbody tr[data-id]').should('have.length', 1);
     call('GET', /^\/tax\/exemption-certificates$/);
+    cy.get('.sst-certificate-view').click();
+    cy.get('.wc-backbone-modal #TaxType').should('contain', 'State Issued');
+    cy.get('.wc-backbone-modal #IDNumber').should('have.text', 'QA-TAX-ID');
+    cy.get('.wc-backbone-modal .modal-close-link').click();
     cart(); checkout();
     observeReview('exemptionApplied', (fields) => fields.get('certificate_id') === certificateId);
     cy.then(() => cy.get(`#certificate_id option[value="${certificateId}"]`).invoke('text').then((label) => {
@@ -237,6 +242,18 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     cy.wait('@exemptionApplied', { timeout: 60000 });
     visibleTax(0);
     call('POST', /\/carts$/).then((row) => expect(row.request.items[0].exemption.exemptionId).to.equal(certificateId));
+    // Removing exemption must itself send an update, without changing address
+    // or shipping to force a recalculation.
+    observeReview('exemptionRemoved', (fields) => fields.get('certificate_id') === 'none');
+    cy.get('#certificate_id').select('none', { force: true });
+    cy.wait('@exemptionRemoved', { timeout: 60000 });
+    cy.get('.blockUI', { timeout: 60000 }).should('not.exist');
+    // The non-exempt package can reuse its earlier taxable quote from cache.
+    if (fixture) visibleTax(10);
+    observeReview('exemptionReapplied', (fields) => fields.get('certificate_id') === certificateId);
+    cy.then(() => cy.get('#certificate_id').select(certificateId, { force: true }));
+    cy.wait('@exemptionReapplied', { timeout: 60000 });
+    visibleTax(0);
     // Same buyer/certificate, destination outside MN: exemption must not leak.
     observeReview('destinationChanged', (fields) => fields.get('billing_state') === 'CA' && fields.get('billing_postcode') === '90012');
     cy.get('#billing_state').select('CA', { force: true });

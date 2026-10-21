@@ -61,6 +61,7 @@ function sst_prettify( $ugly ) {
 		'StateOrLocalGovernmentName'              => 'State or Local Government',
 		'TribalGovernmentName'                    => 'Tribal Government',
 		'ForeignDiplomat'                         => 'Foreign Diplomat',
+		'StateIssued'                             => 'State Issued',
 		'CharitableOrganization'                  => 'Charitable Organization',
 		'ReligiousOrEducationalOrganization'      => 'Religious or Educational Organization',
 		'AgriculturalProduction'                  => 'Agricultural Production',

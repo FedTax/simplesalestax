@@ -37,10 +37,12 @@ namespace {
 		public static $body = array();
 		public static $options = array();
 		public static $transients = array();
+		public static $user_meta = array();
 		public static $assertions = 0;
 
 		public static function reset( $version = null ) {
 			self::$v1 = self::$v3 = self::$transients = array();
+			self::$user_meta = array();
 			SST_Rate_Limit::$count = 0;
 			self::$fail = false;
 			self::$body = array();
@@ -98,7 +100,10 @@ namespace {
 	function wc_get_order( $id ) { return $GLOBALS['routing_order']; }
 	function wp_unslash( $value ) { return $value; }
 	function sanitize_text_field( $value ) { return trim( (string) $value ); }
-	function get_user_meta() { return ''; }
+	function get_user_meta( $user_id, $key, $single = false ) { return Routing_Http::$user_meta[ $user_id ][ $key ] ?? ''; }
+	function update_user_meta( $user_id, $key, $value ) { Routing_Http::$user_meta[ $user_id ][ $key ] = $value; }
+	function delete_user_meta( $user_id, $key ) { unset( Routing_Http::$user_meta[ $user_id ][ $key ] ); }
+	function wp_date( $format, $timestamp = null ) { return date( $format, $timestamp ?? time() ); }
 	function wp_json_encode( $value ) { return json_encode( $value ); }
 	function is_wp_error( $value ) { return $value instanceof WP_Error; }
 	function maybe_unserialize( $value ) { return 'a:' === substr( $value, 0, 2 ) ? unserialize( $value ) : $value; }
@@ -405,6 +410,60 @@ namespace {
 		assert_route( 'v3', '', '/tax/exemption-certificates', 'Existing V3 certificates avoid unnecessary legacy fallback' );
 		expect_same( true, SST_Certificates::certificate_covers_state( $certificates['shared-v3-certificate'], 'NC', 42 ), 'Shared certificate state coverage remains usable' );
 	}
+
+	// Submitted tax IDs survive V3's intentionally smaller schema, cache expiry,
+	// refreshes and API switches. Local metadata must never invent availability.
+	foreach ( array( 'v1', 'v3' ) as $created_version ) {
+		foreach ( array( 'FEIN', 'StateIssued' ) as $tax_type ) {
+			Routing_Http::reset( $created_version );
+			Routing_Http::$body = array( 'certificateId' => 'v3-certificate' );
+			$submitted = new TaxCloud\TaxID( $tax_type, 'QA-TAX-ID', 'NC' );
+			$certificate = new TaxCloud\ExemptionCertificate( array( new TaxCloud\ExemptState( 'NC', 'Other', 'QA-TAX-ID' ) ), false, '',
+				'QA', 'Buyer', '', '1 Main St', '', 'Raleigh', 'NC', '27601', $submitted, 'Other', 'QA business', 'Other', 'QA test' );
+			$id = SST_Certificates::add_certificate_object( $certificate, 42 );
+			expect_same( 1, count( Routing_Http::$user_meta[42] ), 'Successful reusable creation retains tax ID details' );
+			$remote = array( 'certificateId' => $id, 'customerId' => '42', 'customerName' => 'QA Buyer',
+				'customerBusinessType' => 'Other', 'reason' => 'Other', 'states' => array( array( 'abbreviation' => 'NC' ) ) );
+			Routing_Http::$body = array( 'items' => array( $remote ) );
+			foreach ( array( 'v1', 'v3' ) as $read_version ) {
+				SST_Settings::set( 'api_version', $read_version );
+				SST_Certificates::delete_certificates( 42 );
+				$fetched = SST_Certificates::get_certificate( $id, 42 );
+				expect_same( $submitted->jsonSerialize(), $fetched->getDetail()->getPurchaserTaxID()->jsonSerialize(), "$created_version to $read_version: tax type, number and issuing state survive refresh" );
+				$requests = count( Routing_Http::$v3 );
+				$cached = SST_Certificates::get_certificates( 42, false );
+				expect_same( $submitted->jsonSerialize(), $cached[$id]->getDetail()->getPurchaserTaxID()->jsonSerialize(), 'Cached reads retain the same tax ID details' );
+				expect_same( $requests, count( Routing_Http::$v3 ), 'Cached reads do not issue HTTP requests' );
+				$display = SST_Certificates::format_certificate( $fetched );
+				expect_same( sst_prettify( $tax_type ), $display['TaxType'], 'View displays the submitted tax ID type' );
+				expect_same( 'QA-TAX-ID', $display['IDNumber'], 'View displays the submitted tax ID number' );
+			}
+			expect_same( '', SST_Certificates::get_certificate( $id, 43 )->getDetail()->getPurchaserTaxID()->getIDNumber(), 'Tax IDs are private to their customer' );
+			SST_Settings::set( 'tc_key', 'other-connection' );
+			expect_same( '', SST_Certificates::get_certificate( $id, 42 )->getDetail()->getPurchaserTaxID()->getIDNumber(), 'Tax IDs are private to their connection even with a cached matching ID' );
+			SST_Settings::set( 'tc_key', 'test-connection' );
+			Routing_Http::$body = array( 'items' => array() );
+			SST_Certificates::delete_certificates( 42 );
+			expect_same( array(), SST_Certificates::get_certificates( 42 ), 'Retained tax IDs cannot resurrect a certificate removed remotely' );
+			Routing_Http::$body = array( 'items' => array( $remote ) );
+			SST_Certificates::delete_certificates( 42 );
+			SST_Certificates::get_certificates( 42 );
+			Routing_Http::$fail = true;
+			try { SST_Certificates::delete_certificate( $id, 42 ); } catch ( \Throwable $error ) {}
+			expect_same( 1, count( Routing_Http::$user_meta[42] ), 'Failed remote deletion retains the local tax ID' );
+			Routing_Http::$fail = false;
+			SST_Certificates::delete_certificates( 42 );
+			SST_Certificates::delete_certificate( $id, 42 );
+			expect_same( array(), Routing_Http::$user_meta[42], 'Successful remote deletion removes the local tax ID' );
+		}
+	}
+	$unknown = SST_Certificates::format_certificate( SST_Certificates::build_v1_cert_from_v3( $remote ) );
+	expect_same( 'Not available', $unknown['TaxType'], 'Unknown tax ID type is not fabricated as FEIN' );
+	expect_same( 'Not available', $unknown['IDNumber'], 'Unavailable tax ID is explicitly identified' );
+	Routing_Http::reset( 'v3' );
+	Routing_Http::$fail = true;
+	try { SST_Certificates::add_certificate_object( $certificate, 42 ); } catch ( \Throwable $error ) {}
+	expect_same( array(), Routing_Http::$user_meta, 'Failed registration does not retain tax ID details' );
 
 	// Data Import was already a V3 integration on develop. V1 selection must
 	// neither disable it nor send the imported order to AuthorizedWithCapture.
