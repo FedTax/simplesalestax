@@ -16,8 +16,18 @@ function get_option( $key, $default = null ) { return $default; }
 function sst_prettify( $value ) { return $value; }
 function WC() { global $test_woocommerce; return $test_woocommerce; }
 function get_woocommerce_currency() { return 'USD'; }
+function sst_get_api_version() { return SST_Settings::$version; }
+function sst_integration_mode() { return 'realtime'; }
+
+class WP_Error {
+	private $errors = array();
+	public function add( $code, $message ) { $this->errors[ $code ] = $message; }
+	public function has_errors() { return ! empty( $this->errors ); }
+	public function get_error_codes() { return array_keys( $this->errors ); }
+}
 
 class SST_Settings {
+	public static $version = 'v1';
 	public static function get( $key, $default = null ) {
 		if ( 'tc_id' === $key ) { return 'TESTID'; }
 		if ( 'tc_key' === $key ) { return 'TESTKEY'; }
@@ -61,6 +71,9 @@ class Exemption_State_Test_Checkout extends SST_Checkout {
 	public function __construct() {}
 	protected function create_packages() { return $this->test_packages; }
 	public function new_certificate_covers( $state ) { return $this->new_certificate_covers_packages( $state ); }
+	public function validate_certificate( $certificate, $errors ) {
+		$this->validate_exemption_certificate( array( 'certificate_id' => 'new', 'certificate' => $certificate ), $errors );
+	}
 }
 
 function expect_same( $expected, $actual, $message ) {
@@ -194,6 +207,22 @@ foreach ( array( 'checkout', 'order', 'array' ) as $context ) {
 			expect_same( 'nc-only', $request['items'][0]['exemption']['exemptionId'], "V3 $context: certificate ID preserved" );
 		} else {
 			expect_same( null, $package['certificate'], "V3 $context: rejected certificate is removed before saving packages" );
+		}
+	}
+}
+
+$checkout->test_packages = array( lookup_package( 'NC', 'nc-only' ) );
+foreach ( array( 'v1', 'v3' ) as $version ) {
+	SST_Settings::$version = $version;
+	foreach ( array( 'Resale', 'Other' ) as $reason ) {
+		foreach ( array( '', '   ', 'QA exemption' ) as $description ) {
+			$certificate = array( 'ExemptState' => 'NC', 'TaxType' => 'FEIN', 'IDNumber' => 'QA-ONLY', 'PurchaserBusinessType' => 'RetailTrade',
+				'PurchaserExemptionReason' => $reason, 'PurchaserExemptionReasonOtherValue' => $description );
+			$errors = new WP_Error();
+			$checkout->validate_certificate( $certificate, $errors );
+			$missing = 'v3' === $version ? '' === trim( $description ) : ( 'Other' === $reason && '' === $description );
+			expect_same( $missing ? array( 'PurchaserExemptionReasonOtherValue_required' ) : array(), $errors->get_error_codes(),
+				"$version: $reason description validation identifies the required field" );
 		}
 	}
 }

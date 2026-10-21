@@ -206,6 +206,14 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
       cy.get('#id_number').type('123456789');
       cy.get('#purchaser_business_type').select('RetailTrade', { force: true });
       cy.get('#purchaser_exemption_reason').select('Resale', { force: true });
+      cy.get('#purchaser_exemption_reason_value_field').should('have.class', 'validate-required');
+      cy.get('#purchaser_exemption_reason_value').should('have.prop', 'required', true);
+      cy.get('#purchaser_exemption_reason').select('', { force: true });
+      cy.get('#purchaser_exemption_reason_value').should('have.prop', 'required', false);
+      cy.get('#purchaser_exemption_reason').select('Resale', { force: true });
+      cy.get('#btn-ok').click();
+      cy.get('#purchaser_exemption_reason_value_field').should('have.class', 'woocommerce-invalid-required-field');
+      cy.get('#purchaser_exemption_reason_value').scrollIntoView().should('be.visible');
       cy.get('#purchaser_exemption_reason_value').type('E2E resale');
       cy.get('#btn-ok').click();
     });
@@ -327,6 +335,9 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     cy.visit(site.checkoutBlock);
     cy.get('.wc-block-checkout').should('be.visible');
     cy.then(displayedTotals);
+    cy.get('#exemption-certificate-input').select('new', { force: true });
+    cy.get('#purchaser_exemption_reason').select('Resale', { force: true });
+    cy.get('#purchaser_exemption_reason_value').should('be.visible');
     task('configure', { blocks: false });
   });
 

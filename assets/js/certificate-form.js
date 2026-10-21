@@ -21,22 +21,25 @@ jQuery( function( $ ) {
 	$( document ).on( 'change', '#purchaser_exemption_reason', function() {
 		var value = $( this ).val();
 		var showField = '' !== value;
-		var required = 'Other' === value;
+		var $field = $( '#purchaser_exemption_reason_value' );
+		var required = showField && ( 'Other' === value || 'yes' === $field.attr( 'data-require-description' ) );
 
 		toggleField(
 			'#purchaser_exemption_reason_value_field',
 			showField
 		);
 
-		if ( ! showField ) {
-			return;
-		}
-
 		// Toggle required validation and revalidate
 		$( '#purchaser_exemption_reason_value_field' )
 			.toggleClass( 'validate-required', required )
 			.find( 'input' )
+			.prop( 'required', required )
+			.attr( 'aria-required', required ? 'true' : 'false' )
 			.trigger( 'change' );
+
+		if ( ! showField ) {
+			return;
+		}
 
 		// Set label depending on value
 		var labels = {

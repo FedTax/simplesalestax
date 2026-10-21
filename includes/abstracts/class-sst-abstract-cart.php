@@ -281,6 +281,8 @@ abstract class SST_Abstract_Cart {
 
 		try {
 			$request = $this->get_v3_lookup_for_package( $package, $key );
+			// Failed lookup attempts consume the limit just like V1 requests.
+			$rate_limit->increment_count();
 			$response = $carts_api->calculate_tax( $request );
 
 			if ( is_wp_error( $response ) ) {
@@ -293,9 +295,8 @@ abstract class SST_Abstract_Cart {
 				);
 			}
 
-			$package['response'] = $this->prepare_v3_response( $response );
+			$package['response'] = $this->prepare_v3_response( $response, $request );
 			$package['cart_id']  = key( $package['response'] );
-			$rate_limit->increment_count();
 
 			SST_Logger::debug( __( 'TaxCloud V3 lookup response:', 'simple-sales-tax' ), $package );
 		} catch ( Throwable $ex ) {
@@ -670,24 +671,43 @@ abstract class SST_Abstract_Cart {
 	 * Prepare V3 response for use by calculate_taxes.
 	 *
 	 * @param array $response V3 API response.
+	 * @param array $request  Original V3 lookup request.
 	 *
 	 * @return array
+	 * @throws UnexpectedValueException If the response omits or changes the requested cart/lines.
 	 * @since 8.4.7
 	 */
-	protected function prepare_v3_response( $response ) {
-		$formatted_response = array();
+	protected function prepare_v3_response( $response, $request ) {
+		$invalid_response = __( 'TaxCloud returned an invalid lookup response.', 'simple-sales-tax' );
+		$expected_cart    = $request['items'][0];
 
-		if ( isset( $response['items'] ) ) {
-			foreach ( $response['items'] as $cart ) {
-				$tax_amounts = array();
-				foreach ( $cart['lineItems'] as $item ) {
-					$tax_amounts[ $item['index'] ] = $item['tax']['amount'];
-				}
-				$formatted_response[ $cart['cartId'] ] = $tax_amounts;
-			}
+		// A package lookup submits one cart. Never accept an empty, unrelated,
+		// or partial successful response as a zero-tax quote.
+		if ( ! isset( $response['items'] ) || ! is_array( $response['items'] ) || 1 !== count( $response['items'] ) ) {
+			throw new UnexpectedValueException( $invalid_response );
 		}
 
-		return $formatted_response;
+		$cart = reset( $response['items'] );
+		if ( ! is_array( $cart ) || ( $cart['cartId'] ?? null ) !== $expected_cart['cartId']
+			|| ! isset( $cart['lineItems'] ) || ! is_array( $cart['lineItems'] )
+			|| count( $cart['lineItems'] ) !== count( $expected_cart['lineItems'] ) ) {
+			throw new UnexpectedValueException( $invalid_response );
+		}
+
+		$expected_indices = array_fill_keys( array_column( $expected_cart['lineItems'], 'index' ), true );
+		$tax_amounts      = array();
+		foreach ( $cart['lineItems'] as $item ) {
+			$index  = is_array( $item ) ? ( $item['index'] ?? null ) : null;
+			$amount = is_array( $item ) ? ( $item['tax']['amount'] ?? null ) : null;
+			if ( ! ( is_int( $index ) || ( is_string( $index ) && ctype_digit( $index ) ) )
+				|| ! isset( $expected_indices[ $index ] ) || array_key_exists( $index, $tax_amounts )
+				|| ! is_numeric( $amount ) || ! is_finite( (float) $amount ) ) {
+				throw new UnexpectedValueException( $invalid_response );
+			}
+			$tax_amounts[ $index ] = $amount;
+		}
+
+		return array( $cart['cartId'] => $tax_amounts );
 	}
 
 	/**

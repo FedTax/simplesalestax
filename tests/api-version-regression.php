@@ -41,6 +41,7 @@ namespace {
 
 		public static function reset( $version = null ) {
 			self::$v1 = self::$v3 = self::$transients = array();
+			SST_Rate_Limit::$count = 0;
 			self::$fail = false;
 			self::$body = array();
 			self::$options = array( 'tc_id' => 'test-login', 'tc_key' => 'test-connection', 'data_mover' => false );
@@ -127,8 +128,9 @@ namespace {
 		public static function order_log() {}
 	}
 	class SST_Rate_Limit {
+		public static $count = 0;
 		public function limit_reached() { return false; }
-		public function increment_count() {}
+		public function increment_count() { ++self::$count; }
 	}
 	class SST_Product {
 		public static function get_tic() { return 0; }
@@ -194,6 +196,13 @@ namespace {
 			return $this->do_package_lookup( $package, 0 );
 		}
 		protected function handle_error( $message ) { $this->errors[] = $message; }
+	}
+	class Routing_Calculation extends Routing_Order {
+		public $test_package;
+		public $updates = 0;
+		protected function do_lookup() { return array( $this->test_package ); }
+		protected function reset_taxes() {}
+		protected function update_taxes() { ++$this->updates; }
 	}
 
 	function legacy_snapshot() {
@@ -294,11 +303,12 @@ namespace {
 		foreach ( array( false, true ) as $fail ) {
 			Routing_Http::reset( $version );
 			Routing_Http::$fail = $fail;
-			Routing_Http::$body = array( 'items' => array( array( 'cartId' => 'test-cart', 'lineItems' => array( array( 'index' => 0, 'tax' => array( 'amount' => 1.0 ) ) ) ) ) );
+			Routing_Http::$body = array( 'items' => array( array( 'cartId' => '42_0', 'lineItems' => array( array( 'index' => 0, 'tax' => array( 'amount' => 1.0 ) ) ) ) ) );
 			$address = new TaxCloud\Address( '1 Main St', '', 'Raleigh', 'NC', '27601' );
 			$package = array( 'contents' => array(), 'fees' => array( (object) array( 'id' => 'test-fee', 'amount' => 10 ) ), 'shipping' => null, 'map' => array(), 'user' => array( 'ID' => 42 ), 'origin' => $address, 'destination' => $address, 'certificate' => null );
 			$result = ( new Routing_Order( new WC_Order() ) )->lookup( $package );
 			expect_same( $fail, is_wp_error( $result['response'] ), 'Lookup propagates failure' );
+			expect_same( 1, SST_Rate_Limit::$count, 'Successful and rejected lookup attempts consume one request for ' . $version );
 			assert_route( $version, 'Lookup', '/tax/connections/test-connection/carts', 'Lookup uses selected version, including failure' );
 
 			Routing_Http::reset( $version );
@@ -317,6 +327,68 @@ namespace {
 			} else {
 				expect_same( array(), Routing_Http::$v1, 'Explicit V3 certificate lookup does not fall back to V1' );
 			}
+		}
+	}
+
+	// HTTP 200 is only a valid quote when it contains exactly the requested
+	// cart and a finite tax amount for each line. Zero tax is a valid result.
+	$address = new TaxCloud\Address( '1 Main St', '', 'Raleigh', 'NC', '27601' );
+	$quote_package = array( 'contents' => array(), 'fees' => array( (object) array( 'id' => 'fee-a', 'amount' => 10 ), (object) array( 'id' => 'fee-b', 'amount' => 5 ) ),
+		'shipping' => null, 'user' => array( 'ID' => 42 ), 'origin' => $address, 'destination' => $address, 'certificate' => null );
+	$valid_cart = array( 'cartId' => '42_0', 'lineItems' => array( array( 'index' => 0, 'tax' => array( 'amount' => 0 ) ), array( 'index' => 1, 'tax' => array( 'amount' => 1.25 ) ) ) );
+	$invalid_quotes = array(
+		'missing items' => array( 'unexpected' => true ),
+		'empty items' => array( 'items' => array() ),
+		'scalar items' => array( 'items' => 'invalid' ),
+		'scalar cart' => array( 'items' => array( 'invalid' ) ),
+		'extra cart' => array( 'items' => array( $valid_cart, $valid_cart ) ),
+	);
+	foreach ( array( null, '', 'another-cart' ) as $cart_id ) {
+		$cart = $valid_cart; $cart['cartId'] = $cart_id;
+		$invalid_quotes['wrong cart ID ' . var_export( $cart_id, true )] = array( 'items' => array( $cart ) );
+	}
+	foreach ( array( null, 'invalid', array(), array( $valid_cart['lineItems'][0] ), array( $valid_cart['lineItems'][0], $valid_cart['lineItems'][0] ),
+		array( array( 'index' => 9, 'tax' => array( 'amount' => 0 ) ), $valid_cart['lineItems'][1] ), array( 'invalid', $valid_cart['lineItems'][1] ) ) as $i => $lines ) {
+		$cart = $valid_cart; $cart['lineItems'] = $lines;
+		$invalid_quotes['invalid line collection ' . $i] = array( 'items' => array( $cart ) );
+	}
+	foreach ( array( null, false, 'invalid', array() ) as $i => $tax ) {
+		$cart = $valid_cart; $cart['lineItems'][0]['tax']['amount'] = $tax;
+		$invalid_quotes['invalid tax ' . $i] = array( 'items' => array( $cart ) );
+	}
+	foreach ( $invalid_quotes as $name => $response ) {
+		Routing_Http::reset( 'v3' );
+		Routing_Http::$body = $response;
+		$result = ( new Routing_Order( new WC_Order() ) )->lookup( $quote_package );
+		expect_same( true, is_wp_error( $result['response'] ), $name . ' must report a lookup error' );
+		expect_same( 1, SST_Rate_Limit::$count, $name . ' counts the attempted request' );
+		expect_same( array(), Routing_Http::$v1, $name . ' never falls back to V1' );
+		$calculation = new Routing_Calculation( new WC_Order() );
+		$calculation->test_package = $result;
+		expect_same( false, $calculation->calculate_taxes(), $name . ' cannot be treated as a successful zero-tax calculation' );
+		expect_same( 1, count( $calculation->errors ), $name . ' reaches the checkout/order error handler' );
+		expect_same( 0, $calculation->updates, $name . ' never finalizes tax totals' );
+	}
+	Routing_Http::reset( 'v3' );
+	$valid_cart['lineItems'] = array_reverse( $valid_cart['lineItems'] );
+	Routing_Http::$body = array( 'items' => array( $valid_cart ) );
+	$result = ( new Routing_Order( new WC_Order() ) )->lookup( $quote_package );
+	expect_same( array( '42_0' => array( 1 => 1.25, 0 => 0 ) ), $result['response'], 'Valid zero tax and reordered line results retain their indices' );
+
+	// The shared certificate mapper must reject missing V3 descriptions before
+	// authentication/HTTP, while retaining V1's existing optional Resale value.
+	foreach ( array( 'v1', 'v3' ) as $version ) {
+		Routing_Http::reset( $version );
+		$certificate = new TaxCloud\ExemptionCertificate( array( new TaxCloud\ExemptState( 'NC', 'Resale', 'QA-ONLY' ) ), false, '',
+			'QA', 'Buyer', '', '1 Main St', '', 'Raleigh', 'NC', '27601', new TaxCloud\TaxID( 'FEIN', 'QA-ONLY', 'NC' ), 'RetailTrade', '', 'Resale', '   ' );
+		try {
+			$id = SST_Certificates::add_certificate_object( $certificate, 42 );
+			expect_same( 'v1', $version, 'Blank descriptions are accepted only by legacy certificate registration' );
+			expect_same( 'legacy-certificate', $id, 'V1 certificate registration remains unchanged' );
+		} catch ( \InvalidArgumentException $error ) {
+			expect_same( 'v3', $version, 'V3 validates the missing description' );
+			expect_same( 'Please enter the exemption reason description.', $error->getMessage(), 'Missing description gives an actionable validation message' );
+			expect_same( array(), Routing_Http::$v3, 'Invalid certificate does not reach HTTP' );
 		}
 	}
 

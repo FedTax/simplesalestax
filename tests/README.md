@@ -114,9 +114,11 @@ that retry, so it is a supporting integration check. Other capture/refund action
 and capture retries use the WooCommerce admin UI. No automatic retries of live
 mutations are enabled.
 
-The valid certificate test supplies the Resale ID description. The form currently
-allows an empty description while V3 validation requires `reasonDescription`;
-submitting it empty remains a known validation mismatch.
+V3 certificate forms require a reason description for every exemption reason,
+including Resale. The browser suite verifies that the modal blocks an empty
+description and that Blocks displays the description field for Resale. Server
+regressions cover missing/blank descriptions, V1 compatibility, malformed
+successful quotes, and rate-limit accounting for rejected quote attempts.
 
 ## Docker setup
 

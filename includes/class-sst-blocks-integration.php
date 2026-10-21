@@ -130,6 +130,7 @@ class SST_Blocks_Integration implements IntegrationInterface {
 
 		return array(
 			'showExemptionForm'    => sst_should_show_tax_exemption_form(),
+			'requireExemptionReasonDescription' => 'v3' === sst_get_api_version(),
 			'certificateOptions'   => $options,
 			'selectedCertificate'  => $selected,
 			'isUserLoggedIn'       => is_user_logged_in(),

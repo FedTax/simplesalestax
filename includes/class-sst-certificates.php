@@ -755,6 +755,9 @@ class SST_Certificates {
 			// Add certificate
 			if ( sst_get_api_version() === 'v3' ) {
 				$detail = $certificate->getDetail();
+				if ( '' === trim( (string) $detail->getPurchaserExemptionReasonValue() ) ) {
+					throw new \InvalidArgumentException( __( 'Please enter the exemption reason description.', 'simple-sales-tax' ) );
+				}
 				
 				$states = array();
 				foreach ( $detail->getExemptStates() as $state ) {
@@ -781,7 +784,7 @@ class SST_Certificates {
 				$v3_reason = isset( $v1_to_v3_reason_map[ $v1_reason ] ) ? $v1_to_v3_reason_map[ $v1_reason ] : 'Other';
 
 				// V3 limits both descriptions to 20 characters. Preserve valid UTF-8.
-				$reason_description   = mb_substr( (string) $detail->getPurchaserExemptionReasonValue(), 0, 20, 'UTF-8' );
+				$reason_description   = mb_substr( trim( (string) $detail->getPurchaserExemptionReasonValue() ), 0, 20, 'UTF-8' );
 				$business_description = mb_substr( (string) $detail->getPurchaserBusinessTypeOtherValue(), 0, 20, 'UTF-8' );
 
 				// Map v1 business type names to v3 API enum values.
