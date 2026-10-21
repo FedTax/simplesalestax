@@ -641,19 +641,28 @@ class SST_Certificates {
 			$user_id = get_current_user_id();
 		}
 
-		delete_transient( self::get_transient_name( $user_id ) );
+		// Clear both settings' caches so a later API switch never serves stale certificates.
+		foreach ( array( 'v1', 'v3' ) as $api_version ) {
+			delete_transient( self::get_transient_name( $user_id, $api_version ) );
+		}
 	}
 
 	/**
 	 * Get name of transient where certificates are stored.
 	 *
-	 * @param int $user_id WordPress user ID.
+	 * V1 keeps develop's key. V3 uses its own key so certificates cached by the
+	 * V1 legacy fallback are never served after switching to V3.
+	 *
+	 * @param int    $user_id     WordPress user ID.
+	 * @param string $api_version API version (default: the selected version).
 	 *
 	 * @return string
 	 * @since 5.0
 	 */
-	private static function get_transient_name( $user_id ) {
-		return self::TRANS_PREFIX . $user_id;
+	private static function get_transient_name( $user_id, $api_version = null ) {
+		$api_version = $api_version ?? sst_get_api_version();
+
+		return self::TRANS_PREFIX . ( 'v3' === $api_version ? 'v3_' : '' ) . $user_id;
 	}
 
 	/**

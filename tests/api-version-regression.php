@@ -406,6 +406,22 @@ namespace {
 		expect_same( true, SST_Certificates::certificate_covers_state( $certificates['shared-v3-certificate'], 'NC', 42 ), 'Shared certificate state coverage remains usable' );
 	}
 
+	// A V1 site may cache legacy-only certificates. After switching to V3 those
+	// must not be served from the cache, and certificate changes clear both caches.
+	Routing_Http::reset( 'v1' );
+	$legacy = ( new TaxCloud\ExemptionCertificate( array( new TaxCloud\ExemptState( 'NC', 'Resale', 'QA-ONLY' ) ), false, '42',
+		'QA', 'Buyer', '', '1 Main St', '', 'Raleigh', 'NC', '27601', new TaxCloud\TaxID( 'FEIN', 'QA-ONLY', 'NC' ),
+		'RetailTrade', '', 'Resale', 'QA resale', '2026-01-01T00:00:00Z' ) )->jsonSerialize();
+	$legacy['CertificateID'] = 'legacy-certificate';
+	SST_Certificates::set_certificates( 42, array( 'legacy-certificate' => TaxCloud\ExemptionCertificate::fromArray( $legacy ) ) );
+	Routing_Http::$options['api_version'] = 'v3';
+	SST_Settings::load_settings();
+	Routing_Http::$body = array( 'items' => array() );
+	expect_same( array(), array_keys( SST_Certificates::get_certificates( 42 ) ), 'V3 never serves legacy certificates cached under V1' );
+	SST_Certificates::set_certificates( 42, array( 'legacy-certificate' => TaxCloud\ExemptionCertificate::fromArray( $legacy ) ) );
+	SST_Certificates::delete_certificates( 42 );
+	expect_same( array(), array_values( preg_grep( '/^_sst_certificates_/', array_keys( Routing_Http::$transients ) ) ), 'Certificate changes clear the cache for both settings' );
+
 	// Data Import was already a V3 integration on develop. V1 selection must
 	// neither disable it nor send the imported order to AuthorizedWithCapture.
 	foreach ( array( 'v1', 'v3' ) as $version ) {
