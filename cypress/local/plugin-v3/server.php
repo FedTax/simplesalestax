@@ -158,6 +158,15 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
     $result = $body;
   } elseif ( '/tax/tic/search' === $path ) {
     $result = array( 'query' => $body['query'], 'results' => array( array( 'ticId' => 0, 'description' => 'Uncategorized' ) ), 'nextCursor' => null );
+    if ( ! empty( $context['coTax'] ) ) {
+      $tics = array( 99990 => 'Colorado Excise Tax', 90505 => 'Firearms', 90506 => 'Ammunition' );
+      $result['results'] = array();
+      foreach ( $tics as $tic => $description ) {
+        if ( false !== stripos( $description . ' ' . $tic, $body['query'] ) ) {
+          $result['results'][] = array( 'ticId' => $tic, 'description' => $description );
+        }
+      }
+    }
   } elseif ( '/tax/exemption-certificates' === $path ) {
     parse_str( parse_url( $url, PHP_URL_QUERY ) ?? '', $query );
     $result = array( 'items' => array_values( array_filter( $state['certificates'], function( $cert ) use ( $query ) {
@@ -192,7 +201,15 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
         $cart['cartId'] = $cart['cartId'] ?: 'cart-' . wp_generate_uuid4();
         $exempt = ! empty( $cart['exemption']['exemptionId'] );
         $rate = $exempt || 'OR' === $cart['destination']['state'] ? 0 : 0.1;
-        foreach ( $cart['lineItems'] as &$item ) { $item['tax'] = array( 'amount' => round( $item['price'] * $item['quantity'] * $rate, 2 ), 'rate' => $rate ); }
+        foreach ( $cart['lineItems'] as &$item ) {
+          $item_rate = $rate;
+          if ( ! empty( $context['coTax'] ) && ! $exempt && 'CO' === $cart['destination']['state'] ) {
+            // Reproduce the merchant's reported API response. These are controlled
+            // assumptions, not a live assertion about Colorado tax rates or 99990.
+            $item_rate = 99990 === (int) $item['tic'] ? 1 : 0.075;
+          }
+          $item['tax'] = array( 'amount' => round( $item['price'] * $item['quantity'] * $item_rate, 2 ), 'rate' => $item_rate );
+        }
         unset( $item );
         $state['carts'][ $cart['cartId'] ] = $cart;
         $items[] = $cart;
