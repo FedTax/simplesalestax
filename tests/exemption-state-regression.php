@@ -15,8 +15,19 @@ function wp_date( $format, $timestamp = null ) { return date( $format, $timestam
 function get_option( $key, $default = null ) { return $default; }
 function sst_prettify( $value ) { return $value; }
 function WC() { global $test_woocommerce; return $test_woocommerce; }
+function get_woocommerce_currency() { return 'USD'; }
+function sst_get_api_version() { return SST_Settings::$version; }
+function sst_integration_mode() { return 'realtime'; }
+
+class WP_Error {
+	private $errors = array();
+	public function add( $code, $message ) { $this->errors[ $code ] = $message; }
+	public function has_errors() { return ! empty( $this->errors ); }
+	public function get_error_codes() { return array_keys( $this->errors ); }
+}
 
 class SST_Settings {
+	public static $version = 'v1';
 	public static function get( $key, $default = null ) {
 		if ( 'tc_id' === $key ) { return 'TESTID'; }
 		if ( 'tc_key' === $key ) { return 'TESTKEY'; }
@@ -30,6 +41,7 @@ class SST_Logger {
 }
 
 require dirname( __DIR__ ) . '/includes/vendor/autoload.php';
+require dirname( __DIR__ ) . '/includes/class-sst-addresses.php';
 require dirname( __DIR__ ) . '/includes/class-sst-certificates.php';
 require dirname( __DIR__ ) . '/includes/abstracts/class-sst-abstract-cart.php';
 require dirname( __DIR__ ) . '/includes/frontend/class-sst-cart-proxy.php';
@@ -37,6 +49,8 @@ require dirname( __DIR__ ) . '/includes/frontend/class-sst-checkout.php';
 
 class Exemption_State_Test_Cart extends SST_Abstract_Cart {
 	public function request_for( &$package ) { return $this->get_lookup_for_package( $package ); }
+	public function v3_request_for( &$package ) { return $this->get_v3_lookup_for_package( $package, 0 ); }
+	protected function get_package_order_id( $key, $package = array() ) { return 'test-cart'; }
 	protected function get_packages() { return array(); }
 	protected function set_packages( $packages = array() ) {}
 	protected function get_base_packages() { return array(); }
@@ -57,6 +71,9 @@ class Exemption_State_Test_Checkout extends SST_Checkout {
 	public function __construct() {}
 	protected function create_packages() { return $this->test_packages; }
 	public function new_certificate_covers( $state ) { return $this->new_certificate_covers_packages( $state ); }
+	public function validate_certificate( $certificate, $errors ) {
+		$this->validate_exemption_certificate( array( 'certificate_id' => 'new', 'certificate' => $certificate ), $errors );
+	}
 }
 
 function expect_same( $expected, $actual, $message ) {
@@ -141,10 +158,73 @@ expect_same( false, SST_Certificates::certificate_covers_state( $single_purchase
 
 $test_woocommerce = (object) array( 'cart' => new stdClass() );
 $checkout         = new Exemption_State_Test_Checkout();
+foreach ( array( 'v1', 'v3' ) as $version ) {
+	$packages = array();
+	foreach ( array( 'NC', 'NC', 'NY' ) as $state ) {
+		$package = lookup_package( $state, 'nc-only' );
+		if ( 'v3' === $version ) {
+			$package['destination'] = new TaxCloud_V3\Model\Address( array(
+				'line1' => '1 Main St', 'city' => 'Test', 'state' => $state, 'zip' => '28043',
+			) );
+		}
+		$packages[] = $package;
+	}
+
+	$checkout->test_packages = array( $packages[0] );
+	expect_same( true, $checkout->new_certificate_covers( 'NC' ), "$version: new NC certificate covers NC package" );
+	expect_same( true, $checkout->new_certificate_covers( ' nc ' ), "$version: certificate state is normalized" );
+	expect_same( false, $checkout->new_certificate_covers( 'NY' ), "$version: new NY certificate does not cover NC package" );
+	expect_same( false, $checkout->new_certificate_covers( '' ), "$version: an empty certificate state is rejected" );
+	$checkout->test_packages[] = $packages[1];
+	expect_same( true, $checkout->new_certificate_covers( 'NC' ), "$version: new certificate covers all same-state packages" );
+	$checkout->test_packages[] = $packages[2];
+	expect_same( false, $checkout->new_certificate_covers( 'NC' ), "$version: new NC certificate does not cover mixed destinations" );
+}
+
+foreach ( array( array(), array( 'destination' => null ), array( 'destination' => new stdClass() ) ) as $invalid_package ) {
+	$checkout->test_packages = array( $invalid_package );
+	expect_same( false, $checkout->new_certificate_covers( 'NC' ), 'Invalid package destination cannot claim exemption' );
+}
+$checkout->test_packages = array();
+expect_same( false, $checkout->new_certificate_covers( 'NC' ), 'An empty cart cannot claim exemption' );
+
+// The V3 checkout and admin order use different certificate representations.
+// Both must respect the state restrictions introduced on develop.
+foreach ( array( 'checkout', 'order', 'array' ) as $context ) {
+	foreach ( array( 'NC', 'NY' ) as $state ) {
+		$package = lookup_package( $state, 'nc-only' );
+		$package['destination'] = new TaxCloud_V3\Model\Address( array(
+			'line1' => '1 Main St', 'city' => 'Test', 'state' => $state, 'zip' => '28043',
+		) );
+		if ( 'order' === $context ) {
+			$package['certificate'] = new TaxCloud_V3\Model\Exemption( 'nc-only' );
+		} elseif ( 'array' === $context ) {
+			$package['certificate'] = array( 'exemptionId' => 'nc-only' );
+		}
+		$request = $cart->v3_request_for( $package );
+		expect_same( 'NC' === $state, isset( $request['items'][0]['exemption'] ), "V3 $context: NC certificate applies only in NC" );
+		if ( 'NC' === $state ) {
+			expect_same( 'nc-only', $request['items'][0]['exemption']['exemptionId'], "V3 $context: certificate ID preserved" );
+		} else {
+			expect_same( null, $package['certificate'], "V3 $context: rejected certificate is removed before saving packages" );
+		}
+	}
+}
+
 $checkout->test_packages = array( lookup_package( 'NC', 'nc-only' ) );
-expect_same( true, $checkout->new_certificate_covers( 'NC' ), 'New NC certificate covers NC package' );
-expect_same( false, $checkout->new_certificate_covers( 'NY' ), 'New NY certificate does not cover NC package' );
-$checkout->test_packages[] = lookup_package( 'NY', 'nc-only' );
-expect_same( false, $checkout->new_certificate_covers( 'NC' ), 'New NC certificate does not cover mixed destinations' );
+foreach ( array( 'v1', 'v3' ) as $version ) {
+	SST_Settings::$version = $version;
+	foreach ( array( 'Resale', 'Other' ) as $reason ) {
+		foreach ( array( '', '   ', 'QA exemption' ) as $description ) {
+			$certificate = array( 'ExemptState' => 'NC', 'TaxType' => 'FEIN', 'IDNumber' => 'QA-ONLY', 'PurchaserBusinessType' => 'RetailTrade',
+				'PurchaserExemptionReason' => $reason, 'PurchaserExemptionReasonOtherValue' => $description );
+			$errors = new WP_Error();
+			$checkout->validate_certificate( $certificate, $errors );
+			$missing = 'v3' === $version ? '' === trim( $description ) : ( 'Other' === $reason && '' === $description );
+			expect_same( $missing ? array( 'PurchaserExemptionReasonOtherValue_required' ) : array(), $errors->get_error_codes(),
+				"$version: $reason description validation identifies the required field" );
+		}
+	}
+}
 
 echo "Exemption state regression checks passed.\n";

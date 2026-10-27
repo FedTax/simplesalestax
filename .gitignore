@@ -5,9 +5,14 @@ releases/
 cypress/downloads/
 cypress/videos/
 cypress/screenshots/
+cypress/results/
 docker/plugin
 build
 .env
+cypress.api-v3.staging.env.json
+cypress.plugin-v3.env.json
+cypress/credentials.local.json
+cypress/local/api-v3/staging.env.local.json
 *.min.js
 *.min.css
 !jquery.hideseek.min.js

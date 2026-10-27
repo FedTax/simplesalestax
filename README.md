@@ -25,3 +25,21 @@ If you find a bug in our plugin, [open a new issue](https://github.com/bporcelli
 
 * [Submit an issue](https://github.com/bporcelli/simplesalestax/issues/new) or work on a feature branch and [submit a pull request](https://github.com/bporcelli/simplesalestax/compare).
 * Follow [WordPress Coding Standards](http://codex.wordpress.org/WordPress_Coding_Standards)
+
+## Testing
+
+See the [local testing guide](tests/README.md) for Docker setup, Cypress commands,
+expected results, API coverage, cleanup, and troubleshooting.
+
+With the local Docker test site ready:
+
+```sh
+npm run test:e2e               # Plugin workflows with fixture responses
+npm run test:e2e -- --live     # Realtime + Data Import with your test credentials
+npm run test:e2e:open          # Interactive Cypress; add -- --live for live tests
+```
+
+Set both credential pairs in the ignored `cypress/credentials.local.json` file.
+There is one `cypress.config.js`; the commands select the suite automatically.
+GitHub Actions continues to run only the existing admin suite. Plugin E2E,
+API contracts and PHP regressions remain local.

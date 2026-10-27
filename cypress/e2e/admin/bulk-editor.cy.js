@@ -21,13 +21,13 @@ describe('Bulk editor', () => {
     });
 
     // Would prefer to use findByRole here but had issues with that.
-    cy.get('#bulk-action-selector-top').select('Edit');
+    cy.get('#bulk-action-selector-top').select('edit');
     cy.get('#doaction').click();
     cy.get('#bulk-edit'); // Wait for editor to be visible.
 
     cy.contains('label', 'TIC').find('.sst-select-tic').click();
-    cy.get('.sst-tic-search').type('uncat');
-    cy.contains('.tic-row', 'Uncategorized')
+    cy.get('.sst-tic-search').clear().type('Uncategorized');
+    cy.contains('.tic-row', 'Uncategorized', {timeout: 20000})
       .find('button')
       .click();
 
