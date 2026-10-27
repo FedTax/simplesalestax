@@ -30,6 +30,8 @@ jobs:
         run: |
           php tests/exemption-state-regression.php
           php tests/local-pickup-address-regression.php
+          php tests/foosales-regression.php
+          php tests/order-capture-regression.php
 
       - name: Setup node
         uses: actions/setup-node@v2
