@@ -8,32 +8,27 @@ const storeApi = new WooCommerceRestApi({
   version: 'wc/store/v1',
 });
 
+const validateAdminSession = () => {
+  cy.request({url: '/wp-admin/', followRedirect: false, log: false})
+    .its('status').should('equal', 200);
+};
+
 Cypress.Commands.add('visitAdminPage', (pagePath = '/wp-admin/') => {
-  cy.session('admin', () => {
-    cy.visit(pagePath);
-    cy.get('body').then(($body) => {
-      if ($body.hasClass('login')) {
-        cy.findByRole('textbox', {name: 'Username or Email Address'})
-          .clear()
-          .type('admin');
-        cy.findByRole('button', {name: 'Show password'}).click();
-        cy.findByRole('textbox', {name: 'Password'}).type('password');
-        cy.findByRole('button', {name: 'Log In'}).click();
-      }
-    });
-  });
+  cy.loginAsAdmin();
+  cy.visit(pagePath);
 });
 
 Cypress.Commands.add('loginAsAdmin', () => {
   cy.session('admin', () => {
     cy.visit('/wp-login.php');
-    cy.findByRole('textbox', {name: 'Username or Email Address'})
-      .clear()
-      .type('admin');
-    cy.findByRole('button', {name: 'Show password'}).click();
-    cy.findByRole('textbox', {name: 'Password'}).type('password');
-    cy.findByRole('button', {name: 'Log In'}).click();
-  }, {cacheAcrossSpecs: true});
+    // The login page can reset focused inputs after loading. Authenticate the
+    // fixture user through the normal form endpoint before caching cookies.
+    cy.request({
+      method: 'POST', url: '/wp-login.php', form: true, log: false,
+      body: {log: 'admin', pwd: 'password', 'wp-submit': 'Log In', testcookie: '1'},
+    });
+    validateAdminSession();
+  }, {cacheAcrossSpecs: true, validate: validateAdminSession});
 });
 
 Cypress.Commands.add('goToSettingsPage', () => {

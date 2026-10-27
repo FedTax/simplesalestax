@@ -273,6 +273,12 @@ class SST_Order_Controller {
 	 * @param int $order_id Order post ID.
 	 */
 	public function save_certficiate( $order_id ) {
+		// Disabled certificate selectors are omitted from the admin form. Saving
+		// another field must not remove the order's existing exemption.
+		if ( ! isset( $_POST['exempt_cert'] ) ) {
+			return;
+		}
+
 		$order       = new SST_Order( $order_id );
 		$is_editable = 'pending' === $order->get_taxcloud_status();
 

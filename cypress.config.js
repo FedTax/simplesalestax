@@ -1,9 +1,9 @@
 module.exports = {
   e2e: {
-    // We've imported your old cypress plugins here.
-    // You may want to clean this up later by importing these.
+    // Default suite: admin only, including GitHub Actions.
+    specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
     setupNodeEvents(on, config) {
-      return require('./cypress/plugins/index.js')(on, config)
+      return require('./cypress/suites')(on, config)
     },
     baseUrl: 'http://localhost:8080',
     env: {

@@ -87,6 +87,7 @@ class SST_TaxCloud_V3_API {
 		}
 
 		if ( ! empty( $data['connection_id'] ) ) {
+			SST_Settings::set( 'tc_integration_id', $data['connection_id'] );
 			SST_Settings::set( 'tc_connection_id', $data['connection_id'] );
 		}
 

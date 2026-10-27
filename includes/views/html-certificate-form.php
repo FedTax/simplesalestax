@@ -302,17 +302,18 @@ woocommerce_form_field(
 ?>
 
 <?php
-// Note: This field is required when "Other" is selected as the exemption
-// reason. See certificate-form.js.
+// V3 requires a description for every reason; V1 requires it for Other.
+$require_reason_description = 'v3' === sst_get_api_version();
 woocommerce_form_field(
 	'certificate[PurchaserExemptionReasonOtherValue]',
 	array(
 		'type'        => 'text',
 		'label'       => esc_html__( 'Please explain', 'simple-sales-tax' ),
-		'required'    => false,
+		'required'    => $require_reason_description,
 		'id'          => 'purchaser_exemption_reason_value',
 		'class'       => array( 'sst-hidden-field', 'sst-form-row' ),
 		'input_class' => array( 'sst-input' ),
+		'custom_attributes' => array( 'data-require-description' => $require_reason_description ? 'yes' : 'no' ),
 	),
 	$post_data['PurchaserExemptionReasonOtherValue'] ?? null,
 );
