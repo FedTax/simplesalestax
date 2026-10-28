@@ -15,9 +15,10 @@ npm run test:api:v3
 These need host PHP CLI and the project's Composer dependencies. They do not
 load WordPress, contact TaxCloud or create database/remote records.
 
-`test:regression` prints four success messages and exits 0. It checks destination
+`test:regression` prints six success messages and exits 0. It checks destination
 state exemptions for V1/V3, local pickup, captured order/refund preservation, and
-API routing/persistence. Missing settings default to V1 and explicit V3 persists.
+API routing/persistence, plus FooSales tax compatibility and order capture.
+Missing settings default to V1 and explicit V3 persists.
 New realtime lookups use the selected API without switching versions on failure.
 Capture/refund use the original package's version; historical unmarked packages
 remain V1. Existing V3 services from `develop` are preserved: saved certificates

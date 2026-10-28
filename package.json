@@ -13,7 +13,7 @@
     "test:contracts": "node cypress/run.js contracts",
     "test:cleanup": "node cypress/local/plugin-v3/cleanup.js",
     "test:api:v3": "php tests/api-v3/run.php && php tests/api-v3/run.php --staging",
-    "test:regression": "php tests/exemption-state-regression.php && php tests/local-pickup-address-regression.php && php tests/order-refund-regression.php && php tests/api-version-regression.php",
+    "test:regression": "php tests/exemption-state-regression.php && php tests/local-pickup-address-regression.php && php tests/order-refund-regression.php && php tests/api-version-regression.php && php tests/foosales-regression.php && php tests/order-capture-regression.php",
     "build:blocks": "wp-scripts build --webpack-src-dir=./assets/js/blocks",
     "format": "wp-scripts format ./assets/js/blocks",
     "lint:css": "wp-scripts lint-style ./assets/js/blocks",

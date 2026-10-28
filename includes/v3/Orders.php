@@ -48,7 +48,7 @@ class Orders extends RequestBase {
 	}
 
 	/**
-	 * Create an order in TaxCloud v3 API.	
+	 * Create an order in TaxCloud v3 API.
 	 *
 	 * @param array $args Request arguments.
 	 *
@@ -56,7 +56,7 @@ class Orders extends RequestBase {
 	 * @since 8.4.1
 	 */
 	public function create_order( $args ) {
-	
+
 		$order = $this->prepare_item_for_request( $args );
 
 		if ( is_wp_error( $order ) ) {
@@ -81,7 +81,7 @@ class Orders extends RequestBase {
 
 		return $this->parse_json_response( $response, 'sst_v3_orders_error', 'Failed to create order: ' );
 	}
-	
+
 	/**
 	 * Prepare item for request.
 	 *
@@ -129,16 +129,16 @@ class Orders extends RequestBase {
 
 				// Tax amounts are currency values. Rates must retain API precision (for example, 0.08125).
 				$lineItem['tax']['amount'] = round( (float) $lineItem['tax']['amount'], 2 );
-				
+
 				$lineItems[] = new CartItem( $lineItem );
 			}
 			$request_args['lineItems'] = $lineItems;
 		}
-		
+
 		// Prepare currency
 		$currency_code = isset( $args['currency']['currencyCode'] ) ? $args['currency']['currencyCode'] : ( isset( $args['currencyCode'] ) ? $args['currencyCode'] : 'USD' );
 		$request_args['currency'] = new Currency( $currency_code );
-		
+
 		// Prepare exemption
 		if ( isset( $args['exemption'] ) ) {
 			$request_args['exemption'] = new Exemption( $args['exemption'] );
@@ -178,7 +178,7 @@ class Orders extends RequestBase {
 		}
 
 		$token = $this->get_auth_token();
-		
+
 		if ( is_wp_error( $token ) ) {
 			return $token;
 		}
