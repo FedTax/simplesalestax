@@ -25,11 +25,53 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **22 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **28 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
 Setup failures or skipped workflows do not count as successful verification.
+
+## Colorado category TIC reproduction
+
+With the same local Docker site running, use:
+
+```sh
+npm run test:e2e
+# Open Cypress and select plugin.cy.js to watch/debug:
+npm run test:e2e:open
+```
+
+The six Colorado cases run at the end of the existing plugin fixture suite and
+need no TaxCloud credentials. They are omitted in live mode. This characterizes
+the current behavior reported in ticket #86850; a passing
+reproduction of `99990` does **not** mean that assigning this code to products is
+correct. The browser, category save, checkout, plugin request construction and
+persisted WooCommerce orders are real. TaxCloud HTTP responses are simulated.
+The fixture assumes 7.5% ordinary Colorado sales tax and a full-price tax response
+for `99990`; it does not independently verify either rate against the live API.
+
+| Scenario ($100 product) | Sales tax | CO excise fee | Order total |
+| --- | --- | --- | --- |
+| Category `99990`, no product override | $100.00 | None | $200.00 |
+| Category firearms `90505` | $7.50 | $6.50 | $114.00 |
+| Category ammunition `90506` | $7.50 | $6.50 | $114.00 |
+| Category `99990`, product override `90505` | $7.50 | $6.50 | $114.00 |
+| Category `90505`, quantity changed from 1 to 2 | $15.00 | $13.00 | $228.00 |
+| Category `90505`, Minnesota destination | $10.00 (fixture) | None | $110.00 |
+
+Expect **28 passing** overall, including these **6 Colorado cases**. The first
+Colorado test selects and saves category `99990` through the admin UI. Every
+Colorado test checks the effective product TIC, outgoing API payload,
+visible checkout totals and persisted order totals. Eligible Colorado orders
+send a single fee with TIC `99990`; the test also checks that the API's simulated
+fee tax is not charged a second time. Other tests seed the run's category/product
+codes through WP-CLI to isolate the checkout scenarios.
+
+Evidence is included in `cypress/results/plugin-v3/latest-fixture.json` with the
+other plugin workflows. The Colorado cases reuse the run’s product/customer and
+create their own category, which cleanup removes along with the other disposable
+fixtures. Test customers/orders remain for inspection. The existing
+`npm run test:cleanup` command recovers an interrupted run.
 
 ## Set credentials once
 

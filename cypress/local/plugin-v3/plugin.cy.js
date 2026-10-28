@@ -607,4 +607,6 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
       ['GET', /^\/tax\/exemption-certificates$/], ['DELETE', /\/exemption-certificates\//],
     ].forEach(([method, pattern]) => call(method, pattern, true));
   });
+
+  if (fixture) require('./co-tax')(() => site);
 });
