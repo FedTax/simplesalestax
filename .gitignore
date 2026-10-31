@@ -17,3 +17,5 @@ cypress/local/api-v3/staging.env.local.json
 *.min.css
 !jquery.hideseek.min.js
 .DS_Store
+
+cypress/.staging-private/

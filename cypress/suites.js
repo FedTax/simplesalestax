@@ -2,14 +2,15 @@
 module.exports = (on, config) => {
   const suite = config.env.suite || 'admin';
   if (suite === 'admin') return config;
-  if (!['plugin', 'contracts', 'staging'].includes(suite)) {
-    throw new Error('Unknown Cypress suite. Choose admin, plugin, contracts or staging.');
+  if (!['plugin', 'contracts', 'staging', 'staging-site'].includes(suite)) {
+    throw new Error('Unknown Cypress suite. Choose admin, plugin, contracts, staging or staging-site.');
   }
   if (process.env.GITHUB_ACTIONS === 'true' || (process.env.CI && process.env.CI !== 'false')) {
     throw new Error(`The ${suite} Cypress suite is local only.`);
   }
 
   Object.assign(config, {video: false, retries: 0, supportFile: false, taskTimeout: 90000});
+  if (suite === 'staging-site') return require('./staging-site/tasks')(on, config);
   if (suite === 'plugin') {
     if (new URL(config.baseUrl).hostname !== 'localhost') {
       throw new Error('Plugin E2E tests require the local Docker WordPress site.');

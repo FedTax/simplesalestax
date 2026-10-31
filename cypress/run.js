@@ -2,9 +2,14 @@
 const {spawn} = require('node:child_process');
 const path = require('node:path');
 const [suite = 'plugin', ...options] = process.argv.slice(2);
-if (!['admin', 'plugin', 'contracts', 'staging'].includes(suite)) {
-  console.error('Choose admin, plugin, contracts or staging.');
+if (!['admin', 'plugin', 'contracts', 'staging', 'staging-site'].includes(suite)) {
+  console.error('Choose admin, plugin, contracts, staging or staging-site.');
   process.exit(1);
+}
+if (suite === 'staging-site') {
+  process.argv = [...process.argv.slice(0, 2), options.includes('--open') ? 'open' : 'run', ...options.filter(value => value !== '--open')];
+  require('./staging-site/cli');
+  return;
 }
 const live = options.includes('--live');
 if (live && suite !== 'plugin') {

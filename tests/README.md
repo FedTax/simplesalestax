@@ -243,3 +243,15 @@ For isolated PHP-client contracts, PHP regressions, direct legacy staging tests,
 and details of the admin specs, see [advanced checks](api-v3/README.md). These
 checks supplement the plugin workflows; they are not required for the everyday
 E2E commands above.
+
+## Remote staging verification
+
+For the separate real-request remote suite, logged-in Chrome setup, runner access,
+retained fixtures and interrupted-run restoration, see
+[`cypress/staging-site/README.md`](../cypress/staging-site/README.md).
+The complete coverage/acceptance plan is
+[`STAGING-IMPLEMENTATION-PLAN.md`](STAGING-IMPLEMENTATION-PLAN.md).
+The existing `staging` direct-API suite still has its original meaning; use
+`npm run test:staging` for the WordPress website.
+
+The recorded remote verification results and retained sample certificate are documented in [STAGING-VERIFICATION-REPORT.md](STAGING-VERIFICATION-REPORT.md).
