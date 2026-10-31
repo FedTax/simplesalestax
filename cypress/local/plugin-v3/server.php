@@ -36,6 +36,10 @@ add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
       'State' => 'MN', 'Zip5' => '55401', 'Zip4' => '' ) ) ),
     'default_origin_addresses' => array( 'cypress-origin' ),
   ) );
+  if ( ! empty( $context['adminExemptionProductId'] ) ) {
+    $settings['addresses'][] = wp_json_encode( array( 'ID' => 'cypress-fl-origin', 'Default' => false,
+      'Address1' => '200 Cypress St', 'Address2' => '', 'City' => 'Tavares', 'State' => 'FL', 'Zip5' => '32778', 'Zip4' => '' ) );
+  }
   $credentials = sst_e2e_credentials( $context );
   $suffix = ! empty( $context['dataMover'] ) ? 'DataImport' : 'Realtime';
   $settings['tc_id'] = $credentials[ 'apiLoginID' . $suffix ];
@@ -201,6 +205,11 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
         $cart['cartId'] = $cart['cartId'] ?: 'cart-' . wp_generate_uuid4();
         $exempt = ! empty( $cart['exemption']['exemptionId'] );
         $rate = $exempt || 'OR' === $cart['destination']['state'] ? 0 : 0.1;
+        if ( ! empty( $context['adminExemptionProductId'] )
+          && in_array( (string) $context['adminExemptionProductId'], array_column( $cart['lineItems'], 'itemId' ), true ) ) {
+          // DEV-10586 uses the reported 6% response only for its dedicated product.
+          $rate = $exempt ? 0 : 0.06;
+        }
         foreach ( $cart['lineItems'] as &$item ) {
           $item_rate = $rate;
           if ( ! empty( $context['coTax'] ) && ! $exempt && 'CO' === $cart['destination']['state'] ) {

@@ -4,20 +4,22 @@
 define( 'ABSPATH', __DIR__ . '/' );
 
 $certificate_transients = array();
+$test_current_user_id = 19151;
 
-function get_current_user_id() { return 19151; }
+function get_current_user_id() { global $test_current_user_id; return $test_current_user_id; }
 function get_transient( $key ) { global $certificate_transients; return $certificate_transients[ $key ] ?? false; }
+function wp_json_encode( $value ) { return json_encode( $value ); }
+function wp_parse_args( $args, $defaults = array() ) { return array_merge( $defaults, $args ); }
+function apply_filters( $hook, $value ) { return $value; }
+function wc_get_price_decimals() { return 2; }
 function add_filter() {}
 function add_action() {}
 function sst_storefront_active() { return false; }
 function __( $message ) { return $message; }
 function wp_date( $format, $timestamp = null ) { return date( $format, $timestamp ?? time() ); }
 function get_option( $key, $default = null ) { return $default; }
-function sst_prettify( $value ) { return $value; }
 function WC() { global $test_woocommerce; return $test_woocommerce; }
 function get_woocommerce_currency() { return 'USD'; }
-function sst_get_api_version() { return SST_Settings::$version; }
-function sst_integration_mode() { return 'realtime'; }
 
 class WP_Error {
 	private $errors = array();
@@ -29,6 +31,7 @@ class WP_Error {
 class SST_Settings {
 	public static $version = 'v1';
 	public static function get( $key, $default = null ) {
+		if ( 'api_version' === $key ) { return self::$version; }
 		if ( 'tc_id' === $key ) { return 'TESTID'; }
 		if ( 'tc_key' === $key ) { return 'TESTKEY'; }
 		return $default;
@@ -40,7 +43,13 @@ class SST_Logger {
 	public static function debug() {}
 }
 
+class SST_Product {
+	public static function get_tic() { return '00000'; }
+}
+
 require dirname( __DIR__ ) . '/includes/vendor/autoload.php';
+require dirname( __DIR__ ) . '/includes/sst-functions.php';
+require dirname( __DIR__ ) . '/includes/class-sst-origin-address.php';
 require dirname( __DIR__ ) . '/includes/class-sst-addresses.php';
 require dirname( __DIR__ ) . '/includes/class-sst-certificates.php';
 require dirname( __DIR__ ) . '/includes/abstracts/class-sst-abstract-cart.php';
@@ -48,6 +57,9 @@ require dirname( __DIR__ ) . '/includes/frontend/class-sst-cart-proxy.php';
 require dirname( __DIR__ ) . '/includes/frontend/class-sst-checkout.php';
 
 class Exemption_State_Test_Cart extends SST_Abstract_Cart {
+	public $test_certificate = null;
+	public function split( $package ) { return $this->split_package( $package ); }
+	protected function get_origin_for_product( $item, $destination ) { return $item['test_origin']; }
 	public function request_for( &$package ) { return $this->get_lookup_for_package( $package ); }
 	public function v3_request_for( &$package ) { return $this->get_v3_lookup_for_package( $package, 0 ); }
 	protected function get_package_order_id( $key, $package = array() ) { return 'test-cart'; }
@@ -62,7 +74,7 @@ class Exemption_State_Test_Cart extends SST_Abstract_Cart {
 	protected function set_product_tax( $id, $tax ) {}
 	protected function set_shipping_tax( $id, $tax ) {}
 	protected function set_fee_tax( $id, $tax ) {}
-	public function get_certificate() { return null; }
+	public function get_certificate() { return $this->test_certificate; }
 	protected function handle_error( $message ) {}
 }
 
@@ -223,6 +235,61 @@ foreach ( array( 'v1', 'v3' ) as $version ) {
 			$missing = 'v3' === $version ? '' === trim( $description ) : ( 'Other' === $reason && '' === $description );
 			expect_same( $missing ? array( 'PurchaserExemptionReasonOtherValue_required' ) : array(), $errors->get_error_codes(),
 				"$version: $reason description validation identifies the required field" );
+		}
+	}
+}
+
+// DEV-10586: splitting an admin-edited order must retain the order customer,
+// including guest ID 0, rather than validating certificates as the acting admin.
+foreach ( array( 'v1', 'v3' ) as $version ) {
+	SST_Settings::$version = $version;
+	$destination = 'v3' === $version
+		? new TaxCloud_V3\Model\Address( array( 'line1' => '1 Main St', 'line2' => '', 'city' => 'Test', 'state' => 'NC', 'zip' => '28043', 'countryCode' => 'US' ) )
+		: new TaxCloud\Address( '1 Main St', '', 'Test', 'NC', '28043' );
+	$certificate_transients['sst_verified_addresses'] = array( md5( wp_json_encode( $destination ) ) => wp_json_encode( $destination ) );
+	$origin = new SST_Origin_Address( 'origin-1', true, '2 Main St', '', 'Test', 'NC', '28043' );
+	$second_origin = clone $origin;
+	$second_origin->setID( 'origin-2' );
+	$raw = array(
+		'user' => array( 'ID' => 19151 ),
+		'destination' => array( 'address_1' => '1 Main St', 'address_2' => '', 'city' => 'Test', 'state' => 'NC', 'postcode' => '28043', 'country' => 'US' ),
+		'contents' => array(),
+	);
+	foreach ( array( $origin, $second_origin ) as $index => $item_origin ) {
+		$raw['contents'][ $index ] = array(
+			'key' => $index, 'product_id' => 123, 'variation_id' => 0, 'quantity' => 1, 'line_total' => 100,
+			'data' => new class { public function get_id() { return 123; } }, 'test_origin' => $item_origin,
+		);
+	}
+	$cart->test_certificate = new TaxCloud\ExemptionCertificateBase( 'nc-only' );
+	foreach ( array( 1, 12, 0, 19151 ) as $acting_user_id ) {
+		$test_current_user_id = $acting_user_id;
+		$certificate_transients['_sst_certificates_' . $acting_user_id] = $certificate_transients['_sst_certificates_' . $acting_user_id] ?? '[]';
+		foreach ( array( 19151, 0 ) as $customer_id ) {
+			$raw['user']['ID'] = $customer_id;
+			foreach ( array( false, true ) as $already_split ) {
+				$input = $raw;
+				if ( $already_split ) { $input['origin'] = $origin; }
+				$packages = $cart->split( $input );
+				$label = "$version: customer $customer_id, actor $acting_user_id, already split " . (int) $already_split;
+				expect_same( $already_split ? 1 : 2, count( $packages ), "$label: origin package count" );
+				foreach ( $packages as $package ) {
+					expect_same( $customer_id, $package['user']['ID'], "$label: package retains customer" );
+					if ( 'v3' === $version ) {
+						$request = $cart->v3_request_for( $package )['items'][0];
+						expect_same( 'customer-' . $customer_id, $request['customerId'], "$label: request customer" );
+						expect_same( 0 !== $customer_id, isset( $request['exemption'] ), "$label: customer certificate only" );
+					} else {
+						$request = $cart->request_for( $package );
+						$package['request'] = $request;
+						expect_same( $customer_id, $request->getCustomerID(), "$label: request customer" );
+						expect_same( 0 !== $customer_id, null !== $request->getExemptCert(), "$label: customer certificate only" );
+					}
+					$saved = $cart->compress_package_data( $package );
+					expect_same( $customer_id, $saved['customer_id'], "$label: saved customer" );
+					expect_same( $customer_id ? 'nc-only' : '', $saved['certificate_id'], "$label: saved certificate" );
+				}
+			}
 		}
 	}
 }
