@@ -52,6 +52,52 @@ if ( 'setup' === $action ) {
   }
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
+} elseif ( 'adminExemption' === $action ) {
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Admin exemption scenarios require fixture mode.' ); }
+  wp_set_current_user( $context['adminId'] );
+  if ( empty( $context['adminExemptionProductId'] ) ) {
+    $product = new WC_Product_Simple();
+    $product->set_name( 'Cypress DEV-10586 air filter ' . $context['run'] );
+    $product->set_regular_price( '100' ); $product->set_virtual( false ); $product->set_tax_status( 'taxable' );
+    $product->set_status( 'private' );
+    $product->update_meta_data( '_wootax_origin_addresses', array( 'cypress-fl-origin' ) );
+    $context['adminExemptionProductId'] = $product->save();
+    $context['adminExemptionCertificates'] = array();
+    $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array(), 'carts' => array(), 'orders' => array() ) );
+    foreach ( array( 'FL', 'NY' ) as $state ) {
+      $id = 'cert-admin-' . strtolower( $state ) . '-' . $context['run'];
+      $context['adminExemptionCertificates'][ $state ] = $id;
+      $remote['certificates'][ $id ] = array(
+        'certificateId' => $id, 'customerId' => 'customer-' . $context['customerId'],
+        'singlePurchase' => false, 'disabledAt' => null, 'createdDate' => gmdate( 'c' ),
+        'firstName' => 'Cypress', 'lastName' => 'School', 'customerBusinessType' => 'Other',
+        'reason' => 'Other', 'reasonDescription' => 'QA school exemption',
+        'address' => array( 'line1' => '100 Cypress St', 'line2' => '', 'city' => 'Naples', 'state' => 'FL', 'zip' => '34109', 'countryCode' => 'US' ),
+        'states' => array( array( 'abbreviation' => $state ) ),
+      );
+    }
+    update_option( 'sst_cypress_v3_remote', $remote, false );
+    SST_Certificates::delete_certificates( $context['customerId'] );
+  }
+  $order = wc_create_order( array( 'customer_id' => $context['customerId'], 'status' => 'pending', 'created_via' => 'cypress-dev-10586' ) );
+  if ( is_wp_error( $order ) ) { throw new Exception( $order->get_error_message() ); }
+  $address = array( 'first_name' => 'Cypress', 'last_name' => 'School', 'country' => 'US',
+    'address_1' => '100 Cypress St', 'city' => 'Naples', 'state' => 'FL', 'postcode' => '34109',
+    'email' => $context['username'] . '@example.test' );
+  $order->set_address( $address, 'billing' ); $order->set_address( $address, 'shipping' );
+  $product = wc_get_product( $context['adminExemptionProductId'] );
+  // The reported ten lines reproduce $4,806.45 subtotal / $288.40 line-rounded tax.
+  foreach ( array( array( 2, 447.94 ), array( 1, 331.97 ), array( 1, 460.20 ), array( 1, 655.34 ), array( 1, 485.97 ),
+    array( 2, 859.94 ), array( 1, 296.38 ), array( 1, 441.97 ), array( 1, 399.80 ), array( 1, 426.94 ) ) as $index => $line ) {
+    $item = new WC_Order_Item_Product(); $item->set_product( $product );
+    $item->set_name( 'Cypress DEV-10586 filter ' . ( $index + 1 ) ); $item->set_quantity( $line[0] );
+    $item->set_subtotal( $line[1] ); $item->set_total( $line[1] ); $order->add_item( $item );
+  }
+  $order->calculate_totals( false ); $order->save();
+  $context['adminExemptionOrderIds'][] = $order->get_id();
+  update_option( 'sst_cypress_v3_context', $context, false );
+  $result = array( 'id' => $order->get_id(), 'editUrl' => $order->get_edit_order_url(),
+    'certificates' => $context['adminExemptionCertificates'], 'adminId' => $context['adminId'] );
 } elseif ( 'coTax' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Colorado scenarios require fixture mode.' ); }
   $category_tic = (string) ( $input['categoryTic'] ?? '' );
@@ -164,6 +210,7 @@ if ( 'setup' === $action ) {
     }
   }
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock', 'productId' ) as $key ) { wp_trash_post( $context[ $key ] ); }
+  if ( ! empty( $context['adminExemptionProductId'] ) ) { wp_trash_post( $context['adminExemptionProductId'] ); }
   if ( ! empty( $context['coCategoryId'] ) ) { wp_delete_term( $context['coCategoryId'], 'product_cat' ); }
   foreach ( array( 'Realtime', 'DataImport' ) as $profile ) {
     $credentials = sst_e2e_credentials( $context );

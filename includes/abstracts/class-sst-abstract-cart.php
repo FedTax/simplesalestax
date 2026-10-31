@@ -830,6 +830,8 @@ abstract class SST_Abstract_Cart {
 				$subpackage = array(
 					'origin'      => $origin,
 					'destination' => $package['destination'],
+					// Keep the order customer when an admin or background job recalculates tax.
+					'user'        => $package['user'] ?? null,
 				);
 
 				if ( isset( $package['shipping'] ) ) {
