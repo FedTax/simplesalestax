@@ -23,8 +23,19 @@ class SST_Assets {
 	 */
 	public function __construct() {
 		add_action( 'init', array( $this, 'init_assets' ) );
+		add_action( 'init', array( $this, 'register_frontend_assets' ), 20 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'register_admin_assets' ) );
+	}
+
+	/**
+	 * Block themes render shortcode content before wp_head and wp_enqueue_scripts.
+	 * Register handles first so render-time localization is retained.
+	 */
+	public function register_frontend_assets() {
+		if ( ! is_admin() ) {
+			$this->register_assets();
+		}
 	}
 
 	/**
