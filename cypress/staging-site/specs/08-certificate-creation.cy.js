@@ -51,8 +51,9 @@ for(const profile of ['realtime','dataImport'])for(const version of ['v1','v3'])
     cy.get('.woocommerce-shipping-methods input[value^="local_pickup"]').check({force:true});cy.get('.blockUI',{timeout:90000}).should('not.exist');
     cy.get('#order_review .tax-rate .amount, #order_review .tax-total .amount').invoke('text').then(text=>expect(money(text),'unexempt live quote is positive').to.be.greaterThan(0));
     cy.get('#order_review .order-total .amount').invoke('text').then(text=>{beforeTotal=money(text);});
-    cy.then(()=>cy.get('#certificate_id').select(certificateId,{force:true}));cy.get('.blockUI',{timeout:90000}).should('not.exist');
-    cy.get('#order_review .order-total .amount').invoke('text').then(text=>expect(money(text)).to.be.lessThan(beforeTotal));
+    cy.intercept('POST','**/*wc-ajax=update_order_review*').as('exemptionReview');
+    cy.then(()=>cy.get('#certificate_id').select(certificateId,{force:true}));cy.wait('@exemptionReview',{timeout:90000}).its('response.statusCode').should('equal',200);cy.get('.blockUI',{timeout:90000}).should('not.exist');
+    cy.get('#order_review .order-total .amount').should($amount=>expect(money($amount.text())).to.be.lessThan(beforeTotal));
     placeOrder('classic').then(id=>{
      inspectOrder(id,{profile,version,scenario:'positive-tax-exemption-applied'}).then(order=>{expect(order.tax).to.equal(0);expect(order.packages.some(p=>p.certificate_id===certificateId)).to.equal(true);});
      status(id,'completed');inspectOrder(id,{profile,version,scenario:'positive-tax-exempt-captured'}).then(order=>expect(order.taxcloudStatus).to.equal('captured'));

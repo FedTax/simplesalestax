@@ -124,3 +124,11 @@ test('single-purchase detail hashes map only to one matching remote certificate'
  assert.throws(()=>singlePurchaseMapping(order,[cert,{...cert}]));
  assert.throws(()=>singlePurchaseMapping({...order,packages:[{certificate_id:cert.certificateId}]},[cert]));
 });
+
+test('unavailable Data Import certificate capability checks are not browser journey passes',async()=>{
+ const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');const dir=await fs.mkdtemp(path.join(os.tmpdir(),'sst-capability-'));
+ try{
+  await fs.writeFile(path.join(dir,'08.cy.js.json'),JSON.stringify({tests:[{title:['certificates dataImport/v3','[CERT-DI-UNAVAILABLE] hides unsupported creation'],state:'passed'},{title:['dataImport/v3','shows the expected exemption controls on classic and Blocks checkout'],state:'passed'}]}));
+  const r=await require('../cypress/staging-site/report').report(dir);assert.equal(r.totals.pass,2);assert.deepEqual(r.browserE2E,{pass:0,fail:0,blocked:0});assert.ok(r.scenarios.every(x=>x.kind==='capability-check'));
+ }finally{await fs.rm(dir,{recursive:true,force:true});}
+});

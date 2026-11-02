@@ -21,7 +21,7 @@ export function selectFirstOrigin(){
     cy.get('#woocommerce_wootax_default_origin_addresses').should($el=>expect([].concat($el.val()||[]),'origin persisted after second save').to.include(id));
   });
 }
-export function configure(profile,version){
+function configureFresh(profile,version){
   cy.task('qaConnectionBoundary',null,{log:false});
   cy.qaLogin('admin');cy.visit(settingsPath);
   cy.get('#woocommerce_wootax_tc_id',{log:false}).should('have.css','-webkit-text-security','disc');
@@ -50,6 +50,23 @@ export function configure(profile,version){
     expect(Boolean(info.settings.data_mover),'actual connection mode').to.equal(profile==='dataImport');
     expect(info.settings.default_origin_addresses).not.to.be.empty;
   });
+}
+// First setup in each group exercises the full save/origin/Verify UI. Later specs
+// reuse only values actually read back from that UI; stale values force setup again.
+export function configure(profile,version){
+ cy.task('qaConfigurationReady',{profile,version},{log:false}).then(verified=>{
+  if(!verified){configureFresh(profile,version);cy.task('qaConfigurationReady',{profile,version,mark:true},{log:false});return;}
+  cy.task('qaConnectionBoundary',null,{log:false});cy.qaLogin('admin');cy.visit(settingsPath);
+  cy.task('qaCredentials',profile,{log:false}).then(pair=>cy.get('form#mainform',{log:false}).then($form=>{
+   const origin=$form.find('#woocommerce_wootax_default_origin_addresses');
+   const first=[...origin.find('option')].find(x=>x.value&&!x.disabled);
+   const selected=[].concat(origin.val()||[]);
+   const same=$form.find('#woocommerce_wootax_tc_id').val()===pair.login&&$form.find('#woocommerce_wootax_tc_key').val()===pair.key&&$form.find('#woocommerce_wootax_api_version').val()===version&&first&&selected.length===1&&selected[0]===first.value;
+   if(!same){configureFresh(profile,version);cy.task('qaConfigurationReady',{profile,version,mark:true},{log:false});return;}
+   task('info').then(info=>{expect(info.settings.api_version).to.equal(version);expect(Boolean(info.settings.data_mover),'verified connection mode unchanged').to.equal(profile==='dataImport');expect(info.settings.default_origin_addresses).to.include(first.value);});
+   cy.task('qaResult',{id:'configuration-reused',profile,version,credentialsCompared:true,firstOriginVerified:true},{log:false});
+  }));
+ });
 }
 export function emptyCart(site){
   cy.visit(site.pages.cartClassic);

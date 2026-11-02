@@ -28,7 +28,7 @@ async function report(dir){
   }
   for(const scenario of scenarios){
     scenario.acceptanceIds=[...scenario.title.matchAll(/\[([A-Z0-9-]+)\]/g)].map(x=>x[1]);
-    scenario.kind=/Original credential and origin restoration UI/.test(scenario.title)?'configuration-restoration':/downloads a debug report/.test(scenario.title)?'api-check':'browser-e2e';
+    scenario.kind=/CERT-DI-UNAVAILABLE|dataImport\/v[13].*shows the expected exemption controls/.test(scenario.title)?'capability-check':/Original credential and origin restoration UI/.test(scenario.title)?'configuration-restoration':/downloads a debug report/.test(scenario.title)?'api-check':'browser-e2e';
   }
   let restored=false;try{restored=JSON.parse(await fs.readFile(path.join(dir,'restoration.json'),'utf8')).restored===true;}catch{}
   const totals={pass:0,fail:0,blocked:0};scenarios.forEach(x=>totals[x.status]++);

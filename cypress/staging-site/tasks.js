@@ -13,11 +13,12 @@ module.exports=async(on,config)=>{
   config.env=Object.fromEntries(allowedEnv.filter(key=>Object.prototype.hasOwnProperty.call(config.env,key)).map(key=>[key,config.env[key]]));
   config.env.suite='staging-site';
   config.env.qaRunId=a.runId;
-  const certificateFixtures={},certificateMappings={};
+  const certificateFixtures={},certificateMappings={},verifiedGroups=new Set();
   on('task',{
     qa:async({action,...data})=>{await progress(action);try{const result=await client.control(action,data);await progress(action+'-complete');return redact(result);}catch(e){throw new Error(redact(e.message));}},
     qaCertificateFixture:({surface,actorId})=>{const entry=certificateFixtures[surface];return entry&&entry.actorId===actorId?entry:null;},
     qaPlannedCases:async data=>{await progress('registered-scenarios');await fs.writeFile(path.join(dir,`planned-${path.basename(data.spec)}.json`),JSON.stringify(data,null,2));return null;},
+    qaConfigurationReady:({profile,version,mark=false})=>{if(!['realtime','dataImport'].includes(profile)||!['v1','v3'].includes(version))throw new Error('Unknown group.');const key=`${profile}/${version}`;if(mark)verifiedGroups.add(key);return verifiedGroups.has(key);},
     qaSite:()=>site,
     qaLease:()=>a.leaseToken,
     qaRestoration:()=>client.control('restorePreview'),

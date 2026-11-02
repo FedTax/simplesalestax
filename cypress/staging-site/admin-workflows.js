@@ -5,18 +5,21 @@ export function openAddress(section,index){cy.get(`#_${section}_first_name`).the
 export function adminOrder(site,role,{quantity=2,customerId=site.userIds[1],productId=site.products.virtual,initialStatus='wc-pending',addProducts=true}={}){
  cy.qaLogin('admin');reserveOrder('admin',role);cy.visit(site.newOrderUrl);
  if(role!=='guest'){
+  cy.intercept('POST','**/admin-ajax.php',req=>{const action=typeof req.body==='string'?new URLSearchParams(req.body).get('action'):req.body?.action;if(action==='woocommerce_get_customer_details')req.alias='loadAdminCustomer';});
   cy.get('#customer_user').parent().find('.select2-selection').click();
   cy.get('.select2-search__field:visible').last().type(String(customerId));
   cy.contains('.select2-results__option',new RegExp(`#${customerId}\\b`),{timeout:60000}).click();
+  cy.wait('@loadAdminCustomer',{timeout:90000}).its('response.statusCode').should('equal',200);
+  cy.get('#_billing_last_name').should('have.value',Object.values(site.registry.actors).find(x=>x.id===customerId).baseline.last_name);
  }
  openAddress('billing',0);
  cy.then(()=>{
   const name=Cypress.env('qaOrderName');
-  for(const [field,value] of Object.entries({first_name:name.firstName,last_name:name.lastName,email:name.email,address_1:'323 Washington Ave N',city:'Minneapolis',postcode:'55401',phone:'6125550100'}))cy.get(`#_billing_${field}`).clear().type(value,{delay:0});
+  for(const [field,value] of Object.entries({first_name:name.firstName,last_name:name.lastName,email:name.email,address_1:'323 Washington Ave N',city:'Minneapolis',postcode:'55401',phone:'6125550100'}))cy.get(`#_billing_${field}`).clear().type(value,{delay:0}).should('have.value',value);
  });
  cy.get('#_billing_country').select('US',{force:true});cy.get('#_billing_state').select('MN',{force:true});
  openAddress('shipping',1);
- cy.then(()=>{const name=Cypress.env('qaOrderName');for(const [field,value] of Object.entries({first_name:name.firstName,last_name:name.lastName,address_1:'323 Washington Ave N',city:'Minneapolis',postcode:'55401'}))cy.get(`#_shipping_${field}`).clear().type(value,{delay:0});});
+ cy.then(()=>{const name=Cypress.env('qaOrderName');for(const [field,value] of Object.entries({first_name:name.firstName,last_name:name.lastName,address_1:'323 Washington Ave N',city:'Minneapolis',postcode:'55401'}))cy.get(`#_shipping_${field}`).clear().type(value,{delay:0}).should('have.value',value);});
  cy.get('#_shipping_country').select('US',{force:true});cy.get('#_shipping_state').select('MN',{force:true});
  cy.get('#order_status').select(initialStatus,{force:true});saveOrder();
  if(!addProducts)return cy.location('href').then(url=>{const u=new URL(url);return Number(u.searchParams.get('id')||u.searchParams.get('post'));});

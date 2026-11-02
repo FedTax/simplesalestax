@@ -3,7 +3,77 @@
 Prepared: 2026-10-31. Requirements updated: 2026-11-02. This document is a standalone handoff for a new chat or computer. It replaces the earlier plan in the originating chat. It describes work to implement and execute; it is not a test-results report.
 
 
-**Latest requirements (2026-11-02):** reuse a persistent pool of QA users on each target, creating only missing actors; reuse checkout URLs `block-checkout/` and `classic-checkout/`, creating only missing pages; assign test orders customer names `Txc User 1`, `Txc User 2`, and so on; test guest, logged-in and admin-created orders; exercise actual certificate submission from all requested entry points and customer/admin refund workflows. These requirements supersede older run-specific user-provisioning instructions in the execution history. The QA helper and expanded Cypress changes are now implemented; helper 0.2.4 has been uploaded. Diagnostic results are preserved below. A fresh full matrix is in progress; earlier passes do not establish acceptance of these requirements.
+**Latest requirements (2026-11-02):** reuse a persistent pool of QA users on each target, creating only missing actors; reuse checkout URLs `block-checkout/` and `classic-checkout/`, creating only missing pages; assign test orders customer names `Txc User 1`, `Txc User 2`, and so on; test guest, logged-in and admin-created orders; exercise actual certificate submission from all requested entry points and customer/admin refund workflows. These requirements supersede older run-specific user-provisioning instructions in the execution history. The QA helper and expanded Cypress changes are now implemented; helper 0.2.5 has been uploaded. Diagnostic results are preserved below. A fresh full matrix is in progress; earlier passes do not establish acceptance of these requirements.
+
+## Resume checkpoint — 2026-11-03 (Asia/Dhaka)
+
+**Read this section first on continuation; inspect live state because this snapshot can age while a run is active.** The current agent is continuing, not handing control to a second concurrent runner. No applicable AGENTS.md was found in this checkout or its ancestors. Preserve user/concurrent changes: the checkout was externally merged/committed during testing, and local package 8.4.21 differs from the still-deployed product 8.4.20. This task has deployed **only QA helper 0.2.5**, never customer-plugin code or a release.
+
+### Current execution
+
+- Active full Data Import/V3 run: **bf601474-31be-4968-ab7e-99f90741b0b9**. It selected all nine main specs with `--env qaGroup=dataImport/v3`. As of this checkpoint it has finished policy and all four storefront allocation refunds and is entering the final certificate/permission/recovery specs. Do not restart or repeat its transactions.
+- Log: `/tmp/sst-qa/di-v3-matrix.log`. Evidence: `cypress/results/staging-site/0390c295092c/bf601474-31be-4968-ab7e-99f90741b0b9/`. Check `activity.json`, `mutation-checkpoints/`, `dashboard-checkpoints/`, eventual `coverage.json` and `restoration.json`.
+- Parent process/lease: inspect `cypress/.staging-private/0390c295092c/run.lock` and `ps` before starting anything. The CLI parent always attempts browser restoration and exact helper restoration in `finally`. A healthy dashboard wait emits activity heartbeats; inactivity watchdog kills only its isolated Cypress child group. Do not kill the restoring parent.
+- Private generated WP access is imported from `/tmp/sst-qa/access.json`; never print it. Read supplied TaxCloud credentials **only** from `cypress/credentials.local.json` (existing four-field schema, owner-readable permissions). Never print credential values, full credential-bearing TaxCloud URLs or raw navigation exceptions.
+- Persistent QA users remain **7 / 8 / 9** (runner/buyer/exempt). Fixed checkout page IDs remain **1048 / 1050**, at `classic-checkout/` and `block-checkout/`. New logical orders reserve the next global `Txc User N`; abandoned numbers remain consumed. Every new lease rotates validated QA credentials and reuses those IDs/pages.
+- Intended TaxCloud account is **Toptal (67959), Premium Trial**. Use the existing logged-in Chrome profile, currently named Shuvo. Current tab-ID hints: TaxCloud `1074728584`, WP helper `1074728669`; browser IDs are ephemeral, so inventory by name/host. Reconfirm the account after any re-login. Saved sign-in can be used; do not extract/print the saved UI password.
+
+### Durable browser checkpoint helper
+
+`cypress/staging-site/dashboard-verifier.mjs` is now saved and successfully imported in the computer-use runtime. It uses **actual Chrome DOM/UI only**, not HTTP/API substitutes. Load it through `cua_repl`, after reading the browser tool documentation and selecting the existing Chrome browser/tab:
+
+```js
+let fs = await import('node:fs/promises');
+let credentials = JSON.parse(await fs.readFile('/ABS/REPO/cypress/credentials.local.json','utf8')); // DO NOT PRINT
+let {createDashboardVerifier} = await import('file:///ABS/REPO/cypress/staging-site/dashboard-verifier.mjs');
+let verifier = createDashboardVerifier({tab: taxcloudTab, fs, credentials,
+  evidenceDir:'/ABS/REPO/cypress/results/staging-site/0390c295092c/RUN-ID/dashboard-checkpoints',
+  runId:'RUN-ID', accountVerified:true}); // true only after confirming Toptal 67959 in UI
+await verifier.capture();
+await verifier.refund([{id:'ACTUAL-ITEM-ID',quantity:1,subtotal:10,tax:0,total:10}]);
+```
+
+Replace `/ABS/REPO` with the actual checkout path; percent-encode spaces in the file import URL. Current checkout: `/Users/akshuvo/Local Sites/dev-taxcloud/app/public/wp-content/plugins/simple-sales-tax`. Do not use eval/code generation; the runtime rejects it. Always catch unexpected tool errors without printing their raw messages/URLs.
+
+The helper waits at most 25 seconds for the next immutable pending file. Capture checks compare exact remote order, customer, items/quantity/price, exemption, amounts, reload persistence and empty Returns. Negative identity/certificate/status flags are recorded as known outcomes and **fail** Cypress acceptance; they are not passes. Refund checks require exact expected cumulative return rows, amounts, return count, persisted Returned status and remaining balance. One post-refund browser reload is sufficient; duplicate reload/idle waits were removed. If `recorded:false`, inspect the actual UI/session; never force an approval or replay a mutation.
+
+Use actual item IDs from the matching capture `*-verified.json` rows, not remembered product IDs. Expected examples (tax-zero baseline):
+
+- Virtual full return: one row, quantity 1/subtotal 10/tax 0/total 10. Core two-step lifecycle: first one such row; second checkpoint contains two separate identical rows (two distinct refund IDs).
+- Shipping-only: `SHIPPING`, quantity 1, subtotal/total 5. Fee-only: storefront `qa-service-fee`, quantity 1, subtotal/total 2.
+- Mixed: physical item quantity 1/subtotal 12.35 plus fee 2 and shipping 5, cumulative 19.35, remaining 12.35.
+- Full allocated: physical quantity 2/subtotal 24.70 plus fee 2 and shipping 5, cumulative 31.70, zero remaining.
+- Admin-added fees can have another ID (e.g. `2-00-fee`): inspect the capture rows. Positive-tax cases must include the actual tax allocation, not these zero-tax examples.
+
+V1 dashboard UUIDs may be uppercase. Single-purchase package `certificate_id` can be a **local detail hash**, not the remote UUID; `certificate-evidence.js` validates the unique remote single-purchase record by named order/customer/state and puts `certificateMapping` into the checkpoint. The browser must still show that mapped UUID. API readbacks alone never establish browser E2E acceptance.
+
+### Safe recovery / next work
+
+1. Finish the active run's pending **read-only** dashboard checkpoints. If a model/session interruption occurs, first inspect whether the runner is still alive or already restored. The 10-minute checkpoint deadline can fail a case and the parent can restore afterward; retain that failure. Never rerun checkout/completion/refund merely because a screenshot/session was lost.
+2. After this run ends, verify `restoration.json` has `restored:true`, zero mismatches, and helper UI is idle. If a process died before restoration, use logged-in WP → Tools → SST Staging QA → Restore, or the documented CLI restore with the matching still-valid access/run ID. Do not start a new run while a live lock/lease exists.
+3. Data Import/V3 core had a WooCommerce `wc-settings.js` `addFilter` exception during cleanup, skipping Blocks guest/lifecycle and later core tests. Extended mixed shipping had `customPlaceOrderButton` undefined. Do not suppress these. One normal logged-in Chrome empty Blocks-cart view did not reproduce them. After the active run restores, use a **fresh lease** for a bounded reproduction:
+   `npm run test:staging -- --spec=cypress/staging-site/specs/01-workflows.cy.js,cypress/staging-site/specs/02-settings-and-shopping.cy.js --env 'qaGroup=dataImport/v3,qaCase=blocks buyer|blocks guest|completes once|calculates a mixed physical/virtual cart'`
+4. Then use another fresh lease for remaining Realtime/V3 main coverage:
+   `npm run test:staging -- --spec=cypress/staging-site/specs/02-settings-and-shopping.cy.js,cypress/staging-site/specs/05-policy-and-fees.cy.js,cypress/staging-site/specs/07-admin-orders.cy.js,cypress/staging-site/specs/08-certificate-creation.cy.js,cypress/staging-site/specs/09-permissions-and-recovery.cy.js --env qaGroup=realtime/v3`
+   If a real uncertain capture/refund blocks later setup, preserve it; do not weaken the connection-boundary guard to obtain passes.
+5. Latest V1 fixes for customer-address AJAX and positive-exemption recalculation still need bounded browser confirmation for those exact cases. If needed use a fresh V1 lease with specs 07/08 and `qaCase=ADM-ORD-EXEMPT|CERT-POSITIVE-TAX`. Other V1 policy/refund coverage has passing evidence; do not repeat everything.
+6. Fresh lease procedure: logged-in WP helper → Prepare (reuse users/pages), save the private textarea locally without output, `npm run test:staging:setup -- --access-file=/tmp/sst-qa/access.json`, then the selected command. Every run restores original settings, revokes QA sessions and retains fixtures. **Always select first valid Shipping Origin Address and save again after credential changes.** Initial setup per group still exercises full UI saves/Verify; subsequent specs reuse only actually matching credentials/version/first origin. Stale UI values force full setup. The unresolved-mutation guard remains enforced.
+7. Consolidate latest case results across preserved runs, retaining history and distinguishing raw Cypress, browser E2E, capability-only checks, API-only checks and restoration. Full selection is not a clean single-run pass. Scan tracked QA/report files against supplied secrets without outputting values; remove temporary private access only after verified restoration. Update this checkpoint and the verification report at the final safe state.
+
+### Results / blockers to preserve
+
+- Data Import/V1 full run **2d3e284d-252f-42a3-af26-b0e962c40197** ended/restored: **42 browser passes, 2 admin-identity failures, 1 blocked customer-refund case**, plus 2 capability checks, 1 API download check and 1 restoration-UI pass. All four placements, two sequential partial refunds, policy/refunds, four allocated storefront refunds, notifications (generation suppressed), mobile and account/reorder/recovery passed. Do not call unsupported Data Import certificate absence a creation/browser-journey pass.
+- Full-selection baseline **faad5de4-34e6-4ddf-be66-2a2dd0799345**: 28 browser passes/39 raw failures/128 blocked under its original classification, exact restoration. Many failures were guard/setup consequences, not distinct product defects. Preserve raw files.
+- V1 continuation **81cdda0a-d3ea-4e8b-b8ab-b496f8011ed9**: 9 extended-shopping passes; later setup blocked by a now-fixed false intent while integration was disabled. Exact restoration.
+- V1 expanded **b2d517d7-e629-4d5b-b347-27c0c32ade10**: 19 browser passes/12 failures/3 blocked; exact restoration. Policies and allocated refunds passed. Several failures were corrected harness interactions or certificate hash/case assumptions, not proven product defects.
+- Correction subset **f49b74cf-5c45-49a4-b029-ea74f6b84106**: 3 passes/5 failures; exact restoration. Native keyboard, coupon and draft quantity edits passed. Capture **1270** timed out after session expiry but was later verified read-only Completed, customer 8, $10/$0 tax/no Returns; its Cypress failure remains. No refund was replayed.
+- **Admin customer-association defect:** guest/customer order captures/imports use acting admin 7 instead of saved Woo customer 0/8. Evidence includes Realtime/V3 1119, Realtime/V1 1224/1267, Data Import/V1 1302/1303, Data Import/V3 1346/1347. Matching financials do not pass identity acceptance; refund steps stop at that failure.
+- **Certificate metadata:** V1 remote reason reads Unknown despite selecting Resale. New assertions expose this; narrow old UI-submission passes do not close full metadata acceptance.
+- **Uncertain Live captures 1155 and 1183:** HTTP 500, exact later GET 404, dashboard unavailable. Original intents/receipts retained. **NEVER replay them.** Cart ID reuse is a correlation, not a proven cause (the plan already rejects a speculative unique-cart fix).
+- **Existing captured order 851 must remain untouched.** No exception for recovery/testing.
+- Customer My Account refund/request UI and guest certificate creation UI are absent where observed: blocked, not browser creation/refund passes. Docker/local deterministic fixture E2E is unavailable; offline PHP/API contracts are not browser passes.
+- Current offline validation: **15 Node harness checks pass**, PHP helper boundary/privacy/fixture/session checks pass; earlier 302 offline API contracts and customer-plugin PHP regressions passed. No customer-plugin source deployment/release by this task.
+- Privacy incident already documented: a browser timeout exposed a credential-bearing URL in tool output. Never repeat it; generic catches and masked snapshots are now used. Tracked QA/report secret scan found zero supplied-secret values.
 
 ## 1. Goal and agreed decisions
 
@@ -452,3 +522,5 @@ V1 continuation 81cdda0a completed spec 02 with 9/9 passes and exact restoration
 ### Current continuation — 2026-11-03 (Asia/Dhaka)
 
 V1 expanded b2d517d7 finalized 19 browser passes/12 failures/3 blocked; exact restoration and UI restoration passed. Keep admin customer mismatch, remote reason Unknown and all original harness failures. QA helper 0.2.5 is uploaded (stable Woo email-ID observation, no subject parsing). Fourteen Node checks and PHP regressions pass. Short correction run f49b74cf-5c45-49a4-b029-ea74f6b84106 precedes remaining Data Import and Realtime/V3 matrix continuation. Local-hash-to-remote-UUID mapping is supplementary to actual checkout submission and dashboard proof; it must never be reported as an API-only E2E pass.
+
+Data Import/V1 continuation 2d3e284d-252f-42a3-af26-b0e962c40197: all four checkout actor/layout combinations and two-part refund lifecycle verified in browser and TaxCloud. Continue remaining scenarios and Data Import/V3 plus the remaining Realtime/V3 coverage. Correction subset f49b74cf ended/restored; preserve its 3 passes/5 failures and separate read-only recovery for 1270. Local package was concurrently merged to 8.4.21; target still reports 8.4.20, with no product deployment by this task.
