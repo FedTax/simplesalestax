@@ -575,13 +575,18 @@ function sst_is_user_tax_exempt() {
  * @return bool Whether the tax exemption UI should be displayed
  */
 function sst_should_show_tax_exemption_form() {
+	$configured = (
+		'yes' !== SST_Settings::get( 'disable_integration', 'no' )
+		&& ! empty( SST_Settings::get( 'tc_id' ) )
+		&& ! empty( SST_Settings::get( 'tc_key' ) )
+	);
 	$restricted = 'yes' === SST_Settings::get( 'restrict_exempt' );
 	$enabled    = 'true' === SST_Settings::get( 'show_exempt' );
 	$realtime   = 'data_mover' !== sst_integration_mode();
 
 	return apply_filters(
 		'sst_show_tax_exemption_form',
-		$enabled && $realtime && ( ! $restricted || sst_is_user_tax_exempt() )
+		$configured && $enabled && $realtime && ( ! $restricted || sst_is_user_tax_exempt() )
 	);
 }
 

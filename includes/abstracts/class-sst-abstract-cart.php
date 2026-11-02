@@ -59,6 +59,31 @@ abstract class SST_Abstract_Cart {
 	}
 
 	/**
+	 * Check whether TaxCloud API credentials are configured.
+	 *
+	 * @return bool
+	 */
+	protected function has_api_credentials() {
+		$this->api_id  = SST_Settings::get( 'tc_id' );
+		$this->api_key = SST_Settings::get( 'tc_key' );
+
+		return ! empty( $this->api_id ) && ! empty( $this->api_key );
+	}
+
+	/**
+	 * Check whether TaxCloud integration is enabled and configured.
+	 *
+	 * @return bool
+	 */
+	protected function is_integration_active() {
+		if ( 'yes' === SST_Settings::get( 'disable_integration', 'no' ) ) {
+			return false;
+		}
+
+		return $this->has_api_credentials();
+	}
+
+	/**
 	 * Perform a tax lookup and update the sales tax for all items.
 	 *
 	 * @return bool True on success, false on error.
@@ -72,13 +97,13 @@ abstract class SST_Abstract_Cart {
 			return false;
 		}
 
-		$this->reset_taxes();
-
 		// No API Login ID or API Key? Bail.
-		if ( empty( $this->api_id ) || empty( $this->api_key ) ) {
+		if ( ! $this->has_api_credentials() ) {
 			SST_Logger::add( __( 'API Login ID or API Key is empty. Skipping lookup.', 'simple-sales-tax' ) );
 			return false;
 		}
+
+		$this->reset_taxes();
 
 		// Perform tax lookup(s).
 		foreach ( $this->do_lookup() as $package ) {

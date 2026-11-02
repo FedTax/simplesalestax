@@ -84,8 +84,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function calculate_tax_totals( $total, $cart ) {
-		// Disable tax calculation if integration is disabled
-		if ( 'yes' === SST_Settings::get( 'disable_integration', 'no' ) ) {
+		// Disable tax calculation if integration is disabled or unconfigured
+		if ( ! $this->is_integration_active() ) {
 			return $total;
 		}
 
@@ -280,7 +280,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		if (
 			! $cart ||
 			! class_exists( 'WC_Stripe_Helper' ) ||
-			'yes' === SST_Settings::get( 'disable_integration', 'no' ) ||
+			! $this->is_integration_active() ||
 			! $this->is_stripe_express_checkout_request() ||
 			null === $this->stripe_express_checkout_total
 		) {
@@ -300,6 +300,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 */
 	public function calculate_taxes() {
 		$this->errors = array();
+
+		if ( ! $this->is_integration_active() ) {
+			return parent::calculate_taxes();
+		}
 
 		if ( 'new' === $this->get_certificate_id() ) {
 			$post_data = $this->get_post_data();
@@ -775,7 +779,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * Initialize certificate ID in session.
 	 */
 	public function init_certificate_id() {
-		if ( ! WC()->session ) {
+		if ( ! WC()->session || ! $this->is_integration_active() ) {
 			return;
 		}
 
@@ -843,6 +847,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		if ( ! is_cart() && ! is_checkout() ) {
+			return;
+		}
+
+		if ( ! $this->is_integration_active() ) {
 			return;
 		}
 
@@ -1008,6 +1016,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @param WC_Order $wc_order Order object
 	 */
 	protected function process_checkout( $data, $wc_order ) {
+		if ( ! $this->is_integration_active() ) {
+			return;
+		}
+
 		$order = new SST_Order( $wc_order );
 
 		if ( 'data_mover' === sst_integration_mode() ) {
@@ -1115,6 +1127,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	public function add_shipping_meta( $item, $package_key, $package ) {
+		if ( ! $this->is_integration_active() ) {
+			return;
+		}
+
 		$shipping_tax = $this->get_package_shipping_tax( $package_key );
 
 		if ( $shipping_tax >= 0 ) {
@@ -1182,6 +1198,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @param WP_Error $errors Checkout errors.
 	 */
 	protected function validate_checkout( $data, $errors ) {
+		if ( ! $this->is_integration_active() ) {
+			return;
+		}
+
 		foreach ( $this->errors as $error_message ) {
 			$errors->add( 'tax', $error_message );
 		}
@@ -1417,6 +1437,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @param WP_REST_Request $request Request
 	 */
 	public function handle_checkout( $order, $request ) {
+		if ( ! $this->is_integration_active() ) {
+			return;
+		}
+
 		$extension_data = $request->get_param( 'extensions' );
 		$data           = isset( $extension_data['simple-sales-tax'] ) ? $extension_data['simple-sales-tax'] : array();
 
@@ -1446,7 +1470,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 8.4.3
 	 */
 	public function add_co_excise_tax_fee( $cart ) {
-		if ( $cart->is_empty() ) {
+		if ( ! $this->is_integration_active() || $cart->is_empty() ) {
 			return;
 		}
 
