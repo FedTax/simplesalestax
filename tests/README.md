@@ -25,11 +25,31 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **28 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **31 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
 Setup failures or skipped workflows do not count as successful verification.
+
+## Admin order exemption regression (DEV-10586)
+
+`npm run test:e2e` includes three fixture scenarios for an administrator editing
+a pending Florida school order with ten product lines, no shipping method, and
+$4,806.45 subtotal:
+
+- No certificate: $288.40 tax and $5,094.85 total.
+- Select the customer's FL certificate, recalculate, reload and recalculate again:
+  $0 tax and $4,806.45 total; the customer and certificate remain saved.
+- Select an NY-only certificate: it is rejected, and tax remains $288.40.
+
+These cases assert the visible totals, outgoing TaxCloud customer/exemption IDs,
+and persisted order packages. The administrator and customer are different users.
+They fail if package splitting replaces the customer with the administrator.
+Only TaxCloud HTTP responses are simulated; the fixture's 6% line-rounded tax
+reproduces the report and is not a live tax-rate assertion. The extra product is
+trashed on cleanup; pending test orders remain for inspection. A successful FL
+case saves `DEV-10586-admin-FL-certificate-zero-tax.png` under
+`cypress/screenshots/`. These three cases run only in fixture mode.
 
 ## Colorado category TIC reproduction
 
@@ -59,7 +79,7 @@ for `99990`; it does not independently verify either rate against the live API.
 | Category `90505`, quantity changed from 1 to 2 | $15.00 | $13.00 | $228.00 |
 | Category `90505`, Minnesota destination | $10.00 (fixture) | None | $110.00 |
 
-Expect **28 passing** overall, including these **6 Colorado cases**. The first
+Expect **31 passing** overall, including these **6 Colorado cases**. The first
 Colorado test selects and saves category `99990` through the admin UI. Every
 Colorado test checks the effective product TIC, outgoing API payload,
 visible checkout totals and persisted order totals. Eligible Colorado orders
