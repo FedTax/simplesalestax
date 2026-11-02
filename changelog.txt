@@ -2,13 +2,14 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-- [8.4.21] - 2026-11-02 =
+- [8.4.21] - 2026-11-03 =
 
 Added:
 - Feat: v3 API integration (#458)
 - Feat: add Colorado tax scenarios and update context handling for coTax action (#474)
 
 Fixed:
+- [DEV-10555] Fix FooSales POS tax collection without duplicating online checkout tax (#473)
 - [DEV-10586]: Preserve customer exemptions when recalculating admin orders (#475)
 
 
