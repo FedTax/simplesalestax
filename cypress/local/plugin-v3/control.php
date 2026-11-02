@@ -52,6 +52,87 @@ if ( 'setup' === $action ) {
   }
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
+} elseif ( 'adminExemption' === $action ) {
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Admin exemption scenarios require fixture mode.' ); }
+  wp_set_current_user( $context['adminId'] );
+  if ( empty( $context['adminExemptionProductId'] ) ) {
+    $product = new WC_Product_Simple();
+    $product->set_name( 'Cypress DEV-10586 air filter ' . $context['run'] );
+    $product->set_regular_price( '100' ); $product->set_virtual( false ); $product->set_tax_status( 'taxable' );
+    $product->set_status( 'private' );
+    $product->update_meta_data( '_wootax_origin_addresses', array( 'cypress-fl-origin' ) );
+    $context['adminExemptionProductId'] = $product->save();
+    $context['adminExemptionCertificates'] = array();
+    $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array(), 'carts' => array(), 'orders' => array() ) );
+    foreach ( array( 'FL', 'NY' ) as $state ) {
+      $id = 'cert-admin-' . strtolower( $state ) . '-' . $context['run'];
+      $context['adminExemptionCertificates'][ $state ] = $id;
+      $remote['certificates'][ $id ] = array(
+        'certificateId' => $id, 'customerId' => 'customer-' . $context['customerId'],
+        'singlePurchase' => false, 'disabledAt' => null, 'createdDate' => gmdate( 'c' ),
+        'firstName' => 'Cypress', 'lastName' => 'School', 'customerBusinessType' => 'Other',
+        'reason' => 'Other', 'reasonDescription' => 'QA school exemption',
+        'address' => array( 'line1' => '100 Cypress St', 'line2' => '', 'city' => 'Naples', 'state' => 'FL', 'zip' => '34109', 'countryCode' => 'US' ),
+        'states' => array( array( 'abbreviation' => $state ) ),
+      );
+    }
+    update_option( 'sst_cypress_v3_remote', $remote, false );
+    SST_Certificates::delete_certificates( $context['customerId'] );
+  }
+  $order = wc_create_order( array( 'customer_id' => $context['customerId'], 'status' => 'pending', 'created_via' => 'cypress-dev-10586' ) );
+  if ( is_wp_error( $order ) ) { throw new Exception( $order->get_error_message() ); }
+  $address = array( 'first_name' => 'Cypress', 'last_name' => 'School', 'country' => 'US',
+    'address_1' => '100 Cypress St', 'city' => 'Naples', 'state' => 'FL', 'postcode' => '34109',
+    'email' => $context['username'] . '@example.test' );
+  $order->set_address( $address, 'billing' ); $order->set_address( $address, 'shipping' );
+  $product = wc_get_product( $context['adminExemptionProductId'] );
+  // The reported ten lines reproduce $4,806.45 subtotal / $288.40 line-rounded tax.
+  foreach ( array( array( 2, 447.94 ), array( 1, 331.97 ), array( 1, 460.20 ), array( 1, 655.34 ), array( 1, 485.97 ),
+    array( 2, 859.94 ), array( 1, 296.38 ), array( 1, 441.97 ), array( 1, 399.80 ), array( 1, 426.94 ) ) as $index => $line ) {
+    $item = new WC_Order_Item_Product(); $item->set_product( $product );
+    $item->set_name( 'Cypress DEV-10586 filter ' . ( $index + 1 ) ); $item->set_quantity( $line[0] );
+    $item->set_subtotal( $line[1] ); $item->set_total( $line[1] ); $order->add_item( $item );
+  }
+  $order->calculate_totals( false ); $order->save();
+  $context['adminExemptionOrderIds'][] = $order->get_id();
+  update_option( 'sst_cypress_v3_context', $context, false );
+  $result = array( 'id' => $order->get_id(), 'editUrl' => $order->get_edit_order_url(),
+    'certificates' => $context['adminExemptionCertificates'], 'adminId' => $context['adminId'] );
+} elseif ( 'coTax' === $action ) {
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Colorado scenarios require fixture mode.' ); }
+  $category_tic = (string) ( $input['categoryTic'] ?? '' );
+  $product_tic = (string) ( $input['productTic'] ?? '' );
+  $state = $input['state'] ?? 'CO';
+  foreach ( array( $category_tic, $product_tic ) as $tic ) {
+    if ( ! in_array( $tic, array( '', '99990', '90505', '90506' ), true ) ) { throw new Exception( 'Unknown Colorado fixture TIC.' ); }
+  }
+  if ( ! in_array( $state, array( 'CO', 'MN' ), true ) ) { throw new Exception( 'Unknown Colorado fixture destination.' ); }
+  if ( empty( $context['coCategoryId'] ) ) {
+    $term = wp_insert_term( 'Cypress Colorado ' . $context['run'], 'product_cat' );
+    if ( is_wp_error( $term ) ) { throw new Exception( $term->get_error_message() ); }
+    $context['coCategoryId'] = $term['term_id'];
+  }
+  $context['coTax'] = true;
+  update_option( 'sst_cypress_v3_context', $context, false );
+  update_term_meta( $context['coCategoryId'], 'tic', $category_tic );
+  $product = wc_get_product( $context['productId'] );
+  $product->set_category_ids( array( $context['coCategoryId'] ) );
+  $product->delete_meta_data( 'wootax_tic' );
+  if ( '' !== $product_tic ) { $product->update_meta_data( 'wootax_tic', $product_tic ); }
+  $product->save();
+  // Each browser test logs in with a fresh session using this customer's address.
+  $address = 'CO' === $state
+    ? array( 'address_1' => '100 Cypress St', 'city' => 'Denver', 'state' => 'CO', 'postcode' => '80202' )
+    : array( 'address_1' => '323 Washington Ave N', 'city' => 'Minneapolis', 'state' => 'MN', 'postcode' => '55401' );
+  foreach ( array( 'billing_', 'shipping_' ) as $prefix ) {
+    foreach ( $address as $key => $value ) { update_user_meta( $context['customerId'], $prefix . $key, $value ); }
+  }
+  $result = array( 'categoryId' => $context['coCategoryId'], 'address' => $address );
+} elseif ( 'coTaxState' === $action ) {
+  if ( empty( $context['coCategoryId'] ) ) { throw new Exception( 'No Colorado fixture category.' ); }
+  $result = array( 'categoryTic' => get_term_meta( $context['coCategoryId'], 'tic', true ),
+    'productTic' => get_post_meta( $context['productId'], 'wootax_tic', true ),
+    'effectiveTic' => SST_Product::get_tic( $context['productId'] ) );
 } elseif ( 'records' === $action ) {
   $file = '/tmp/sst-cypress-' . $context['run'] . '/requests.ndjson';
   $result = file_exists( $file ) ? array_map( function( $line ) { return json_decode( $line, true ); }, file( $file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES ) ) : array();
@@ -70,6 +151,11 @@ if ( 'setup' === $action ) {
     'notes' => array_map( function( $note ) { return $note->content; }, wc_get_order_notes( array( 'order_id' => $order->get_id(), 'limit' => 10 ) ) ),
     'packages' => maybe_unserialize( $order->get_meta( '_wootax_packages' ) ), 'certificate' => $order->get_meta( '_wootax_exempt_cert' ),
     'singlePurchaseCertificate' => json_decode( $order->get_meta( '_wootax_single_purchase_cert' ) ?: 'null', true ) );
+  if ( ! empty( $context['coTax'] ) ) {
+    $result['fees'] = array_values( array_map( function( $fee ) {
+      return array( 'name' => $fee->get_name(), 'total' => (float) $fee->get_total(), 'tax' => (float) $fee->get_total_tax() );
+    }, $order->get_fees() ) );
+  }
 } elseif ( 'retryRefund' === $action ) {
   // No UI exists for resending an already-created WooCommerce refund. Exercise
   // the plugin's retry boundary with the same refund ID/idempotency key.
@@ -124,6 +210,8 @@ if ( 'setup' === $action ) {
     }
   }
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock', 'productId' ) as $key ) { wp_trash_post( $context[ $key ] ); }
+  if ( ! empty( $context['adminExemptionProductId'] ) ) { wp_trash_post( $context['adminExemptionProductId'] ); }
+  if ( ! empty( $context['coCategoryId'] ) ) { wp_delete_term( $context['coCategoryId'], 'product_cat' ); }
   foreach ( array( 'Realtime', 'DataImport' ) as $profile ) {
     $credentials = sst_e2e_credentials( $context );
     delete_transient( 'sst_tc_v3_token_' . md5( $credentials[ 'apiLoginID' . $profile ] . ':' . $credentials[ 'apiKey' . $profile ] ) );
