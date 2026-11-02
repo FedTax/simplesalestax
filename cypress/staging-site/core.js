@@ -6,7 +6,10 @@ const root = path.resolve(__dirname, '../..');
 const defaultTarget = 'https://woo-staging.do.taxcloud.net/';
 function target(value = defaultTarget) {
   const u = new URL(value);
-  if (u.protocol !== 'https:' || u.username || u.password || u.search || u.hash) throw new Error('Use an HTTPS target URL without credentials, query or fragment.');
+  const isLocal = u.hostname.endsWith('.local') || u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+  if ((u.protocol !== 'https:' && !(isLocal && u.protocol === 'http:')) || u.username || u.password || u.search || u.hash) {
+    throw new Error('Use an HTTPS target URL without credentials, query or fragment.');
+  }
   u.pathname = u.pathname.replace(/\/*$/, '/');
   return {url: u.href, id: createHash('sha256').update(u.href).digest('hex').slice(0, 12)};
 }

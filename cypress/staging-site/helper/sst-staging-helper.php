@@ -149,7 +149,7 @@ final class SST_Staging_QA {
         foreach ( array( 'woocommerce_currency' => 'USD', 'woocommerce_calc_taxes' => 'yes', 'woocommerce_prices_include_tax' => 'no', 'woocommerce_tax_based_on' => 'shipping', 'woocommerce_tax_display_shop' => 'excl', 'woocommerce_tax_display_cart' => 'excl', 'woocommerce_enable_guest_checkout' => 'yes', 'woocommerce_enable_signup_and_login_from_checkout' => 'no', 'woocommerce_enable_checkout_login_reminder' => 'yes', 'woocommerce_default_country' => 'US:MN', 'woocommerce_allowed_countries' => 'all', 'woocommerce_ship_to_countries' => '', 'woocommerce_myaccount_page_id' => $r['pages']['myAccount'] ) as $key => $value ) { update_option( $key, $value ); }
         // Isolate offline TaxCloud workflows from online-gateway scripts; preserve original failures and restore activation state at run end.
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        foreach ( array( 'woocommerce-paypal-payments/woocommerce-paypal-payments.php', 'authorize-net-payments-for-woocommerce/authorize-net-payments-for-woocommerce.php', 'woocommerce-gateway-stripe/woocommerce-gateway-stripe.php', 'woocommerce-payments/woocommerce-payments.php' ) as $gateway ) { if ( is_plugin_active( $gateway ) ) { deactivate_plugins( $gateway ); $r['isolatedPlugins'][] = $gateway; } }
+        foreach ( array( 'woocommerce-paypal-payments/woocommerce-paypal-payments.php', 'authorize-net-payments-for-woocommerce/authorize-net-payments-for-woocommerce.php', 'woocommerce-gateway-stripe/woocommerce-gateway-stripe.php', 'woocommerce-payments/woocommerce-payments.php', 'checkoutwc-lite/checkout-for-woocommerce.php' ) as $gateway ) { if ( is_plugin_active( $gateway ) ) { deactivate_plugins( $gateway ); $r['isolatedPlugins'][] = $gateway; } }
         $cheque = get_option( 'woocommerce_cheque_settings', array() ); $cheque['enabled'] = 'yes'; $cheque['title'] = 'QA offline payment'; update_option( 'woocommerce_cheque_settings', $cheque );
         $s = get_option( 'woocommerce_wootax_settings', array() );
         $s = array_merge( $s, array( 'disable_integration' => 'no', 'capture_orders_in_taxcloud' => 'yes', 'capture_trigger' => 'completed', 'show_exempt' => 'true', 'company_name' => 'TaxCloud QA', 'restrict_exempt' => 'no', 'enable_taxcloud_rate_limit' => 'no', 'log_requests' => 'yes', 'show_zero_tax' => 'true' ) );
@@ -237,7 +237,22 @@ final class SST_Staging_QA {
         }
         if ( 'restore' === $action ) {
             foreach ( $r['snapshot'] as $key => $saved ) { if ( $saved['exists'] ) { update_option( $key, $saved['value'] ); } else { delete_option( $key ); } }
-            $mismatches = array(); foreach ( $r['snapshot'] as $key => $saved ) { $sentinel = '__missing__'; $actual = get_option( $key, $sentinel ); if ( $saved['exists'] ? $actual !== $saved['value'] : $actual !== $sentinel ) { $mismatches[] = $key; } }
+            $mismatches = array();
+            foreach ( $r['snapshot'] as $key => $saved ) {
+                $sentinel = '__missing__';
+                $actual = get_option( $key, $sentinel );
+                $matches = false;
+                if ( ! $saved['exists'] ) {
+                    $matches = ( $actual === $sentinel );
+                } elseif ( 'active_plugins' === $key && is_array( $actual ) && is_array( $saved['value'] ) ) {
+                    $s1 = $actual; sort( $s1 );
+                    $s2 = $saved['value']; sort( $s2 );
+                    $matches = ( $s1 === $s2 );
+                } else {
+                    $matches = ( $actual === $saved['value'] );
+                }
+                if ( ! $matches ) { $mismatches[] = $key; }
+            }
             foreach ( $r['zoneOrders'] ?? array() as $zone_id => $position ) { $old_zone = new WC_Shipping_Zone( $zone_id ); $old_zone->set_zone_order( $position ); $old_zone->save(); if ( (int) $old_zone->get_zone_order() !== (int) $position ) { $mismatches[] = 'shipping_zone_' . $zone_id; } }
             if ( $r['shippingZone'] ?? false ) { $zone = new WC_Shipping_Zone( $r['shippingZone'] ); $zone->set_zone_order( 999999 ); foreach ( $zone->get_shipping_methods() as $method ) { $settings = get_option( $method->get_option_key(), array() ); $settings['enabled'] = 'no'; update_option( $method->get_option_key(), $settings ); } $zone->save(); }
             if ( $mismatches ) { return new WP_Error( 'restore_mismatch', 'Restoration mismatch: ' . implode( ', ', $mismatches ), array( 'status' => 500 ) ); }

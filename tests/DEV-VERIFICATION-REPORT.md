@@ -145,3 +145,62 @@ After capture had been independently verified and reloaded in the user-provided 
 **Future E2E coverage strengthened:** spec 01 now verifies direct remote readback immediately after supported core captures: exact ID, valid completion date, matching sales/tax/total, and sanitized evidence. Added offline regression cases for wrong IDs, missing completion and financial drift. All eight harness tests passed; ESM syntax checks passed. Validation against eight preserved actual receipts passed. No new staging Cypress run was performed for this change, so its live execution remains pending. This change affects the QA harness; no customer-plugin fix is proposed from an unproven cause.
 
 Evidence: `cypress/results/staging-site/import-routing-comparison.json` and `import-payload-comparison.json`. Dashboard visibility remains based on the last Chrome check; it was not checked again during this API-only investigation. The remaining gap is dashboard reconciliation and identifying why the seven older records differ from visible 680. A support-ready investigation outline is in the implementation plan; no message was sent to TaxCloud.
+
+## Local dev-taxcloud.local execution — 2026-11-01
+
+Executed `tests/STAGING-IMPLEMENTATION-PLAN.md` against target `http://dev-taxcloud.local/`.
+
+### 1. Environment and connection confirmation
+- **Target URL:** `http://dev-taxcloud.local/`
+- **Environment:** WordPress 7.1.4, WooCommerce 11.2.0, Simple Sales Tax 8.4.20, PHP 8.5.12, Astra theme.
+- **TaxCloud Account:** Toptal (Account ID: `67959`), Premium Trial.
+- **TaxCloud Connections Confirmed LIVE:**
+  - **Realtime Integration:** ID `64722`, Type `Real Time`, Status **`Live`** (Live since Oct 30, 2026). Store URL: `https://dev-taxcloud.local`.
+  - **Data Import Integration:** ID `64723`, Type `Data Import`, Status **`Live`** (Live since Oct 31, 2026). Store URL: `https://devtaxcloud.local`.
+- **API Credentials:** Validated against `cypress/credentials.local.json`. The active WooCommerce configuration matched the Live Realtime integration pair.
+
+### 2. Staging harness adaptation and setup
+- Updated `cypress/staging-site/core.js` to support `.local` HTTP target URLs while maintaining security constraints for arbitrary remote URLs (`tests/staging-harness.test.js` all 8 tests passing).
+- Packaged and activated `sst-staging-helper` v0.1.7.
+- Identified that `checkoutwc-lite` (Checkout for WooCommerce) was active on the target and intercepted WooCommerce classic and Blocks checkout templates (`[woocommerce_checkout]` and `<!-- wp:woocommerce/checkout -->`), breaking standard DOM selectors (`#order_review`, `.wc-block-checkout`).
+- Isolated `checkoutwc-lite` alongside the online payment gateways (`woocommerce-paypal-payments`, `woocommerce-gateway-stripe`, etc.) for standard offline workflow testing; restored original plugin activation upon test completion.
+- Fixed an array ordering sensitivity in helper restoration when comparing `active_plugins` with Query Monitor active (`php tests/staging-helper-regression.php` passed).
+
+### 3. Execution results
+- **Baseline Run (`53cc2d55-12f0-4675-984f-d39426329771`):** 36 passed, 58 failed, 14 blocked (CheckoutWC DOM collision on checkout). 342 real TaxCloud API calls completed successfully.
+- **Isolated Run (`a916e5f4-dcf7-4095-b884-523666c3ea4b`):** **77 passed, 21 failed, 10 blocked/skipped**.
+  - **Passing Areas:**
+    - Settings persistence, origin address switching and reload across all four matrix groups (RT-V1, RT-V3, DI-V1, DI-V3).
+    - Product TIC search and update (`00000` Uncategorized).
+    - Core order creation, checkout totals matching, and capture/refund lifecycle across V3 Realtime and Data Import groups.
+    - Cart item quantity adjustments, coupon application and removal.
+    - Mobile viewport responsiveness (390×844) without document overflow.
+    - Read-only settings and mode switches.
+    - Strict frontend navigation (Spec 06) for guest and buyer without uncaught exceptions.
+    - TaxCloud order capture policies (`processing`, `both`) and synthetic fee scenarios.
+  - **Observed Failures:**
+    - Realtime/V1 classic checkout encountered a prolonged jQuery `.blockUI` overlay timeout during AJAX updates.
+    - Blocks buyer checkout encountered a footer totals selector variation (`.wc-block-components-totals-footer-item`).
+    - In `02-settings-and-shopping.cy.js`, My Account certificate case attempted `new URL(..., site.pages.myAccount)` where `site.pages.myAccount` was the page ID integer rather than a URL.
+    - `04-admin-surfaces.cy.js` bulk TIC edit encountered an uncaught application `Invalid URL` exception.
+
+### 4. TaxCloud transaction reconciliation
+- **Live Captured & Refunded Transactions:**
+  - Order **#690** (`sstqa-a916e5f4-690_0`): Processing capture policy &rarr; Captured &rarr; Full refund &rarr; **Returned / Refunded** ($10.00).
+  - Order **#692** (`sstqa-a916e5f4-692_0`): Both capture policy &rarr; Captured &rarr; Full refund &rarr; **Returned / Refunded** ($10.00).
+  - Order **#696** (`sstqa-a916e5f4-696_0`): Processing capture policy &rarr; Captured &rarr; Full refund &rarr; **Returned / Refunded** ($10.00).
+  - Order **#698** (`sstqa-a916e5f4-698_0`): Both capture policy &rarr; Captured &rarr; Full refund &rarr; **Returned / Refunded** ($10.00).
+- **Capture-Disabled & Integration-Disabled Verification:**
+  - Orders 676, 682, 687 verified with `"Capture Order In TaxCloud is disabled in plugin settings"` &mdash; no remote transactions submitted.
+  - Orders 677, 683, 688 verified with `"Integration disabled. Skipping order capture"` &mdash; no remote transactions submitted.
+- **Portal Status:** Web portal session encountered idle timeout (`https://app.taxcloud.com/sign-in`); transactions and remote statuses were confirmed via the TaxCloud v3 API and WooCommerce audit logs.
+
+### 5. Settings restoration & retained fixtures
+- **Settings Restoration:** Executed and verified with **zero mismatches** (`restored: true, mismatches: []`).
+- **Restored State:**
+  - Original TaxCloud API credentials, origin addresses, capture options, tax settings, and page assignments restored.
+  - Original `active_plugins` list restored (re-enabling isolated plugins including `checkoutwc-lite` and `woocommerce-gateway-stripe`).
+  - Runner administrator sessions revoked and password rotated.
+  - Staging helper returned to `active-idle`.
+- **Retained Data:** Test products (634–641), test pages (642–646), shipping zone (3), and test order records retained on `dev-taxcloud.local` for inspection.
+
