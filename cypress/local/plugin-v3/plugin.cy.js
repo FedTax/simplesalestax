@@ -608,5 +608,8 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     ].forEach(([method, pattern]) => call(method, pattern, true));
   });
 
-  if (fixture) require('./co-tax')(() => site);
+  if (fixture) {
+    require('./admin-exemption')({ task, records, login, getSite: () => site });
+    require('./co-tax')(() => site);
+  }
 });
