@@ -542,6 +542,32 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
       records().then((rows) => expect(rows.some((row) => /\/carts$/.test(row.path) && row.status === 422)).to.equal(true));
       task('configure', { failure: false });
     });
+
+    it('unconfigured plugin (empty API Login ID, empty API Key, no origin address) skips TaxCloud on Block and Classic Checkout without origin errors', () => {
+      task('configure', { unconfigured: true, blocks: true });
+      task('clearCaches');
+      login(); cart();
+      cy.request('/wp-json/wc/store/v1/cart').then(({ status, body }) => {
+        expect(status).to.equal(200);
+        expect(body.errors).to.be.empty;
+      });
+      cy.visit(site.checkoutBlock);
+      cy.get('.wc-block-checkout').should('be.visible');
+      cy.contains('Failed to calculate sales tax').should('not.exist');
+      cy.get('#exemption-certificate-input').should('not.exist');
+      task('configure', { blocks: false });
+      checkout();
+      cy.contains('Failed to calculate sales tax').should('not.exist');
+      cy.get('#certificate_id').should('not.exist');
+      placeOrder().then((id) => {
+        task('order', { id }).then((order) => {
+          expect(order.taxcloudStatus).not.to.equal('captured');
+          expect(order.packages).to.be.empty;
+        });
+      });
+      records().then((rows) => expect(rows.slice(recordOffset)).to.be.empty);
+      task('configure', { unconfigured: false });
+    });
   }
 
   if (fixture) {
