@@ -287,3 +287,32 @@ Implemented future Cypress gate in spec 01: for core single-package checkout und
 Validation: all eight offline harness tests passed, including rejection of wrong remote IDs, missing completion, invalid amounts and financial drift; both edited Cypress modules passed ESM syntax checks. The validator also accepted eight preserved actual import receipts matched to WooCommerce evidence. The changed Cypress flow still requires a fresh staging E2E run before it can be reported as a remote suite pass. Re-run future core matrix once intended-account dashboard access is ready, while preserving captured order 851.
 
 TaxCloud investigation handoff (prepare only; do not send without explicit user instruction): include the seven exact original order IDs, Data Import connection identity supplied privately, original POST 201 receipts, current GET 200 summaries, original/current channel and date differences, matching totals, dashboard filter evidence, and visible control 680. Ask TaxCloud to compare storage/legacy projection/reporting-index behavior for these records. Do not claim a backend defect is proven until root cause is established.
+
+
+### Post-change rerun requirements and outcomes — 2026-11-01
+
+The remote-capture gate now has live passing evidence across all 12 supported core journeys, with all 16 core combinations passing across preserved broad/isolated runs. Do not label this a single clean matrix run: the long run stalled, one isolated retry failed setup, and the latest positive-tax refund failed HTTP 500. See the verification report's five-run ledger.
+
+Add these acceptance checks to future runs:
+
+- Preserve application error stacks and identify the actual failing surface (checkout versus admin completion) before assigning a storefront defect. Reproduce createRoot/createPortal/batchedUpdates errors and malformed `undefinedwc/store/v1/cart` requests in the original Chrome and isolated Cypress sessions. A passing isolated retry does not resolve a historical failure.
+- Prefer short diagnostic runs after a browser stall. If a runner stops finalizing results, collect screenshots/partial records, terminate only the identified Cypress child, and keep the CLI alive for snapshot restoration. A future inactivity watchdog should use task/result progress and terminate the child rather than the restoring parent; do not apply a short total-run timeout to healthy full suites. Verify idle and zero restoration mismatches before preparing another run.
+- For refund HTTP 500, preserve the exact remote ID, item mapping, original Woo refund ID/idempotency key, HTTP request/response and captured-before-refund proof. Read remote state/Returns before any recovery. A GET response omitting refunds does not establish the mutation outcome; never automatically replay an uncertain refund. Current open example: order 944 / remote `sstqa-894ae9da-944_0` / Woo refund 945 / $13.63 / HTTP 500.
+- Mask API credentials at the page level before screenshots as well as using blackout. The configure step asserts the computed masking style. Review automatic failure images before sharing; omit unsafe generated images while retaining sanitized text/JSON errors. Preserve stacks without introducing broad uncaught-exception suppression.
+- The positive-tax case now saves a Captured UI screenshot before the refund and requires the reloaded TaxCloud panel to show Refunded afterward. Capture proof alone cannot turn a failed refund case into a pass.
+
+Runs 1ec424fc, d4304709, 8ff4065e, d9095581 and 894ae9da all restored original settings with no mismatches. Orders 897 and 928 passed isolated capture readback; both strict navigation tests passed in the final run. Order 851 remains untouched. Order 944's remote refund and the historical import dashboard visibility remain open.
+
+
+### Intended-account dashboard reconciliation and direct-detail gate — 2026-11-01
+
+Completed: all eight new Data Import core captures (875/876/878/879/880/881/897/928) are independently verified Completed on Data Import with matching totals. Order 944's outstanding remote return was manually reconciled once after checking it was Completed with no returns; reloaded Returns shows $13.63 matching existing Woo refund 945. A private note records this; the local TaxCloud badge is cached. Preserve the failed HTTP 500 API test and do not replay the refund or call the recovery a product fix.
+
+Historical dashboard gap is narrower: all seven exact detail URLs for 561–567 now load and match their financial totals, but display Offline Yes and blank Status. Live prefix search still lists only Realtime 553–560. API completion and detail-page availability do not establish correct filing/reporting or list-index state.
+
+Future dashboard acceptance:
+
+- Verify list/search presence and exact detail state separately. If a row is absent, use the exact connection/order ID learned from the authoritative API and an observed dashboard detail route; avoid guessing unrelated accounts or IDs. Compare status, offline/historical flags, completion date and financials across list, detail and API responses. Do not reimport just to populate the list.
+- Wait for the full detail/quick-view fields to load, including connection type and financials; a heading alone can appear before the remaining fields update. Preserve missing/blank values rather than inferring Completed from API success.
+- Require evidence of completed status and expected reporting inclusion before closing the historical imports acceptance gap. Current evidence supports record persistence and financial reconciliation, while status/list classification remains open for TaxCloud investigation.
+- For any manual remote refund recovery, retain the original failed automated result, confirm no existing return before submission, reload and verify item quantities/tax/total afterward, and record the existing Woo refund in a private note. Keep the cached local badge distinct from verified remote state. Order 851 remains available as a captured staging order.
