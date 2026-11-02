@@ -83,6 +83,7 @@ namespace {
 
 	function __( $message ) { return $message; }
 	function add_action() {}
+	function do_action() {}
 	function add_filter() {}
 	function apply_filters( $hook, $value ) { return $value; }
 	function did_action() { return 0; }

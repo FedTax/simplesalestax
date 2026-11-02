@@ -227,6 +227,8 @@ class SST_Order_Controller {
 			&& $and_taxes
 		);
 
+		$should_calculate = $and_taxes && apply_filters( 'sst_should_calculate_order_tax', $should_calculate, $order );
+
 		// Logging
 		SST_Logger::order_log( __( 'Calculating order tax.', 'simple-sales-tax' ), $order->get_id(), $should_calculate );
 

@@ -47,6 +47,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 */
 	public function __construct() {
 		add_filter( 'woocommerce_calculated_total', array( $this, 'calculate_tax_totals' ), 1100, 2 );
+		add_filter( 'woocommerce_find_rates', array( $this, 'filter_manual_tax_rates' ), 10, 2 );
 		add_filter( 'wc_stripe_calculated_total', array( $this, 'filter_stripe_calculated_total' ), 10, 3 );
 		add_filter( 'woocommerce_cart_hide_zero_taxes', array( $this, 'hide_zero_taxes' ) );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'handle_legacy_checkout' ) );
@@ -112,16 +113,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		$is_stripe_express_checkout_request = $this->is_stripe_express_checkout_request();
 
-		$should_calculate = (
-			is_cart() ||
-			is_checkout() ||
-			doing_action( 'wc_ajax_square_digital_wallet_recalculate_totals' ) ||
-			$this->is_store_api_request() ||
-			$this->is_edit_subscription_request() ||
-			$is_stripe_express_checkout_request
-		);
-
-		if ( apply_filters( 'sst_calculate_tax_totals', $should_calculate ) ) {
+		if ( $this->should_calculate_tax_totals() ) {
 			$this->calculate_taxes();
 
 			/**
@@ -156,6 +148,51 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		return $calculated_total;
+	}
+
+	/**
+	 * Keep WooCommerce rates available to POS apps without also charging them
+	 * during a US checkout whose taxes will be calculated by TaxCloud.
+	 *
+	 * Filter after WooCommerce's rate cache so online requests do not cache an
+	 * empty result for subsequent POS or non-TaxCloud calculations.
+	 *
+	 * @param array $rates Matched WooCommerce rates.
+	 * @param array $args  Tax location and class.
+	 * @return array
+	 */
+	public function filter_manual_tax_rates( $rates, $args ) {
+		if (
+			'US' === ( $args['country'] ?? '' )
+			&& 'yes' !== SST_Settings::get( 'disable_integration', 'no' )
+			&& 'data_mover' !== sst_integration_mode()
+			&& SST_Settings::get( 'tc_id' )
+			&& SST_Settings::get( 'tc_key' )
+			&& WC()->session
+			&& $this->should_calculate_tax_totals()
+		) {
+			return array();
+		}
+
+		return $rates;
+	}
+
+	/**
+	 * Whether this request uses TaxCloud's cart calculation.
+	 *
+	 * @return bool
+	 */
+	private function should_calculate_tax_totals() {
+		$should_calculate = (
+			is_cart()
+			|| is_checkout()
+			|| doing_action( 'wc_ajax_square_digital_wallet_recalculate_totals' )
+			|| $this->is_store_api_request()
+			|| $this->is_edit_subscription_request()
+			|| $this->is_stripe_express_checkout_request()
+		);
+
+		return apply_filters( 'sst_calculate_tax_totals', $should_calculate );
 	}
 
 	/**

@@ -20,7 +20,7 @@ final class SimpleSalesTax {
 	 *
 	 * @var string
 	 */
-	    public $version = '8.4.20';
+	    public $version = '8.4.21';
 
 	/**
 	 * The singleton plugin instance.
@@ -191,6 +191,11 @@ final class SimpleSalesTax {
 	 */
 	private function load_integrations() {
 		$integrations_dir = __DIR__ . '/integrations';
+
+		// FooSales uses WooCommerce rates to collect tax before submitting orders.
+		if ( is_plugin_active( 'foosales/foosales.php' ) ) {
+			require_once $integrations_dir . '/class-sst-foosales.php';
+		}
 
 		// WooCommerce Subscriptions by Prospress.
 		if ( sst_subs_active() ) {
