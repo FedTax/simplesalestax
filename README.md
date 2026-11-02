@@ -17,6 +17,15 @@ For more information, please check our [plugin page](https://wordpress.org/plugi
 3. **Install Now** and **Activate** the plugin.
 4. Follow the instructions in our [Setup Guide](https://wordpress.org/plugins/simple-sales-tax/#installation)
 
+## Online checkout tax rates
+
+For US cart and checkout calculations handled by real-time TaxCloud, configured
+WooCommerce rates are excluded so that only TaxCloud's tax is charged. This
+applies to all real-time merchants, including stores without FooSales installed.
+Stores that previously charged both WooCommerce rates and TaxCloud tax will see
+lower checkout tax totals because the duplicate tax is removed. Non-US manual
+rates and Data Import calculations retain their configured WooCommerce rates.
+
 ## FooSales in-store orders
 
 FooSales calculates tax in its apps before payment using the WooCommerce tax
@@ -36,6 +45,14 @@ FooSales orders retain the taxes collected by the POS. TaxCloud reporting uses
 the WooCommerce storefront as origin and destination for orders without shipping
 lines, including guest sales without billing or shipping addresses. Orders with
 shipping lines retain their normal delivery destinations.
+
+In real-time mode, TaxCloud capture uses the tax from its lookup, which may
+differ from the POS tax if the synchronized WooCommerce rates are stale. Before
+capture, the plugin compares those amounts and adds an internal order note and
+order-log entry if they differ at the store's currency precision. The note shows
+both amounts and asks the merchant to review POS rates and product tax classes
+and synchronize FooSales. Capture continues with TaxCloud's amount; the paid
+WooCommerce total stays unchanged. An identical warning is not repeated on retries.
 
 ## Support
 

@@ -13,6 +13,7 @@ class SST_FooSales {
 		add_filter( 'sst_should_calculate_order_tax', array( $this, 'preserve_collected_tax' ), 10, 2 );
 		add_filter( 'woocommerce_order_get_tax_location', array( $this, 'use_store_tax_location' ), 10, 2 );
 		add_filter( 'wootax_order_packages_before_split', array( $this, 'use_store_address' ), 10, 2 );
+		add_action( 'sst_before_order_capture', array( $this, 'check_collected_tax' ), 10, 2 );
 	}
 
 	/**
@@ -80,13 +81,80 @@ class SST_FooSales {
 			$location['postcode']
 		);
 
-		foreach ( $packages as &$package ) {
+		foreach ( $packages as $key => &$package ) {
 			$package['destination'] = $destination;
-			$package['origin']      = $origin;
+			// create_packages merges by origin ID; keep virtual and physical
+			// base packages distinct even though both use the storefront.
+			$package['origin'] = clone $origin;
+			$package['origin']->setID( 'foosales-store-' . $key );
 		}
 		unset( $package );
 
 		return $packages;
+	}
+
+	/**
+	 * Flag stale POS rates without changing the amount already collected.
+	 * Both real-time APIs capture the lookup's tax, not WooCommerce's tax.
+	 *
+	 * @param WC_Order $order    Order about to be captured.
+	 * @param array    $packages Validated lookup packages used for capture.
+	 */
+	public function check_collected_tax( $order, $packages ) {
+		if ( 'foosales_app' !== $order->get_meta( '_foosales_order_source' ) ) {
+			return;
+		}
+
+		$taxcloud_tax = 0.0;
+		foreach ( $packages as $package ) {
+			$response = $package['response'] ?? null;
+			// Historical packages may not include quote amounts. Do not treat
+			// an unavailable comparison as a zero-tax quote.
+			if ( ! is_array( $response ) || ! $response ) {
+				return;
+			}
+			$amounts = reset( $response );
+			if ( ! is_array( $amounts ) || ! $amounts ) {
+				return;
+			}
+			foreach ( $amounts as $amount ) {
+				if ( ! is_numeric( $amount ) || ! is_finite( (float) $amount ) ) {
+					return;
+				}
+				$taxcloud_tax += (float) $amount;
+			}
+		}
+
+		$decimals  = wc_get_price_decimals();
+		$precision = pow( 10, $decimals );
+		$collected = (int) round( (float) $order->get_total_tax() * $precision );
+		$quoted    = (int) round( $taxcloud_tax * $precision );
+		if ( $collected === $quoted ) {
+			return;
+		}
+
+		$notice = array(
+			'collected' => number_format( $collected / $precision, $decimals, '.', '' ),
+			'quoted'    => number_format( $quoted / $precision, $decimals, '.', '' ),
+			'currency'  => $order->get_currency(),
+		);
+		if ( $notice === $order->get_meta( '_sst_foosales_tax_mismatch_notice' ) ) {
+			return;
+		}
+
+		$message = sprintf(
+			/* translators: 1: tax collected by POS, 2: currency code, 3: TaxCloud tax. */
+			__( 'FooSales tax mismatch: POS collected %1$s %2$s, but TaxCloud calculated %3$s %2$s. TaxCloud capture uses its calculated tax; the paid WooCommerce total has not been changed. Review the POS tax rates and product tax classes, then synchronize FooSales.', 'simple-sales-tax' ),
+			$notice['collected'],
+			$notice['currency'],
+			$notice['quoted']
+		);
+		$order->add_order_note( $message );
+		SST_Logger::order_log( $message, $order->get_id() );
+		// Persist the notice even if capture fails so a retry does not add
+		// the same warning again. Only metadata is saved, not paid totals.
+		$order->update_meta_data( '_sst_foosales_tax_mismatch_notice', $notice );
+		$order->save_meta_data();
 	}
 
 	/**

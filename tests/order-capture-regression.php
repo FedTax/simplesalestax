@@ -6,6 +6,7 @@ define( 'ABSPATH', __DIR__ . '/' );
 
 function __( $message ) { return $message; }
 function add_filter() {}
+function do_action() {}
 function apply_filters( $name, $value ) { return $value; }
 function sst_unslash( $value ) { return $value; }
 function maybe_unserialize( $value ) { return 'a:' === substr( $value, 0, 2 ) ? unserialize( $value ) : $value; }
