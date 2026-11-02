@@ -44,7 +44,8 @@ for(const profile of ['realtime','dataImport'])for(const version of ['v1','v3'])
         status(id,'completed');
         inspectOrder(id,{profile,version,layout,role,scenario:'core-captured'}).then(order=>{
           expect(order.taxcloudStatus,'frontend-created order synchronizes on completion').to.equal('captured');
-          if(version==='v3'||profile==='dataImport')return verifyRemoteCapture(order,{profile,version,layout,role});
+          if(version==='v3'||profile==='dataImport')verifyRemoteCapture(order,{profile,version,layout,role});
+          if(role==='buyer'){cy.qaLogin('buyer');cy.visit(new URL(`view-order/${id}/`,site.pages.myAccount).href);cy.get('.woocommerce-order-details').should('be.visible');cy.get('.woocommerce-customer-details').should('contain.text',order.nameLabel);cy.reload();cy.get('.woocommerce-customer-details').should('contain.text',order.nameLabel);}
         });
       });
     });
@@ -81,7 +82,7 @@ for(const profile of ['realtime','dataImport'])for(const version of ['v1','v3'])
   });
   runIt('applies and removes a real coupon without stale discounts',()=>{
     task('layout',{layout:'classic'});cy.qaLogin('buyer');emptyCart(site);cy.visit(`?add-to-cart=${site.products.virtual}`);cy.visit(site.pages.cartClassic);
-    cy.get('#coupon_code').type(site.coupon);cy.get('button[name="apply_coupon"]').click();cy.get('.cart-discount').should('exist');
+    cy.get('.blockUI',{timeout:90000}).should('not.exist');cy.get('#coupon_code').clear().type(site.coupon,{delay:0});cy.get('#coupon_code').should('have.value',site.coupon);cy.get('button[name="apply_coupon"]').click();cy.get('.cart-discount').should('exist');
     cy.get('.woocommerce-remove-coupon').click();cy.get('.cart-discount').should('not.exist');
   });
   runIt('shows the expected exemption controls on classic and Blocks checkout',()=>{

@@ -25,19 +25,28 @@ Cypress.on('uncaught:exception',err=>{
   }
   return true;
 });
-beforeEach(()=>{Cypress.env('qaWordPressViewTransitionErrors',0);Cypress.env('qaUncaughtErrors',[]);});
+before(function(){
+  const titles=[];
+  const collect=suite=>{for(const test of suite.tests||[])titles.push(test.fullTitle());for(const child of suite.suites||[])collect(child);};
+  collect(this.test.parent);
+  cy.task('qaPlannedCases',{spec:Cypress.spec.name,titles},{log:false});
+});
+beforeEach(()=>{Cypress.env('qaOrderName',null);Cypress.env('qaNameCounter',0);if(!Cypress.spec.name.startsWith('03-'))cy.task('qa',{action:'resetActors'},{log:false});Cypress.env('qaWordPressViewTransitionErrors',0);Cypress.env('qaUncaughtErrors',[]);});
 afterEach(function(){
   cy.task('qaResult',{title:this.currentTest.fullTitle(),state:this.currentTest.state,error:this.currentTest.err?.message||null,errorStack:this.currentTest.err?.stack||null,uncaught:Cypress.env('qaUncaughtErrors')||[]},{log:false});
   const count=Number(Cypress.env('qaWordPressViewTransitionErrors')||0);
   if(count)cy.task('qaResult',{id:'wordpress-view-transition-error',count,source:'confirmed in regular Chrome; exact exception is recorded; strict frontend specs fail, other checkout specs continue'},{log:false});
+  if(!Cypress.spec.name.startsWith('03-')){cy.task('qa',{action:'fee',fee:'none'},{log:false});cy.task('qa',{action:'resetActors'},{log:false});}
 });
 Cypress.Commands.add('qaLogin',(role='buyer')=>{
-  cy.session([Cypress.env('qaRunId'),role],()=>{
-    cy.task('qaLogin',{role},{log:false}).then(person=>{
+  cy.task('qaLogin',{role},{log:false}).then(person=>{
+    cy.session([Cypress.env('qaRunId'),person.id],()=>{
       cy.visit('wp-login.php');
       cy.request({method:'POST',url:'wp-login.php',form:true,log:false,body:{log:person.username,pwd:person.password,testcookie:'1','wp-submit':'Log In'}});
       cy.getAllCookies({log:false}).should(cookies=>expect(cookies.some(x=>x.name.startsWith('wordpress_logged_in_'))).to.equal(true));
     });
+    cy.task('qaLease',null,{log:false}).then(token=>cy.setCookie('sst_qa_run',token,{log:false}));
+    const name=Cypress.env('qaOrderName');
+    if(name)cy.setCookie('sst_qa_order',name.token,{log:false});
   });
-  cy.setCookie('sst_qa_run',Cypress.env('qaRunId'),{log:false});
 });

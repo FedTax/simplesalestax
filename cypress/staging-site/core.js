@@ -23,6 +23,7 @@ function redactor(values) {
   return data => {
     let value = typeof data === 'string' ? data : JSON.stringify(data);
     for (const secret of secrets) value = value.split(secret).join('[redacted]');
+    value = value.replace(/([?&](?:key|_wpnonce|nonce)=)[^&\s"<>]+/gi,'$1[redacted]');
     value = value.replace(/(Bearer\s+)[A-Za-z0-9._~-]+/gi, '$1[redacted]').replace(/(\/connections\/)[^/\s"?]+/g,'$1:connection');
     return typeof data === 'string' ? value : JSON.parse(value);
   };

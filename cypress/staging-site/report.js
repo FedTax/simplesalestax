@@ -1,7 +1,7 @@
 const fs=require('node:fs/promises');const path=require('node:path');const {createHash}=require('node:crypto');
 async function report(dir){
   const names=await fs.readdir(dir);const scenarios=[];const emptySpecs=[];
-  for(const name of names.filter(n=>n.endsWith('.cy.js.json'))){
+  for(const name of names.filter(n=>n.endsWith('.cy.js.json')&&!n.startsWith('planned-'))){
     const data=JSON.parse(await fs.readFile(path.join(dir,name),'utf8'));
     if(!data.tests?.length)emptySpecs.push(data.spec||name);
     for(const t of data.tests||[]){const title=t.title.join(' / ');scenarios.push({id:createHash('sha256').update(title).digest('hex').slice(0,12),title,status:t.state==='passed'?'pass':t.state==='failed'?'fail':'blocked',error:t.error||t.attempts?.find(a=>a.error)?.error?.message||null});}
@@ -15,21 +15,37 @@ async function report(dir){
       partialResults=true;seen.add(row.title);scenarios.push({id:createHash('sha256').update(row.title).digest('hex').slice(0,12),title:row.title,status:row.state==='passed'?'pass':row.state==='failed'?'fail':'blocked',error:row.error||null});
     }
   }catch(error){if(error.code!=='ENOENT')throw error;}
+  if(names.includes('browser-inactivity.json'))partialResults=true;
+  try{
+    const selection=JSON.parse(await fs.readFile(path.join(dir,'execution-selection.json'),'utf8'));
+    for(const spec of selection.selectedSpecs||[])if(!names.includes(path.basename(spec)+'.json')){emptySpecs.push(spec+' (did not finalize)');partialResults=true;}
+    if(!selection.selectedSpecs?.length)emptySpecs.push('No staging spec matched the requested selection.');
+  }catch(error){if(error.code!=='ENOENT')throw error;}
+  for(const name of names.filter(x=>x.startsWith('planned-')&&x.endsWith('.json'))){
+    const planned=JSON.parse(await fs.readFile(path.join(dir,name),'utf8'));
+    const seen=new Set(scenarios.map(x=>x.title.replaceAll(' / ',' ')));
+    for(const title of planned.titles||[])if(!seen.has(title))scenarios.push({id:createHash('sha256').update(title).digest('hex').slice(0,12),title,status:'blocked',error:'Registered browser scenario did not complete; inspect setup/browser interruption evidence.'});
+  }
+  for(const scenario of scenarios){
+    scenario.acceptanceIds=[...scenario.title.matchAll(/\[([A-Z0-9-]+)\]/g)].map(x=>x[1]);
+    scenario.kind=/Original credential and origin restoration UI/.test(scenario.title)?'configuration-restoration':/downloads a debug report/.test(scenario.title)?'api-check':'browser-e2e';
+  }
   let restored=false;try{restored=JSON.parse(await fs.readFile(path.join(dir,'restoration.json'),'utf8')).restored===true;}catch{}
   const totals={pass:0,fail:0,blocked:0};scenarios.forEach(x=>totals[x.status]++);
   const outstanding=[
     'Dashboard record-by-record capture/import/refund reconciliation must be documented by the @Chrome agent.',
-    'Legal exemption creation/deletion and single-purchase submissions require appropriate certificate data; form validation alone is not full certificate coverage.',
+    'Synthetic certificate submission is authorized on this target. Keep each browser creation entry point, remote readback and dashboard evidence separate; validation-only checks are not creation passes.',
     'Full deterministic failure injection and Colorado fixture reproduction require the local fixture site; Docker is unavailable on this host.',
     'Coverage of every optional extension, tax-inclusive pricing, rate-limit reset, role exemption, multi-origin and every capture trigger must be checked against the full plan; unlisted scenarios are not presumed to pass.'
   ];
   if(partialResults)outstanding.unshift('A spec did not finish normally; partial afterEach results are retained. Unfinished and unstarted cases are not presumed to pass.');
   if(emptySpecs.length)outstanding.unshift(`No matching tests ran in: ${emptySpecs.join(', ')}. Correct the selection before claiming those specs were executed.`);
-  const result={totals,restored,scenarios,emptySpecs,partialResults,outstanding,complete:false};
+  const browserE2E={pass:0,fail:0,blocked:0};for(const row of scenarios.filter(x=>x.kind==='browser-e2e'))browserE2E[row.status]++;
+  const result={totals,browserE2E,restored,scenarios,emptySpecs,partialResults,outstanding,complete:false};
   await fs.writeFile(path.join(dir,'coverage.json'),JSON.stringify(result,null,2));
   const escape=x=>String(x).replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]));
   await fs.writeFile(path.join(dir,'junit.xml'),`<?xml version="1.0" encoding="UTF-8"?><testsuite name="TaxCloud staging" tests="${scenarios.length}" failures="${totals.fail}" skipped="${totals.blocked}">${scenarios.map(x=>`<testcase name="${escape(x.title)}">${x.status==='fail'?`<failure message="${escape(x.error||'Failed')}"></failure>`:x.status==='blocked'?'<skipped message="Not completed"/>':''}</testcase>`).join('')}</testsuite>`);
-  const text=`# TaxCloud staging run\n\nAutomated scenarios: **${totals.pass} passed, ${totals.fail} failed, ${totals.blocked} blocked/skipped**. Settings restoration: **${restored?'verified':'NOT VERIFIED'}**.\n\nThis is an execution report for the implemented scenarios, not a claim that the whole acceptance plan is complete.\n\n| Scenario | Status |\n| --- | --- |\n${scenarios.map(x=>`| ${x.title.replaceAll('|','\\|')} | ${x.status} |`).join('\n')}\n\n## Outstanding acceptance checks\n\n${outstanding.map(x=>'- '+x).join('\n')}\n\nSee environment.json, api-evidence.json, orders.ndjson and restoration.json for evidence. Dashboard checks are separate. Test data and the helper are retained.\n`;
+  const text=`# TaxCloud staging run\n\nAutomated scenarios: **${totals.pass} passed, ${totals.fail} failed, ${totals.blocked} blocked/skipped**. Settings restoration: **${restored?'verified':'NOT VERIFIED'}**.\n\nBrowser E2E only: **${browserE2E.pass} passed, ${browserE2E.fail} failed, ${browserE2E.blocked} blocked**. API download checks and configuration restoration are classified separately in coverage.json.\n\nThis is an execution report for the implemented scenarios, not a claim that the whole acceptance plan is complete.\n\n| Scenario | Status |\n| --- | --- |\n${scenarios.map(x=>`| ${x.title.replaceAll('|','\\|')} | ${x.status} |`).join('\n')}\n\n## Outstanding acceptance checks\n\n${outstanding.map(x=>'- '+x).join('\n')}\n\nSee environment.json, api-evidence.json, orders.ndjson and restoration.json for evidence. Dashboard checks are separate. Test data and the helper are retained.\n`;
   await fs.writeFile(path.join(dir,'REPORT.md'),text);return result;
 }
 module.exports={report};

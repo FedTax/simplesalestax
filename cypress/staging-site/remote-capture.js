@@ -3,6 +3,8 @@
 function singlePackageCaptureEvidence(remote,order){
   const expectedId=order.remoteId?`${order.remoteId}_0`:'';
   if(!expectedId||remote?.orderId!==expectedId)throw new Error('Remote capture returned a different order ID.');
+  const remoteCustomer=String(remote.customerId??'').replace(/^customer-/, '');
+  if(remoteCustomer!==String(order.customerId))throw new Error('Remote capture customer differs from the WooCommerce order customer.');
   if(!remote.completedDate||!Number.isFinite(Date.parse(remote.completedDate)))throw new Error('Remote capture has no valid completed date.');
   if(!Array.isArray(remote.lineItems)||!remote.lineItems.length)throw new Error('Remote capture has no line items.');
   let sales=0,tax=0;
@@ -13,6 +15,6 @@ function singlePackageCaptureEvidence(remote,order){
   }
   const cents=n=>Math.round(n*100);
   if(!Number.isFinite(order.total)||!Number.isFinite(order.tax)||cents(sales+tax)!==cents(order.total)||cents(tax)!==cents(order.tax))throw new Error('Remote capture totals differ from the WooCommerce order.');
-  return {remoteId:remote.orderId,completedDate:remote.completedDate,channel:remote.channel??null,sales:cents(sales)/100,tax:cents(tax)/100,total:cents(sales+tax)/100};
+  return {remoteId:remote.orderId,customerId:remote.customerId,completedDate:remote.completedDate,channel:remote.channel??null,sales:cents(sales)/100,tax:cents(tax)/100,total:cents(sales+tax)/100};
 }
 module.exports={singlePackageCaptureEvidence};

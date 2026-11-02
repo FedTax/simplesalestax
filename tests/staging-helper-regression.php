@@ -1,10 +1,15 @@
 <?php
 /** Offline security/restoration boundary checks for the staging helper. No WordPress/API requests. */
 define( 'ABSPATH', __DIR__ );
-$actions = array(); $options = array(); $admin = false; $rotated = false;
+$actions = array(); $options = array(); $admin = true; $rotated = false;
 function add_action( $name, $callback, ...$args ) { global $actions; $actions[ $name ] = $callback; }
 function add_filter( $name, $callback, ...$args ) { global $filters; $filters[ $name ] = $callback; }
+function home_url() { return 'https://example.test/'; }
+function trailingslashit($value) { return rtrim($value,'/') . '/'; }
+function get_user_meta($uid,$key,$single=true) { return $key === '_sst_qa_actor' ? 'runner' : 'https://example.test/'; }
 function get_option( $key, $default = false ) { global $options; return $options[ $key ] ?? $default; }
+function add_option($key,$value,...$args) { global $options;if(isset($options[$key]))return false;$options[$key]=$value;return true; }
+function wp_generate_uuid4() { static $i=0;return '00000000-0000-4000-8000-' . str_pad((string)++$i,12,'0',STR_PAD_LEFT); }
 function update_option( $key, $value, ...$args ) { global $options; $options[ $key ] = $value; }
 function delete_option( $key ) { global $options; unset( $options[ $key ] ); }
 function current_user_can( $cap ) { global $admin; return $admin && 'manage_options' === $cap; }
@@ -66,6 +71,7 @@ check( 'sstqa-f4b5cbf0-745_0' === $map( '745_0', $qa_order, 0 ), 'Remote identit
 check( '745_0' === $map( '745_0', new QAOrder(), 0 ), 'Ordinary customer orders remain unchanged.' );
 check( '745_0' === $map( '745_0', new QAOrder( array( 'sst_order_id' => 'sstqa-f4b5cbf0-745' ) ), 0 ), 'Untagged orders cannot opt into QA routing through remote-ID metadata alone.' );
 check( '745_0' === $map( '745_0', new QAOrder( array( '_sst_qa_run' => $run_a, 'sst_order_id' => 'sstqa-f4b5cbf0-999' ) ), 0 ), 'A mismatched stored order ID is never routed to another order.' );
+$admin = false;
 $actions['rest_api_init']();
 check( ! $registered['permission_callback'](), 'Anonymous/customer cannot control helper.' );
 $admin = true; check( $registered['permission_callback'](), 'Administrator can control helper.' );
@@ -101,3 +107,17 @@ try {
 check( array( 'api_version' => 'v1', 'tc_key' => 'original-secret' ) === $options['woocommerce_wootax_settings'], 'Admin restore decodes its JSON run ID and restores original values.' );
 check( ! isset( $options['missing-original-option'] ), 'Admin restore returns originally absent options to absence.' );
 echo "Staging helper boundary and restoration regression checks passed.\n";
+
+$mail = $filters['pre_wp_mail']; $headers = $filters['woocommerce_email_headers'];
+check( null === $mail( null, array( 'subject' => 'Ordinary completed mail' ) ), 'Idle helper leaves ordinary mail unchanged.' );
+$options[SST_Staging_QA::OPTION]['active'] = true;
+$headers( '', 'customer_completed_order', new QAOrder( array( '_sst_qa_run' => 'foreign-run' ) ) );
+check( null === $mail( null, array( 'subject' => 'Ordinary completed mail' ) ), 'A historical QA customer/order does not globally suppress mail.' );
+$headers( '', 'customer_completed_order', new QAOrder( array( '_sst_qa_run' => 'owned-run' ) ) );
+check( true === $mail( null, array( 'subject' => 'Custom private shipping notification with no completion keyword', 'to' => 'private@example.test', 'message' => 'private message' ) ), 'Active explicitly owned order mail is suppressed and generation recorded.' );
+check( null === $mail( null, array( 'subject' => 'Unrelated follow-up mail' ) ), 'Mail ownership context is consumed once.' );
+$mail_events = array_filter( $options, function( $v, $k ) { return str_starts_with( $k, 'sst_qa_event_' ) && is_array( $v ) && 'mail-generation' === ( $v['transport'] ?? '' ); }, ARRAY_FILTER_USE_BOTH );
+check( 1 === count( $mail_events ) && 'completed' === array_values( $mail_events )[0]['notificationType'], 'Stable Woo email ID classifies completion despite a customized subject.' );
+check( 745 === array_values( $mail_events )[0]['orderId'], 'Notification is associated only with the explicitly owned order.' );
+check( false === strpos( json_encode( $mail_events ), 'private' ), 'Mail evidence omits recipients and bodies.' );
+echo "Run-owned notification suppression and privacy checks passed.\n";

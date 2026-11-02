@@ -1,0 +1,448 @@
+{
+  "schemaVersion": 1,
+  "note": "Acceptance requirements; implementation and execution are separate. Offline/API evidence is never a browser E2E pass. Per-run reports record actual results.",
+  "scenarios": [
+    {
+      "id": "PAGE-01",
+      "requirement": "Neither required page exists: create exactly the two correctly typed pages with the exact paths and save their IDs.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PAGE-02",
+      "requirement": "Both pages already exist: reuse both IDs/permalinks, including valid non-helper pages with different titles; create zero checkout pages.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PAGE-03",
+      "requirement": "Only one required page exists: reuse it and create only the missing page.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PAGE-04",
+      "requirement": "Resume and start a second fresh run: checkout IDs, URLs and checkout-page count stay unchanged across all four configuration groups.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PAGE-05",
+      "requirement": "Draft/trash/wrong-content/path-collision/stale-registry cases: diagnose and recover an owned fixture or report the conflict; never silently use duplicate suffixes or the wrong checkout type.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PAGE-06",
+      "requirement": "Classic/Blocks switching: saved WooCommerce assignment, cart links, order-received and supported pay-for-order routes agree with the selected fixed checkout; reload and guest/customer journeys work.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PAGE-07",
+      "requirement": "Failure/interruption restoration returns original Woo page assignments and temporary edits, retains reusable checkout pages and allows another Prepare without duplication.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PAGE-08",
+      "requirement": "A subdirectory or new target resolves its own fixed pages and IDs without reusing another site's registry or losing the base path.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PAGE-01\u201308",
+      "requirement": "Fixed checkout discovery/create-missing-only, same IDs across runs, content/readiness validation, correct links and assignments, collision handling, restoration and target/base-path isolation.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "USR-01\u201306",
+      "requirement": "Registry adoption/first setup, resume, next fresh run, one missing actor, collisions/role drift, cross-target and cross-run isolation. Assert stable IDs and counts, fresh access, restored actor baseline and no guest registration.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "NAME-01\u201304",
+      "requirement": "Sequential `Txc User N` labels on guest, registered and admin-created orders; sequence survives a new run and aborted submissions, and named order details survive later account-profile edits.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ADM-ORD-01\u201302",
+      "requirement": "Admin creates one guest order (customer ID 0) and one order assigned to a reused customer in each matrix group. Enter billing/shipping details; add a product/variation and quantity; add supported shipping, fee or coupon; invoke actual supported TaxCloud/totals recalculation; compare visible/saved totals after reload. Complete via the configured trigger and verify remote ID, connection, customer, destinations, items and amounts.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ADM-ORD-03\u201306",
+      "requirement": "Edit an uncaptured admin order's address/items/quantity and recalculate; apply/remove a saved exemption; save a draft without capture; cancel before capture; check post-capture edit restrictions and duplicate completion. Exercise the installed HPOS/legacy editor correctly; cover the other storage mode locally or on a suitable target and report its applicability.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CERT-WP-SELF",
+      "requirement": "In the dedicated QA runner's WordPress **Users \u2192 Profile** (`profile.php`), fill any required billing/purchaser details, actually submit a certificate, then View/Refresh/reload and verify the exact remote certificate/customer/state. This is WP own profile, distinct from frontend My Account. Do not submit under the human administrator's identity.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CERT-WP-CUSTOMER",
+      "requirement": "In **Users \u2192 Edit User** (`user-edit.php`) for a persistent QA customer, actually create the certificate; verify it attaches to the selected customer's ID rather than the acting admin. Reopen the customer's profile and frontend account to confirm authorized visibility and persistence.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CERT-MYACCOUNT",
+      "requirement": "As the reused customer, open **My Account \u2192 Exemption Certificates**, create and submit a certificate, view details, refresh, reload, and find the same ID in TaxCloud. Exercise empty/list/error states, cancel and double-submit protection; keep creation as a separate result from modal/validation checks.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CERT-CHECKOUT-CLASSIC",
+      "requirement": "Through classic checkout as registered customer and guest where offered, create an actual new exemption/single-purchase certificate, submit it, observe recalculated tax, place the order, and verify saved certificate ID, state/customer association and remote order exemption. Check guest certificate ownership and single-purchase reuse rules; do not expose one guest's certificate to another.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CERT-CHECKOUT-BLOCKS",
+      "requirement": "Repeat the actual creation/submission/application journey in Blocks checkout, including form validation, async loading, cancel/reselect, totals recalculation and order placement. Confirm it agrees with classic checkout; unavailable guest creation must be reported as an explicit applicability/feature gap.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "CERT-X-SURFACE",
+      "requirement": "Create through each supported management surface, then discover/apply the same saved certificate at eligible classic/Blocks checkout and admin order entry. Check its state restrictions, list refresh, expiry if supported, deletion/disabled behavior and no stale certificate after connection/API changes. Verify direct profile/account/order links cannot expose another customer's certificate.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "REF-ADMIN-01\u201306",
+      "requirement": "Admin refunds storefront and admin-created orders, including guest and registered orders: full refund, two sequential partial item refunds, shipping-only, fee-only and mixed item/shipping/fee cases. Compare visible/saved/remote quantities, tax allocations, remaining refundable balance and status. Include a positive-tax case and rounding. Verify Woo refund ID, stable remote ID and no duplicate request/capture. Use manual/offline refund UI for the baseline.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "REF-MYACCOUNT-01\u201304",
+      "requirement": "Discover the actual customer refund/return/request UI supplied by this plugin/site. As the order's customer, initiate a full or partial refund/request, follow any required admin approval/rejection, and verify eventual Woo/TaxCloud state, customer-visible confirmation/history and request uniqueness. A request awaiting approval must not be called a completed refund or produce an early remote return. Include denied/duplicate requests and a guest journey only if the site provides authorized guest access.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "REF-PERM-01\u201304",
+      "requirement": "A different customer, signed-out visitor or ineligible order status cannot request/execute an unauthorized refund; disabled/hidden controls and rejected server actions agree. Exercise any cancellation action separately from refund/return semantics. Check expired links/nonces locally or through supported normal UI recovery, without weakening auth.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ORDER-ACCOUNT-01\u201304",
+      "requirement": "My Account order list/detail, order received and authorized guest order links show correct named order, items/totals, payment/capture/refund state and addresses. Re-login/reload/back navigation preserves state. Pay-for-order or reorder flows are covered where offered; reorder creates a fresh named order/remote record and does not reuse the original capture/certificate improperly.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "FLOW-RECOVERY-01\u201304",
+      "requirement": "Double-click submission, form corrections, modal cancel/reopen, interrupted navigation and a rejected quote/capture/refund/certificate call recover without duplicate orders/certificates/returns. Inject deterministic failures locally; live failures retain their evidence and require outcome verification before any replay.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "STATE-ISOLATION-01\u201303",
+      "requirement": "Reused actors across Realtime/Data Import and V1/V3 do not leak carts, API connection state, exemption selections or rate limits. Saved-address/profile changes produce fresh quotes and do not rewrite prior orders. Another run cannot operate on old records merely through a shared customer ID.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    },
+    {
+      "id": "NOTICE-EMAIL-01\u201302",
+      "requirement": "Customer/admin notices and supported order/refund/certificate notifications agree with the outcome and occur once. Use test mail capture/suppression to verify generated notifications without sending to real recipients; do not report mail delivery when only generation was observed. Validate notification links and guest/customer authorization where the test environment supports it.",
+      "matrix": [
+        "realtime/v1",
+        "realtime/v3",
+        "dataImport/v1",
+        "dataImport/v3"
+      ],
+      "browser": "Chrome",
+      "viewport": [
+        1440,
+        900
+      ],
+      "executionStatus": "pending",
+      "evidence": []
+    }
+  ]
+}
