@@ -44,7 +44,7 @@ if ( 'setup' === $action ) {
   $result = array_intersect_key( $context, array_flip( array( 'username', 'password', 'productId', 'customerId', 'mode' ) ) );
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock' ) as $key ) { $result[ $key ] = get_permalink( $context[ $key ] ); }
 } elseif ( 'configure' === $action ) {
-  foreach ( array( 'dataMover', 'blocks' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
+  foreach ( array( 'dataMover', 'blocks', 'unconfigured' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
   if ( array_key_exists( 'failure', $input ) ) {
     if ( ! in_array( $input['failure'], array( false, true, 'capture', 'refund' ), true ) ) { throw new Exception( 'Unknown fixture failure.' ); }
     if ( 'live' === $context['mode'] && false !== $input['failure'] ) { throw new Exception( 'Failure injection is fixture only.' ); }

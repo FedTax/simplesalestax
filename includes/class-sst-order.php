@@ -780,6 +780,11 @@ class SST_Order extends SST_Abstract_Cart {
 			return false;
 		}
 
+		if ( ! $this->is_integration_active() ) {
+			SST_Logger::order_log( __( 'TaxCloud integration is disabled or unconfigured. Skipping order capture.', 'simple-sales-tax' ), $order->get_id() );
+			return false;
+		}
+
 		// Let devs control whether the order is captured in TaxCloud.
 		if ( ! apply_filters( 'sst_should_capture_order', true, $order, $this ) ) {
 			// Note: This is considered a success for consistency with do_refund.

@@ -95,7 +95,11 @@ class SST_Order_Controller {
 	 */
 	protected function capture_order_for_trigger( $order, $log_message ) {
 		// Disable integration
-		if ( 'yes' === SST_Settings::get( 'disable_integration' ) ) {
+		if (
+			'yes' === SST_Settings::get( 'disable_integration' )
+			|| empty( SST_Settings::get( 'tc_id' ) )
+			|| empty( SST_Settings::get( 'tc_key' ) )
+		) {
 			SST_Logger::order_log( __( 'Integration disabled. Skipping order capture.', 'simple-sales-tax' ), $order->get_id() );
 			return false;
 		}
@@ -207,7 +211,11 @@ class SST_Order_Controller {
 		}
 
 		// Disable integration
-		if ( 'yes' === SST_Settings::get( 'disable_integration' ) ) {
+		if (
+			'yes' === SST_Settings::get( 'disable_integration' )
+			|| empty( SST_Settings::get( 'tc_id' ) )
+			|| empty( SST_Settings::get( 'tc_key' ) )
+		) {
 			SST_Logger::order_log( __( 'Integration disabled. Skipping order tax calculation.', 'simple-sales-tax' ), $order->get_id() );
 			return;
 		}

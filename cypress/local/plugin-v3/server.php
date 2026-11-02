@@ -44,6 +44,12 @@ add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
   $suffix = ! empty( $context['dataMover'] ) ? 'DataImport' : 'Realtime';
   $settings['tc_id'] = $credentials[ 'apiLoginID' . $suffix ];
   $settings['tc_key'] = $credentials[ 'apiKey' . $suffix ];
+  if ( ! empty( $context['unconfigured'] ) ) {
+    $settings['tc_id'] = '';
+    $settings['tc_key'] = '';
+    $settings['addresses'] = array();
+    $settings['default_origin_addresses'] = array();
+  }
   // An integration ID from the saved connection must not follow another key.
   $settings['tc_integration_id'] = '';
   $settings['tc_connection_id'] = '';

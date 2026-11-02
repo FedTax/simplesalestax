@@ -189,7 +189,12 @@ class SST_Blocks {
 	public function get_cart_data() {
 		$message = '';
 
-		if ( 'yes' === SST_Settings::get( 'show_rate_limit_notice', 'no' ) ) {
+		if (
+			'yes' !== SST_Settings::get( 'disable_integration', 'no' )
+			&& ! empty( SST_Settings::get( 'tc_id' ) )
+			&& ! empty( SST_Settings::get( 'tc_key' ) )
+			&& 'yes' === SST_Settings::get( 'show_rate_limit_notice', 'no' )
+		) {
 			$rate_limit = new SST_Rate_Limit();
 
 			if ( $rate_limit->limit_reached() ) {
