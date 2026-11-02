@@ -855,6 +855,14 @@ class SST_Order extends SST_Abstract_Cart {
 			return false;
 		}
 
+		/**
+		 * Inspect real-time lookup amounts before either API captures them.
+		 *
+		 * @param WC_Order $order    Order being captured.
+		 * @param array    $packages Saved or freshly rebuilt lookup packages.
+		 */
+		do_action( 'sst_before_order_capture', $order, $packages );
+
 		// Capture with the API that created the saved lookup package.
 		if ( 'v3' === $this->get_packages_api_version( $packages ) ) {
 			return $this->capture_order_v3( $packages, $order );
