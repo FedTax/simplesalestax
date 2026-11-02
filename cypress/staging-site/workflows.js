@@ -22,6 +22,9 @@ export function selectFirstOrigin(){
 }
 export function configure(profile,version){
   cy.qaLogin('admin');cy.visit(settingsPath);
+  cy.get('#woocommerce_wootax_tc_id',{log:false}).should('have.css','-webkit-text-security','disc');
+  cy.get('#woocommerce_wootax_tc_key',{log:false}).should('have.css','-webkit-text-security','disc');
+  cy.task('qaResult',{id:'credential-fields-masked',profile,version},{log:false});
   cy.task('qaCredentials',profile,{log:false}).then(pair=>{
     cy.get('#woocommerce_wootax_tc_id',{log:false}).clear({log:false}).type(pair.login,{log:false,parseSpecialCharSequences:false});
     cy.get('#woocommerce_wootax_tc_key',{log:false}).clear({log:false}).type(pair.key,{log:false,parseSpecialCharSequences:false});

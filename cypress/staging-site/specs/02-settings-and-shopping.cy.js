@@ -60,8 +60,10 @@ for(const profile of ['realtime','dataImport'])for(const version of ['v1','v3'])
      status(id,'completed');
      inspectOrder(id,{profile,version,scenario:'positive-tax-captured'}).then(captured=>{
        expect(captured.taxcloudStatus).to.equal('captured');expect(captured.tax).to.be.greaterThan(0);
+       cy.get('#sales_tax_meta').should('contain.text','Captured').scrollIntoView();cy.screenshot('positive-tax-captured',{capture:'viewport'});
        refund(id,1);inspectOrder(id,{profile,version,scenario:'positive-tax-refunded'}).then(refunded=>{
          expect(refunded.taxcloudStatus).to.equal('refunded');expect(refunded.refunded).to.equal(refunded.total);
+         cy.reload();cy.get('#sales_tax_meta').should('contain.text','Refunded').scrollIntoView();cy.screenshot('positive-tax-refunded',{capture:'viewport'});
        });
      });
    }));
