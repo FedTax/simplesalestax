@@ -49,6 +49,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		add_filter( 'woocommerce_calculated_total', array( $this, 'calculate_tax_totals' ), 1100, 2 );
 		add_filter( 'woocommerce_find_rates', array( $this, 'filter_manual_tax_rates' ), 10, 2 );
 		add_filter( 'wc_stripe_calculated_total', array( $this, 'filter_stripe_calculated_total' ), 10, 3 );
+		add_filter( 'wc_stripe_should_hide_express_checkout_button_based_on_tax_setup', array( $this, 'hide_stripe_express_checkout_for_billing_tax' ), 20 );
 		add_filter( 'woocommerce_cart_hide_zero_taxes', array( $this, 'hide_zero_taxes' ) );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'handle_legacy_checkout' ) );
 		add_action( 'woocommerce_cart_emptied', array( $this, 'clear_session_data' ) );
@@ -293,6 +294,67 @@ class SST_Checkout extends SST_Abstract_Cart {
 		);
 
 		return max( 0, $stripe_total );
+	}
+
+	/**
+	 * Apply Stripe's billing-address tax safeguard to TaxCloud's virtual packages.
+	 *
+	 * Stripe updates the wallet total from shipping-address changes. The billing
+	 * address arrives only on confirmation. TaxCloud uses billing for items that
+	 * do not need shipping, even when WooCommerce's tax address setting is shipping,
+	 * so Stripe's own tax-setup check does not cover those items.
+	 *
+	 * @param bool $hide Whether Stripe already requires standard checkout.
+	 * @return bool
+	 */
+	public function hide_stripe_express_checkout_for_billing_tax( $hide ) {
+		if (
+			$hide
+			|| 'yes' === SST_Settings::get( 'disable_integration', 'no' )
+			|| 'data_mover' === sst_integration_mode()
+			|| ! wc_tax_enabled()
+			|| ! SST_Settings::get( 'tc_id' )
+			|| ! SST_Settings::get( 'tc_key' )
+			|| is_wc_endpoint_url( 'order-pay' )
+			|| is_account_page()
+		) {
+			return $hide;
+		}
+
+		if ( WC()->session && WC()->session->get( 'is_tax_exempt', false ) ) {
+			return $hide;
+		}
+
+		if ( is_product() || wc_post_content_has_shortcode( 'product_page' ) ) {
+			$product_id = get_queried_object_id();
+			if ( ! is_product() ) {
+				global $post;
+				// Match the product-page shortcode format supported by Stripe.
+				preg_match( '/\[product_page id="(\d+)"\]/', $post->post_content, $matches );
+				$product_id = isset( $matches[1] ) ? (int) $matches[1] : 0;
+			}
+			$product = wc_get_product( $product_id );
+			return $product && $product->is_taxable() && ! $product->needs_shipping() ? true : $hide;
+		}
+
+		if ( ! WC()->cart ) {
+			return $hide;
+		}
+
+		// When virtual splitting is disabled, a shippable cart uses the wallet's
+		// shipping destination for its virtual items as well.
+		if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) && WC()->cart->needs_shipping() ) {
+			return $hide;
+		}
+
+		foreach ( WC()->cart->get_cart() as $item ) {
+			$product = $item['data'];
+			if ( $product && $product->is_taxable() && ! $product->needs_shipping() ) {
+				return true;
+			}
+		}
+
+		return $hide;
 	}
 
 	/**

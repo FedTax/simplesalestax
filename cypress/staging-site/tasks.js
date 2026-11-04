@@ -8,7 +8,7 @@ module.exports=async(on,config)=>{
   const progress=async operation=>fs.writeFile(path.join(dir,'activity.json'),JSON.stringify({operation,time:new Date().toISOString()}));
   await progress('browser-startup');
   await fs.writeFile(path.join(dir,config.env.qaRestoring?'restoration-selection.json':'selection.json'),JSON.stringify({qaGroup:config.env.qaGroup||null,qaCase:config.env.qaCase||null,qaPolicyGroup:config.env.qaPolicyGroup||null,qaPolicyCase:config.env.qaPolicyCase||null},null,2));
-  Object.assign(config,{baseUrl:t.url,specPattern:config.env.qaRestoring?'cypress/staging-site/restoration-ui.cy.js':'cypress/staging-site/specs/0[123456789]-*.cy.js',supportFile:'cypress/staging-site/support.js',video:false,trashAssetsBeforeRuns:false,retries:0,viewportWidth:1440,viewportHeight:900,defaultCommandTimeout:20000,requestTimeout:60000,responseTimeout:90000,taskTimeout:660000,screenshotsFolder:path.join(dir,'screenshots'),downloadsFolder:path.join(root,'cypress/.staging-private',t.id,'downloads')});
+  Object.assign(config,{baseUrl:t.url,specPattern:config.env.qaRestoring?'cypress/staging-site/restoration-ui.cy.js':'cypress/staging-site/specs/0[123456789]-*.cy.js',supportFile:'cypress/staging-site/support.js',video:false,trashAssetsBeforeRuns:false,retries:0,viewportWidth:1440,viewportHeight:900,defaultCommandTimeout:20000,requestTimeout:60000,responseTimeout:90000,taskTimeout:220000,screenshotsFolder:path.join(dir,'screenshots'),downloadsFolder:path.join(root,'cypress/.staging-private',t.id,'downloads')});
   const allowedEnv=['qaGroup','qaCase','qaPolicyGroup','qaPolicyCase','qaRestoring','qaExistingPositiveTaxOrder'];
   config.env=Object.fromEntries(allowedEnv.filter(key=>Object.prototype.hasOwnProperty.call(config.env,key)).map(key=>[key,config.env[key]]));
   config.env.suite='staging-site';
@@ -53,7 +53,7 @@ module.exports=async(on,config)=>{
       const suffix=phase==='return'?`-${order.refundIds.join('-')}`:'';
       const folder=path.join(dir,'dashboard-checkpoints');await fs.mkdir(folder,{recursive:true});
       await fs.writeFile(path.join(folder,`${id}-${phase}${suffix}-pending.json`),JSON.stringify(redact(checkpoint),null,2));
-      const deadline=Date.now()+600000;
+      const deadline=Date.now()+180000;
       while(Date.now()<deadline){
         await progress(`dashboard-${phase}-${id}`);
         try{

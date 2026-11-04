@@ -2,7 +2,7 @@
 /**
  * Plugin Name: SST Staging QA Helper
  * Description: Administrator-only fixture preparation, run evidence and exact settings restoration for TaxCloud QA. Idle outside a run.
- * Version: 0.2.5
+ * Version: 0.2.7
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -193,6 +193,26 @@ final class SST_Staging_QA {
         $registry['pages'][ $key ] = array( 'id' => (int) $id, 'url' => $url, 'provenance' => $provenance );
         update_option( self::REGISTRY, $registry, false ); return $id;
     }
+    // Use the site's assigned Cart and My Account pages; create only a missing required page once.
+    private static function fixture_page( $key, $content ) {
+        $registry = self::registry();
+        $option = 'myAccount' === $key ? 'woocommerce_myaccount_page_id' : 'woocommerce_cart_page_id';
+        $id = absint( get_option( $option, 0 ) );
+        if ( ! $id && in_array( $key, array( 'cartClassic', 'cartBlock' ), true ) && ! empty( $registry['pages']['cartClassic']['id'] ) ) {
+            $id = absint( $registry['pages']['cartClassic']['id'] );
+        }
+        $page = $id ? get_post( $id ) : null;
+        if ( ! $page || 'page' !== $page->post_type || 'publish' !== $page->post_status || $page->post_password ) {
+            $run = self::run(); $short = substr( $run['id'], 0, 8 );
+            $id = wp_insert_post( array( 'post_title' => 'SST QA ' . $short . ' ' . $key, 'post_name' => 'sst-qa-' . $short . '-' . sanitize_title( $key ), 'post_type' => 'page', 'post_status' => 'publish', 'post_content' => $content, 'meta_input' => array( '_sst_qa_site' => self::site() ) ), true );
+            if ( is_wp_error( $id ) ) { throw new RuntimeException( 'Cannot create missing required QA page: ' . $key ); }
+            $page = get_post( $id ); $provenance = 'created';
+        } else {
+            $provenance = 'default';
+        }
+        $registry['pages'][ $key ] = array( 'id' => (int) $page->ID, 'url' => get_permalink( $page->ID ), 'provenance' => $provenance );
+        update_option( self::REGISTRY, $registry, false ); return (int) $page->ID;
+    }
     public static function page() {
         if ( ! current_user_can( 'manage_options' ) ) { return; }
         $r = self::run();
@@ -266,7 +286,8 @@ final class SST_Staging_QA {
                 try { $r['pages'][ $name ] = self::checkout_page( $name, 'checkoutClassic' === $name ? 'classic-checkout' : 'block-checkout', $content ); }
                 catch ( Throwable $error ) { wp_die( esc_html( $error->getMessage() . ' Restore the interrupted run.' ) ); }
             } else {
-            $r['pages'][ $name ] = wp_insert_post( array( 'post_title' => 'SST QA ' . $short . ' ' . $name, 'post_type' => 'page', 'post_status' => 'publish', 'post_content' => $content, 'meta_input' => array( '_sst_qa_run' => $id ) ) );
+                try { $r['pages'][ $name ] = self::fixture_page( $name, $content ); }
+                catch ( Throwable $error ) { wp_die( esc_html( $error->getMessage() . ' Restore the interrupted run.' ) ); }
             }
             update_option( self::OPTION, $r, false );
         }

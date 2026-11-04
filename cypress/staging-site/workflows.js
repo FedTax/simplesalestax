@@ -70,7 +70,8 @@ export function configure(profile,version){
 }
 export function emptyCart(site){
   cy.visit(site.pages.cartClassic);
-  const removeNext=()=>cy.get('body').then($body=>{if($body.find('a.remove').length){cy.get('a.remove').first().click();cy.get('.blockUI',{timeout:90000}).should('not.exist');return removeNext();}});
+  const removeSelector='a.remove,.wc-block-cart-item__remove-link';
+  const removeNext=()=>cy.get('body').then($body=>{if($body.find(removeSelector).length){cy.get(removeSelector).first().click();cy.get('.blockUI',{timeout:90000}).should('not.exist');return removeNext();}});
   return removeNext();
 }
 export function reserveOrder(surface='checkout',role='buyer'){
@@ -193,24 +194,24 @@ export function status(id,value){
   cy.qaLogin('admin');task('order',{id}).then(order=>cy.visit(order.editUrl));
   cy.get('#order_status').select(`wc-${value}`,{force:true});cy.get('#save-order,button.save_order').first().click();
   cy.get('#order_status',{timeout:90000}).should('have.value',`wc-${value}`);
-  task('order',{id}).then(order=>{if(intent&&order.taxcloudStatus==='captured')cy.task('qaAwaitDashboard',{id,phase:'capture'},{log:false,timeout:660000}).then(proof=>{cy.task('qaMutationVerified',{key:intent,evidence:'Exact capture outcome is known; see dashboard checkpoint for identity/financial findings.'},{log:false});cy.then(()=>{expect(proof.completedMatches,'dashboard shows persisted Completed status').to.equal(true);expect(proof.noReturns,'new capture has no existing returns').to.equal(true);expect(proof.customerMatches,'remote order customer matches the saved WooCommerce customer').to.equal(true);expect(proof.certificateMatches,'remote exemption matches the saved order').to.equal(true);expect(proof.lineItemsMatch,'remote item allocation matches the saved order').to.equal(true);});});});
+  task('order',{id}).then(order=>{if(intent&&order.taxcloudStatus==='captured')cy.task('qaAwaitDashboard',{id,phase:'capture'},{log:false,timeout:220000}).then(proof=>{cy.task('qaMutationVerified',{key:intent,evidence:'Exact capture outcome is known; see dashboard checkpoint for identity/financial findings.'},{log:false});cy.then(()=>{expect(proof.completedMatches,'dashboard shows persisted Completed status').to.equal(true);expect(proof.noReturns,'new capture has no existing returns').to.equal(true);expect(proof.customerMatches,'remote order customer matches the saved WooCommerce customer').to.equal(true);expect(proof.certificateMatches,'remote exemption matches the saved order').to.equal(true);expect(proof.lineItemsMatch,'remote item allocation matches the saved order').to.equal(true);});});});
 }
 export function refund(id,quantity){
   let intent;
-  task('order',{id}).then(order=>{if(order.refunded===0)cy.task('qaAwaitDashboard',{id,phase:'capture'},{log:false,timeout:660000});});
+  task('order',{id}).then(order=>{if(order.refunded===0)cy.task('qaAwaitDashboard',{id,phase:'capture'},{log:false,timeout:220000});});
   cy.qaLogin('admin');task('order',{id}).then(order=>cy.visit(order.editUrl));
   cy.on('window:confirm',()=>true);
   cy.get('button.refund-items').click();cy.get('input.refund_order_item_qty').first().clear().type(String(quantity)).blur();
   cy.intercept('POST','**/wp-admin/admin-ajax.php',req=>{if(String(req.body).includes('action=woocommerce_refund_line_items'))req.alias='manualRefund';});
   cy.task('qaMutationIntent',{id,kind:'refund'},{log:false}).then(key=>{intent=key;});
   cy.get('button.do-manual-refund').click();cy.wait('@manualRefund',{timeout:90000}).its('response.body.success').should('equal',true);
-  cy.task('qaAwaitDashboard',{id,phase:'return'},{log:false,timeout:660000}).then(()=>cy.task('qaMutationVerified',{key:intent,evidence:'Matching persisted dashboard Returns checkpoint.'},{log:false}));
+  cy.task('qaAwaitDashboard',{id,phase:'return'},{log:false,timeout:220000}).then(()=>cy.task('qaMutationVerified',{key:intent,evidence:'Matching persisted dashboard Returns checkpoint.'},{log:false}));
 }
 
 // Real manual refund form; exact shipping/fee tax values come from the saved item inputs.
 export function refundLines(id,{quantity=0,shipping=false,fee=false}={}){
   let intent;
-  task('order',{id}).then(order=>{if(order.refunded===0)cy.task('qaAwaitDashboard',{id,phase:'capture'},{log:false,timeout:660000});});
+  task('order',{id}).then(order=>{if(order.refunded===0)cy.task('qaAwaitDashboard',{id,phase:'capture'},{log:false,timeout:220000});});
   cy.qaLogin('admin');task('order',{id}).then(order=>cy.visit(order.editUrl));cy.on('window:confirm',()=>true);
   cy.get('button.refund-items').click();
   if(quantity)cy.get('input.refund_order_item_qty').first().clear().type(String(quantity)).blur();
@@ -227,5 +228,5 @@ export function refundLines(id,{quantity=0,shipping=false,fee=false}={}){
   cy.intercept('POST','**/wp-admin/admin-ajax.php',req=>{if(String(req.body).includes('action=woocommerce_refund_line_items'))req.alias='allocationRefund';});
   cy.task('qaMutationIntent',{id,kind:'refund'},{log:false}).then(key=>{intent=key;});
   cy.get('button.do-manual-refund').click();cy.wait('@allocationRefund',{timeout:90000}).its('response.body.success').should('equal',true);
-  cy.task('qaAwaitDashboard',{id,phase:'return'},{log:false,timeout:660000}).then(()=>cy.task('qaMutationVerified',{key:intent,evidence:'Matching persisted dashboard Returns checkpoint.'},{log:false}));
+  cy.task('qaAwaitDashboard',{id,phase:'return'},{log:false,timeout:220000}).then(()=>cy.task('qaMutationVerified',{key:intent,evidence:'Matching persisted dashboard Returns checkpoint.'},{log:false}));
 }

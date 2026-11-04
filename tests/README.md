@@ -31,6 +31,27 @@ Close the Cypress app before starting another plugin run.
 A successful headless run ends with **All specs passed!** and exit code **0**.
 Setup failures or skipped workflows do not count as successful verification.
 
+## Stripe Apple Pay tax-address regression (DEV-8729)
+
+Run `php tests/stripe-tax-address-regression.php` or `npm run test:regression`.
+These standalone checks exercise the actual Stripe eligibility filter registered
+by TaxCloud; WordPress, products and cart state are test doubles. They do not
+authorize a wallet payment or call TaxCloud.
+
+TaxCloud taxes nonshippable items at the billing address, including physical
+products made nonshippable by another plugin. Stripe's wallet amount updates use
+shipping-address changes; billing arrives only on confirmation. Stripe's own
+safeguard checks WooCommerce's tax-address setting, which can still be shipping.
+TaxCloud extends that safeguard so affected taxable items use standard checkout.
+Shippable products and tax-free virtual products keep their existing eligibility.
+Mixed carts are protected when virtual items need a separate billing tax lookup;
+disabling virtual splitting retains express checkout when the cart needs shipping.
+
+The regression includes the OASIS sticker's `virtual=false` / runtime
+`needs_shipping=false` mismatch, product pages, mixed carts, existing gateway
+restrictions, exemptions, disabled integration, Data Import and order-payment
+pages. It verifies eligibility, not actual Stripe authorization/capture amounts.
+
 ## Admin order exemption regression (DEV-10586)
 
 `npm run test:e2e` includes three fixture scenarios for an administrator editing
