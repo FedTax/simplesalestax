@@ -57,6 +57,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		add_filter( 'wootax_cart_packages', array( $this, 'handle_negative_fees' ), PHP_INT_MAX - 1 );
 		add_action( 'woocommerce_init', array( $this, 'init_certificate_id' ) );
 		add_action( 'woocommerce_store_api_checkout_update_order_from_request', array( $this, 'handle_checkout' ), 10, 2 );
+		add_action( 'woocommerce_store_api_checkout_update_customer_from_request', array( $this, 'validate_store_api_address' ), 10, 2 );
 		add_action( 'woocommerce_cart_calculate_fees', array( $this, 'add_co_excise_tax_fee' ) );
 		add_action( 'template_redirect', array( $this, 'add_rate_limit_notice' ), 10 );
 
@@ -550,6 +551,9 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 */
 	protected function create_packages() {
 		$packages = array();
+		// Replace outcomes on every calculation so an edited/removed destination
+		// cannot leave a stale rejection or note in the customer's session.
+		WC()->session->set( 'sst_address_verification', array() );
 
 		// Let devs change the packages before we split them.
 		$raw_packages = apply_filters(
@@ -632,6 +636,41 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		return apply_filters( 'wootax_cart_packages', $packages, $this->cart );
+	}
+
+	/** Keep verification outcomes even when tax lookup uses a cached package. */
+	protected function handle_address_verification( $outcome ) {
+		$outcomes = WC()->session->get( 'sst_address_verification', array() );
+		$outcomes[ $outcome['input_hash'] ] = $outcome;
+		WC()->session->set( 'sst_address_verification', $outcomes );
+	}
+
+	/** Only explicit address rejections can block customer checkout. */
+	private function validate_shipping_address( $errors ) {
+		if ( 'yes' !== SST_Settings::get( 'require_verified_shipping_address', 'no' ) || ! WC()->session ) {
+			return;
+		}
+		foreach ( WC()->session->get( 'sst_address_verification', array() ) as $outcome ) {
+			if ( 'rejected' === $outcome['status'] ) {
+				$errors->add( 'sst_shipping_address', __( "We couldn't verify your shipping address. Please check the street, city and ZIP code.", 'simple-sales-tax' ) );
+				return;
+			}
+		}
+	}
+
+	/** Validate the submitted Block Checkout address before a draft order is created. */
+	public function validate_store_api_address( $customer, $request ) {
+		if ( ! $this->is_integration_active() || 'POST' !== $request->get_method() || ! WC()->cart || ! WC()->session ) {
+			return;
+		}
+		// The request has now updated WC()->customer. Recalculate both verification
+		// and tax so the note and totals describe the address submitted in this POST.
+		WC()->cart->calculate_totals();
+		$errors = new WP_Error();
+		$this->validate_shipping_address( $errors );
+		if ( $errors->has_errors() ) {
+			throw new RouteException( 'sst_shipping_address', $errors->get_error_message(), 400 );
+		}
 	}
 
 	/**
@@ -1021,6 +1060,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		$order = new SST_Order( $wc_order );
+		SST_Addresses::save_order_verification( $wc_order, WC()->session->get( 'sst_address_verification', array() ) );
 
 		if ( 'data_mover' === sst_integration_mode() ) {
 			$certificate_id = '';
@@ -1185,6 +1225,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	public function clear_session_data() {
 		WC()->session->set( 'sst_packages', array() );
 		WC()->session->set( 'sst_package_cache', array() );
+		WC()->session->set( 'sst_address_verification', array() );
 		WC()->session->set( 'sst_new_certificate_state', '' );
 		WC()->session->set( 'sst_cert_explicitly_cleared', false );
 
@@ -1205,6 +1246,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		foreach ( $this->errors as $error_message ) {
 			$errors->add( 'tax', $error_message );
 		}
+		$this->validate_shipping_address( $errors );
 
 		$this->validate_exemption_certificate( $data, $errors );
 	}

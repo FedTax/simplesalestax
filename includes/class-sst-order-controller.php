@@ -27,6 +27,7 @@ class SST_Order_Controller {
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hide_order_item_meta' ) );
 		add_filter( 'woocommerce_order_item_get_taxes', array( $this, 'fix_shipping_tax_issue' ), 10, 2 );
 		add_action( 'woocommerce_before_order_object_save', array( $this, 'save_db_version' ) );
+		add_action( 'woocommerce_new_order', array( $this, 'add_address_verification_notes' ), 10, 2 );
 		add_action(
 			'woocommerce_order_after_calculate_totals',
 			array( $this, 'calculate_order_tax' ),
@@ -44,6 +45,14 @@ class SST_Order_Controller {
 			'woocommerce_order_hide_zero_taxes',
 			array( $this, 'filter_hide_zero_taxes' )
 		);
+	}
+
+	/** Flush verification notes after an admin/REST order first receives an ID. */
+	public function add_address_verification_notes( $order_id, $order ) {
+		$outcomes = $order->get_meta( '_sst_shipping_address_verification', true );
+		if ( is_array( $outcomes ) && $outcomes ) {
+			SST_Addresses::save_order_verification( $order, $outcomes );
+		}
 	}
 
 	/**

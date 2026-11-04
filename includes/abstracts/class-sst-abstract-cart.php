@@ -809,13 +809,23 @@ abstract class SST_Abstract_Cart {
 					isset( $package['destination']['address_2'] ) ? $package['destination']['address_2'] : '',
 					$package['destination']['city'],
 					$package['destination']['state'],
-					substr( $package['destination']['postcode'], 0, 5 )
+					substr( $package['destination']['postcode'], 0, 5 ),
+					substr( preg_replace( '/[^0-9]/', '', $package['destination']['postcode'] ), 5, 4 ) ?: null
 				);
 			}
 			SST_Logger::add( __( 'Shipping destination verifying', 'simple-sales-tax' ), $destination );
 			// TODO: substr sometimes include trailing dash, e.g. 12345-
-			$package['destination'] = SST_Addresses::verify_address( $destination );
+			$package['destination'] = SST_Addresses::verify_address( $destination, $outcome );
+			$this->handle_address_verification( $outcome );
 		} catch ( Exception $ex ) {
+			if ( empty( $package['destination']['postcode'] ) ) {
+				$this->handle_address_verification( array(
+					'input_hash' => md5( wp_json_encode( $package['destination'] ) ),
+					'status'     => 'skipped',
+					'reason'     => 'missing_street_or_zip',
+					'changes'    => array(),
+				) );
+			}
 			SST_Logger::add( __( 'Shipping destination is not a verified address.', 'simple-sales-tax' ), $ex );
 			return array();
 		}
@@ -873,6 +883,9 @@ abstract class SST_Abstract_Cart {
 
 		return array_values( $packages );
 	}
+
+	/** Handle verification separately from tax errors; order calculations never block. */
+	protected function handle_address_verification( $outcome ) {}
 
 	/**
 	 * Formats a SST cart package, ensuring that all required fields are set
