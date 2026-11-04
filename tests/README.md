@@ -3,6 +3,22 @@
 Run commands from the repository root with the seeded Docker WordPress site
 running at `http://localhost:8080`.
 
+## Shipping address verification (DEV-10605)
+
+Run `php tests/address-verification-regression.php` for controlled V1/V3
+verification, cache/retry behavior, private notes, classic and Store API checkout
+validation, and nonblocking order-side behavior. No external API calls are made.
+The same check is included in `npm run test:regression`.
+
+`npm run test:e2e` also includes **14 Cypress fixture scenarios** for this ticket:
+classic and Block Checkout corrections, rejection with the requirement on/off,
+recovery after editing a rejected address, nonblocking timeouts with another
+verification attempt for the same address, quiet successful standardization,
+HTTP 401/429/503 failures, and admin orders recalculated twice without duplicate
+notes. These use a physical product and assert the outgoing tax destination,
+checkout result, persisted tax totals, verification metadata, and private notes.
+The scenarios run only in fixture mode; live mode never injects address errors.
+
 ## Everyday commands
 
 ```sh
@@ -25,7 +41,7 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **31 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **45 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
@@ -79,7 +95,7 @@ for `99990`; it does not independently verify either rate against the live API.
 | Category `90505`, quantity changed from 1 to 2 | $15.00 | $13.00 | $228.00 |
 | Category `90505`, Minnesota destination | $10.00 (fixture) | None | $110.00 |
 
-Expect **31 passing** overall, including these **6 Colorado cases**. The first
+Expect **45 passing** overall, including these **6 Colorado cases**. The first
 Colorado test selects and saves category `99990` through the admin UI. Every
 Colorado test checks the effective product TIC, outgoing API payload,
 visible checkout totals and persisted order totals. Eligible Colorado orders

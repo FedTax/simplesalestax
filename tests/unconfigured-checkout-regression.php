@@ -377,7 +377,7 @@ expect_same( 0, $rest_order->calculate_totals_calls, 'Unconfigured REST order sk
 $origin      = new SST_Origin_Address( 'origin-1', true, '742 Evergreen Terrace', '', 'Springfield', 'CA', '94016' );
 $destination = new TaxCloud\Address( '742 Evergreen Terrace', '', 'Springfield', 'CA', '94016' );
 $test_transients['sst_verified_addresses'] = array(
-	md5( wp_json_encode( $destination ) ) => wp_json_encode( $destination ),
+	'v2:v1:' . md5( wp_json_encode( $destination ) ) => array( 'address' => json_decode( wp_json_encode( $destination ), true ), 'outcome' => array( 'input_hash' => md5( wp_json_encode( $destination ) ), 'status' => 'verified', 'reason' => '', 'changes' => array() ) ),
 );
 $test_settings['tc_id']                    = 'configured-login-id';
 $test_settings['tc_key']                   = 'configured-api-key';
