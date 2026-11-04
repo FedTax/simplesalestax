@@ -53,6 +53,7 @@ class SST_Settings {
 		'log_requests'                   => 'yes',
 		'disable_integration'            => 'no',
 		'force_tax_lookup'               => '',
+		'require_verified_shipping_address' => 'no',
 		'disable_virtual_split'          => '',
 		'capture_orders_in_taxcloud'     => 'yes',
 		'tax_based_on'                   => 'item-price',
@@ -423,6 +424,14 @@ class SST_Settings {
 					'If enabled, TaxCloud integration will be disabled for both real-time and data mover.',
 					'simple-sales-tax'
 				),
+				'desc_tip'    => true,
+			),
+			'require_verified_shipping_address' => array(
+				'title'       => __( 'Require a verified shipping address at checkout', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'label'       => ' ',
+				'default'     => 'no',
+				'description' => __( 'Stop checkout when TaxCloud rejects a shipping address. Temporary service failures and rate limits allow checkout. Admin orders, REST orders and subscription renewals are never blocked.', 'simple-sales-tax' ),
 				'desc_tip'    => true,
 			),
 			'force_tax_lookup'						=> array(

@@ -26,6 +26,15 @@ Stores that previously charged both WooCommerce rates and TaxCloud tax will see
 lower checkout tax totals because the duplicate tax is removed. Non-US manual
 rates and Data Import calculations retain their configured WooCommerce rates.
 
+## Shipping address verification
+
+TaxCloud records address corrections and verification failures in private order
+notes. The optional **Require a verified shipping address at checkout** setting
+blocks rejected addresses on classic and block checkout. Temporary failures
+allow checkout and are retried on the next lookup. See the
+[WooCommerce settings guide](docs/woocommerce-settings.md) and
+[troubleshooting guide](docs/troubleshooting.md).
+
 ## FooSales in-store orders
 
 FooSales calculates tax in its apps before payment using the WooCommerce tax
