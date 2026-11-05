@@ -314,9 +314,13 @@ class SST_Admin {
 	 * @param WP_User $user The user whose profile is being edited.
 	 */
 	public static function render_user_certificates( $user ) {
+		if ( ! SST_Certificates::current_user_can_manage_certificates( $user->ID ) ) {
+			return;
+		}
+
 		$user_can_edit      = apply_filters(
 			'woocommerce_current_user_can_edit_customer_meta_fields',
-			current_user_can( 'manage_woocommerce' ),
+			current_user_can( 'manage_woocommerce' ) || current_user_can( 'manage_options' ),
 			$user->ID
 		);
 		$exemptions_enabled = 'true' === SST_Settings::get( 'show_exempt' );

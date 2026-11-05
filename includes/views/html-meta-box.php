@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php echo esc_html( $args['status'] ); ?>
 </div>
 
+<?php if ( ! empty( $args['can_manage_certificates'] ) ) : ?>
 <div>
 	<h3>
 		<?php esc_html_e( 'Exemption Certificate', 'simple-sales-tax' ); ?>
@@ -37,8 +38,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 	</div>
 </div>
+<?php endif; ?>
 
-<?php if ( 'yes' === SST_Settings::get( 'log_requests' ) ) : ?>
+<?php if ( ! empty( $args['can_manage_certificates'] ) && 'yes' === SST_Settings::get( 'log_requests' ) ) : ?>
 	<div>
 		<h3>
 			<?php esc_html_e( 'Order Debug', 'simple-sales-tax' ); ?>
