@@ -25,11 +25,32 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **31 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **35 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
 Setup failures or skipped workflows do not count as successful verification.
+
+## Checkout exemption security regression (DEV-10620)
+
+`npm run test:e2e` includes three fixture-only cases that tamper with actual
+classic checkout requests:
+
+- A guest with exemptions disabled posts `certificate_id=new` during a cart
+  refresh, then omits the final selection while retaining the matching state.
+  The saved guest order must retain $10 tax and a $110 total, with no certificate.
+- An eligible customer gets a zero-tax preview for `new`, then submits a final
+  request containing only the certificate state. Checkout must reject the missing
+  fields without creating an order or certificate.
+- A customer posts another customer's valid MN certificate ID. The session must
+  ignore it and the saved order must retain $10 tax and no certificate.
+
+WooCommerce requests, sessions, validation and persisted orders are real. Only
+TaxCloud HTTP responses are simulated. A read-only helper observes the raw WC
+session; it does not select or validate certificates. Fixture settings apply only
+to the run's cookie and are restored after each case. The extra test customer and
+successful orders remain for inspection. These cases are omitted in live mode
+and the plugin suite remains local only.
 
 ## Admin order exemption regression (DEV-10586)
 
@@ -79,7 +100,7 @@ for `99990`; it does not independently verify either rate against the live API.
 | Category `90505`, quantity changed from 1 to 2 | $15.00 | $13.00 | $228.00 |
 | Category `90505`, Minnesota destination | $10.00 (fixture) | None | $110.00 |
 
-Expect **31 passing** overall, including these **6 Colorado cases**. The first
+Expect **35 passing** overall, including these **6 Colorado cases**. The first
 Colorado test selects and saves category `99990` through the admin UI. Every
 Colorado test checks the effective product TIC, outgoing API payload,
 visible checkout totals and persisted order totals. Eligible Colorado orders
@@ -254,6 +275,14 @@ to the test command; prefix cleanup with
 | Previous-run/helper error | Exit the old Cypress process, run `npm run test:cleanup`, then retry |
 
 ## Other checks
+
+`npm run test:regression` includes the DEV-10620 checkout exemption security
+regression for V1 and V3. It checks guest/disabled/restricted selections, ownership,
+stale sessions, classic and Blocks updates, omitted final fields, certificate
+creation failures, single-purchase certificates and Colorado excise fees. These
+checks use in-memory WooCommerce/session and API boundaries; they make no external
+requests. Run this regression alone with
+`php tests/checkout-exemption-regression.php`.
 
 The smaller admin suite remains available as `npm run cypress:run` or
 `npm run cypress:open`. GitHub Actions runs this suite only; all dedicated V3

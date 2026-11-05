@@ -81,6 +81,8 @@ class Exemption_State_Test_Cart extends SST_Abstract_Cart {
 class Exemption_State_Test_Checkout extends SST_Checkout {
 	public $test_packages = array();
 	public function __construct() {}
+	// Field/state validation assumes an authorized new-certificate selection.
+	public function get_certificate_id() { return 'new'; }
 	protected function create_packages() { return $this->test_packages; }
 	public function new_certificate_covers( $state ) { return $this->new_certificate_covers_packages( $state ); }
 	public function validate_certificate( $certificate, $errors ) {
