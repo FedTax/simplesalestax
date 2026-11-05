@@ -99,8 +99,10 @@ class SST_Blocks {
 	 * @param array $data Data payload from `extensionCartUpdate`
 	 */
 	public function handle_cart_update( $data ) {
-		if ( ! sst_should_show_tax_exemption_form() ) {
+		if ( ! is_user_logged_in() || ! sst_should_show_tax_exemption_form() || 'data_mover' === sst_integration_mode() ) {
 			WC()->session->set( 'sst_certificate_id', '' );
+			WC()->session->set( 'sst_packages', array() );
+			WC()->session->set( 'sst_new_certificate_state', '' );
 			return;
 		}
 
@@ -108,12 +110,16 @@ class SST_Blocks {
 
 		switch ( $action ) {
 			case 'set_certificate_id':
-				$certificate_id = sanitize_text_field( $data['certificate_id'] ?? '' );
+				$selection      = $data['certificate_id'] ?? '';
+				$certificate_id = SST_Certificates::get_checkout_certificate_id(
+					is_string( $selection ) ? sanitize_text_field( $selection ) : ''
+				);
 				WC()->session->set(
 					'sst_certificate_id',
 					$certificate_id
 				);
 				WC()->session->set( 'sst_cert_explicitly_cleared', '' === $certificate_id );
+				WC()->session->set( 'sst_packages', array() );
 				if ( 'new' === $certificate_id ) {
 					WC()->session->set( 'sst_new_certificate_state', '' );
 				}

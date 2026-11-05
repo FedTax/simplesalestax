@@ -130,6 +130,38 @@ class SST_Certificates {
 	}
 
 	/**
+	 * Validate a checkout certificate selection for the current customer.
+	 *
+	 * @param mixed $certificate_id Certificate ID or the new-certificate selection.
+	 * @return string Allowed selection, or an empty string if it cannot be used.
+	 */
+	public static function get_checkout_certificate_id( $certificate_id ) {
+		if (
+			! is_string( $certificate_id )
+			|| ! is_user_logged_in()
+			|| ! sst_should_show_tax_exemption_form()
+			|| 'data_mover' === sst_integration_mode()
+		) {
+			return '';
+		}
+
+		if ( '' === $certificate_id || 'none' === $certificate_id ) {
+			return '';
+		}
+
+		if ( 'new' === $certificate_id ) {
+			return 'new';
+		}
+
+		try {
+			return self::get_certificate( $certificate_id, get_current_user_id() ) ? $certificate_id : '';
+		} catch ( Throwable $ex ) {
+			SST_Logger::debug( sprintf( 'Unable to verify checkout exemption certificate: %s', $ex->getMessage() ) );
+			return '';
+		}
+	}
+
+	/**
 	 * Check whether a certificate covers a destination state.
 	 *
 	 * Saved certificates are resolved from the customer's TaxCloud records so an
