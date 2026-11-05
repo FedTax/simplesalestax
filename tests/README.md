@@ -87,8 +87,14 @@ match. Valid customer GUIDs, `new`, and clearing a selection remain supported.
 The metadata checks verify that arbitrary classes cannot be instantiated by
 order reads or debug logging, that pre-7.0 certificate objects still provide
 their IDs and details, and that existing double-serialized package arrays remain
-usable. New package writes use WooCommerce's native serialization. Admin save,
-delete and recalculation reject malformed IDs; recalculation also preserves the
+usable. Pre-7.0 object-based packages also remain readable and compress correctly
+during the 7.0 background migration. Package reads allow only the legacy TaxCloud
+data classes and `WC_Shipping_Rate`; products and unrelated classes remain blocked.
+Package writes serialize arrays to strings before passing them to WooCommerce so
+the posts data store preserves nested backslashes and stable package hashes.
+`tests/order-meta-storage-regression.php` exercises WooCommerce's real posts-meta
+writer with a modeled WordPress unslashing/persistence boundary, without a database.
+Admin save, delete and recalculation reject malformed IDs; recalculation also preserves the
 internal single-purchase certificate selection.
 
 The JavaScript check executes the real request filter and parses its result to
