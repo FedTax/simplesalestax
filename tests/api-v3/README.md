@@ -15,7 +15,7 @@ npm run test:api:v3
 These need host PHP CLI and the project's Composer dependencies. They do not
 load WordPress, contact TaxCloud or create database/remote records.
 
-`test:regression` prints eight success messages and exits 0. It checks destination
+`test:regression` prints a success message for each regression and exits 0. It checks destination
 state exemptions for V1/V3, local pickup, captured order/refund preservation, and
 API routing/persistence, plus FooSales tax compatibility and order capture.
 FooSales checks include mixed virtual/physical packages and collected-versus-quoted

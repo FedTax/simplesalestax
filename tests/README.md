@@ -255,6 +255,14 @@ to the test command; prefix cleanup with
 
 ## Other checks
 
+`npm run test:regression` includes the DEV-10620 checkout exemption security
+regression for V1 and V3. It checks guest/disabled/restricted selections, ownership,
+stale sessions, classic and Blocks updates, omitted final fields, certificate
+creation failures, single-purchase certificates and Colorado excise fees. These
+checks use in-memory WooCommerce/session and API boundaries; they make no external
+requests. Run this regression alone with
+`php tests/checkout-exemption-regression.php`.
+
 The smaller admin suite remains available as `npm run cypress:run` or
 `npm run cypress:open`. GitHub Actions runs this suite only; all dedicated V3
 suites reject CI execution. PHP regressions also remain local.
