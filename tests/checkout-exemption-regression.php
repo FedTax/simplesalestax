@@ -161,9 +161,9 @@ namespace {
 		$test_woocommerce = (object) array( 'session' => new Checkout_Exemption_Session(), 'cart' => new \stdClass() );
 		$certificate = SST_Certificates::build_certificate( certificate_fields(), purchaser_fields() )->jsonSerialize();
 		$certificate['CertificateID'] = OWNED_CERTIFICATE_ID;
-		$test_transients = array( '_sst_certificates_19151' => wp_json_encode( array( OWNED_CERTIFICATE_ID => $certificate ) ) );
+		$test_transients = array( SST_Certificates::TRANS_PREFIX . 19151 => wp_json_encode( array( OWNED_CERTIFICATE_ID => $certificate ) ) );
 		$certificate['CertificateID'] = OTHER_CERTIFICATE_ID;
-		$test_transients['_sst_certificates_19152'] = wp_json_encode( array( OTHER_CERTIFICATE_ID => $certificate ) );
+		$test_transients[SST_Certificates::TRANS_PREFIX . 19152] = wp_json_encode( array( OTHER_CERTIFICATE_ID => $certificate ) );
 		Checkout_Exemption_API::$result = CREATED_CERTIFICATE_ID;
 		Checkout_Exemption_API::$calls = 0;
 		return new Checkout_Exemption_Test();
@@ -225,11 +225,11 @@ namespace {
 		foreach ( array( 'O:8:"stdClass":0:{}', OWNED_CERTIFICATE_ID . '&order_id=999', OWNED_CERTIFICATE_ID . "\n", 'not-a-guid' ) as $payload ) {
 			foreach ( array( 'classic', 'blocks' ) as $path ) {
 				$checkout = reset_checkout( $version );
-				$certificates = json_decode( $test_transients['_sst_certificates_19151'], true );
+				$certificates = json_decode( $test_transients[SST_Certificates::TRANS_PREFIX . 19151], true );
 				$certificate = $certificates[ OWNED_CERTIFICATE_ID ];
 				$certificate['CertificateID'] = $payload;
 				$certificates[ $payload ] = $certificate;
-				$test_transients['_sst_certificates_19151'] = wp_json_encode( $certificates );
+				$test_transients[SST_Certificates::TRANS_PREFIX . 19151] = wp_json_encode( $certificates );
 				if ( 'classic' === $path ) {
 					$_POST = array( 'post_data' => http_build_query( array( 'certificate_id' => $payload ) ) );
 					$checkout->init_certificate_id();
@@ -280,9 +280,9 @@ namespace {
 		expect_same( OWNED_CERTIFICATE_ID, $order->certificate_id, "$version: saved selection persists without final posted ID" );
 
 		$checkout = reset_checkout( $version );
-		$data = json_decode( $test_transients['_sst_certificates_19151'], true );
+		$data = json_decode( $test_transients[SST_Certificates::TRANS_PREFIX . 19151], true );
 		$data[ OWNED_CERTIFICATE_ID ]['Detail']['ExemptStates'][0]['StateAbbr'] = 'NC';
-		$test_transients['_sst_certificates_19151'] = wp_json_encode( $data );
+		$test_transients[SST_Certificates::TRANS_PREFIX . 19151] = wp_json_encode( $data );
 		WC()->session->set( 'sst_certificate_id', OWNED_CERTIFICATE_ID );
 		expect_same( 6.5, $checkout->excise_tax(), "$version: saved NC certificate cannot suppress CO excise" );
 
@@ -292,7 +292,7 @@ namespace {
 		expect_same( OWNED_CERTIFICATE_ID, $checkout->get_certificate()->getCertificateID(), "$version: owned certificate accepted from classic cart refresh" );
 		expect_same( 0, $checkout->excise_tax(), "$version: owned CO certificate exempts excise" );
 		$test_user_id = 19153;
-		$test_transients['_sst_certificates_19153'] = '[]';
+		$test_transients[SST_Certificates::TRANS_PREFIX . 19153] = '[]';
 		expect_same( null, $checkout->get_certificate(), "$version: selection cannot transfer to a different customer" );
 
 		$checkout = reset_checkout( $version );
