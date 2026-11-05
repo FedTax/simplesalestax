@@ -17,6 +17,9 @@ namespace TaxCloud_V3 {
 
 namespace {
 	define( 'ABSPATH', __DIR__ . '/' );
+	const OWNED_CERTIFICATE_ID = '11111111-2222-3333-4444-555555555555';
+	const OTHER_CERTIFICATE_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+	const CREATED_CERTIFICATE_ID = '12345678-1234-1234-1234-123456789abc';
 
 	$test_user_id = 19151;
 	$test_settings = array( 'tc_id' => 'test-login', 'tc_key' => 'test-key', 'show_exempt' => 'true' );
@@ -66,7 +69,7 @@ namespace {
 		public static function is_gun_or_ammo_tic( $tic ) { return '90505' === $tic; }
 	}
 	class Checkout_Exemption_API {
-		public static $result = 'created-certificate';
+		public static $result = CREATED_CERTIFICATE_ID;
 		public static $calls = 0;
 		public static function create() {
 			++self::$calls;
@@ -157,11 +160,11 @@ namespace {
 		$test_settings = array( 'api_version' => $version, 'tc_id' => 'test-login', 'tc_key' => 'test-key', 'show_exempt' => 'true' );
 		$test_woocommerce = (object) array( 'session' => new Checkout_Exemption_Session(), 'cart' => new \stdClass() );
 		$certificate = SST_Certificates::build_certificate( certificate_fields(), purchaser_fields() )->jsonSerialize();
-		$certificate['CertificateID'] = 'owned';
-		$test_transients = array( '_sst_certificates_19151' => wp_json_encode( array( 'owned' => $certificate ) ) );
-		$certificate['CertificateID'] = 'other-customer';
-		$test_transients['_sst_certificates_19152'] = wp_json_encode( array( 'other-customer' => $certificate ) );
-		Checkout_Exemption_API::$result = 'created-certificate';
+		$certificate['CertificateID'] = OWNED_CERTIFICATE_ID;
+		$test_transients = array( '_sst_certificates_19151' => wp_json_encode( array( OWNED_CERTIFICATE_ID => $certificate ) ) );
+		$certificate['CertificateID'] = OTHER_CERTIFICATE_ID;
+		$test_transients['_sst_certificates_19152'] = wp_json_encode( array( OTHER_CERTIFICATE_ID => $certificate ) );
+		Checkout_Exemption_API::$result = CREATED_CERTIFICATE_ID;
 		Checkout_Exemption_API::$calls = 0;
 		return new Checkout_Exemption_Test();
 	}
@@ -205,7 +208,7 @@ namespace {
 			expect_same( array(), WC()->session->get( 'sst_packages' ), "$version: $context clears exempt packages" );
 		}
 
-		foreach ( array( 'missing', 'other-customer', array( 'new' ) ) as $invalid_id ) {
+		foreach ( array( 'missing', OTHER_CERTIFICATE_ID, array( 'new' ) ) as $invalid_id ) {
 			$checkout = reset_checkout( $version );
 			$_POST = array( 'certificate_id' => $invalid_id );
 			$checkout->init_certificate_id();
@@ -217,10 +220,47 @@ namespace {
 			expect_same( '', $checkout->get_certificate_id(), "$version: Blocks rejects invalid selection" );
 		}
 
+		// DEV-10621: even a matching cached certificate/package must not make a
+		// serialized object or a query-string payload into a valid certificate ID.
+		foreach ( array( 'O:8:"stdClass":0:{}', OWNED_CERTIFICATE_ID . '&order_id=999', OWNED_CERTIFICATE_ID . "\n", 'not-a-guid' ) as $payload ) {
+			foreach ( array( 'classic', 'blocks' ) as $path ) {
+				$checkout = reset_checkout( $version );
+				$certificates = json_decode( $test_transients['_sst_certificates_19151'], true );
+				$certificate = $certificates[ OWNED_CERTIFICATE_ID ];
+				$certificate['CertificateID'] = $payload;
+				$certificates[ $payload ] = $certificate;
+				$test_transients['_sst_certificates_19151'] = wp_json_encode( $certificates );
+				if ( 'classic' === $path ) {
+					$_POST = array( 'post_data' => http_build_query( array( 'certificate_id' => $payload ) ) );
+					$checkout->init_certificate_id();
+				} else {
+					SST_Blocks::instance()->handle_cart_update( array( 'action' => 'set_certificate_id', 'certificate_id' => $payload ) );
+				}
+				expect_same( '', WC()->session->get( 'sst_certificate_id', '' ), "$version $path: malformed cached ID is rejected at selection" );
+				WC()->session->set( 'sst_certificate_id', $payload );
+				WC()->session->set( 'sst_packages', array( array( 'certificate_id' => $payload ) ) );
+				$order = new Checkout_Exemption_Order();
+				if ( 'classic' === $path ) {
+					$_POST = array( 'certificate_id' => $payload );
+					$checkout->handle_legacy_checkout( $order );
+				} else {
+					$request = new class( $payload ) {
+						private $id;
+						public function __construct( $id ) { $this->id = $id; }
+						public function get_param( $key ) { return array( 'simple-sales-tax' => array( 'certificate_id' => $this->id ) ); }
+					};
+					$checkout->handle_checkout( $order, $request );
+				}
+				expect_same( '', $order->certificate_id, "$version $path: malformed session ID cannot be persisted" );
+				expect_same( array(), $order->packages, "$version $path: matching malformed packages are discarded" );
+				expect_same( 0, Checkout_Exemption_API::$calls, "$version $path: malformed ID never registers a certificate" );
+			}
+		}
+
 		foreach ( array( 'none', '' ) as $cleared_id ) {
 			$checkout = reset_checkout( $version );
-			$checkout->default_id = 'owned';
-			WC()->session->set( 'sst_certificate_id', 'owned' );
+			$checkout->default_id = OWNED_CERTIFICATE_ID;
+			WC()->session->set( 'sst_certificate_id', OWNED_CERTIFICATE_ID );
 			WC()->session->set( 'sst_packages', array( 'stale-exempt-package' ) );
 			$_POST = array( 'certificate_id' => $cleared_id );
 			$checkout->init_certificate_id();
@@ -231,25 +271,25 @@ namespace {
 		}
 
 		$checkout = reset_checkout( $version );
-		$checkout->default_id = 'owned';
+		$checkout->default_id = OWNED_CERTIFICATE_ID;
 		$checkout->init_certificate_id();
-		expect_same( 'owned', $checkout->get_certificate_id(), "$version: authorized default certificate remains supported" );
-		WC()->session->set( 'sst_packages', array( array( 'certificate_id' => 'owned' ) ) );
+		expect_same( OWNED_CERTIFICATE_ID, $checkout->get_certificate_id(), "$version: authorized default certificate remains supported" );
+		WC()->session->set( 'sst_packages', array( array( 'certificate_id' => OWNED_CERTIFICATE_ID ) ) );
 		$order = new Checkout_Exemption_Order();
 		$checkout->process( array(), $order );
-		expect_same( 'owned', $order->certificate_id, "$version: saved selection persists without final posted ID" );
+		expect_same( OWNED_CERTIFICATE_ID, $order->certificate_id, "$version: saved selection persists without final posted ID" );
 
 		$checkout = reset_checkout( $version );
 		$data = json_decode( $test_transients['_sst_certificates_19151'], true );
-		$data['owned']['Detail']['ExemptStates'][0]['StateAbbr'] = 'NC';
+		$data[ OWNED_CERTIFICATE_ID ]['Detail']['ExemptStates'][0]['StateAbbr'] = 'NC';
 		$test_transients['_sst_certificates_19151'] = wp_json_encode( $data );
-		WC()->session->set( 'sst_certificate_id', 'owned' );
+		WC()->session->set( 'sst_certificate_id', OWNED_CERTIFICATE_ID );
 		expect_same( 6.5, $checkout->excise_tax(), "$version: saved NC certificate cannot suppress CO excise" );
 
 		$checkout = reset_checkout( $version );
-		$_POST = array( 'post_data' => http_build_query( array( 'certificate_id' => 'owned' ) ) );
+		$_POST = array( 'post_data' => http_build_query( array( 'certificate_id' => OWNED_CERTIFICATE_ID ) ) );
 		$checkout->init_certificate_id();
-		expect_same( 'owned', $checkout->get_certificate()->getCertificateID(), "$version: owned certificate accepted from classic cart refresh" );
+		expect_same( OWNED_CERTIFICATE_ID, $checkout->get_certificate()->getCertificateID(), "$version: owned certificate accepted from classic cart refresh" );
 		expect_same( 0, $checkout->excise_tax(), "$version: owned CO certificate exempts excise" );
 		$test_user_id = 19153;
 		$test_transients['_sst_certificates_19153'] = '[]';
@@ -293,11 +333,11 @@ namespace {
 			expect_same( false, $checkout->validate( $data )->has_errors(), "$version $path: complete certificate accepted without posted selection" );
 			$order = new Checkout_Exemption_Order();
 			$checkout->process( $data, $order );
-			expect_same( 'created-certificate', $order->certificate_id, "$version $path: session selection registers and saves certificate" );
+			expect_same( CREATED_CERTIFICATE_ID, $order->certificate_id, "$version $path: session selection registers and saves certificate" );
 			expect_same( 1, Checkout_Exemption_API::$calls, "$version $path: certificate registered once" );
 		}
 
-		foreach ( array( '', new \RuntimeException( 'TaxCloud unavailable' ) ) as $failure ) {
+		foreach ( array( '', 'O:8:"stdClass":0:{}', new \RuntimeException( 'TaxCloud unavailable' ) ) as $failure ) {
 			$checkout = reset_checkout( $version );
 			WC()->session->set( 'sst_certificate_id', 'new' );
 			Checkout_Exemption_API::$result = $failure;

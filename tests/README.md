@@ -52,6 +52,33 @@ to the run's cookie and are restored after each case. The extra test customer an
 successful orders remain for inspection. These cases are omitted in live mode
 and the plugin suite remains local only.
 
+## Certificate ID and metadata security regression (DEV-10621)
+
+Run `npm run test:regression` for the standalone checks; no database or TaxCloud
+connection is needed. Coverage includes both API versions and both checkout
+paths, with serialized-object and query-string payloads placed in the certificate
+cache and session. Malformed IDs must not persist even when cached package IDs
+match. Valid customer GUIDs, `new`, and clearing a selection remain supported.
+
+The metadata checks verify that arbitrary classes cannot be instantiated by
+order reads or debug logging, that pre-7.0 certificate objects still provide
+their IDs and details, and that existing double-serialized package arrays remain
+usable. New package writes use WooCommerce's native serialization. Admin save,
+delete and recalculation reject malformed IDs; recalculation also preserves the
+internal single-purchase certificate selection.
+
+The JavaScript check executes the real request filter and parses its result to
+verify that `&order_id=` inside a selection cannot replace the original order or
+items. It checks the minified asset when present. After editing the source,
+regenerate that asset with:
+
+```sh
+node node_modules/uglify-js/bin/uglifyjs assets/js/meta-box.js --compress --mangle --output assets/js/meta-box.min.js
+```
+
+These checks stub the WordPress/WooCommerce boundary; they do not replace the
+browser suite or verify checkout against a running store.
+
 ## Admin order exemption regression (DEV-10586)
 
 `npm run test:e2e` includes three fixture scenarios for an administrator editing
