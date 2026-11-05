@@ -1,4 +1,5 @@
 // Keep suite selection separate from forwarded --env/--config Cypress options.
+delete process.env.ELECTRON_RUN_AS_NODE;
 const {spawn} = require('node:child_process');
 const path = require('node:path');
 const [suite = 'plugin', ...options] = process.argv.slice(2);

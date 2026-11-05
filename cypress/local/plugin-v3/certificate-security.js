@@ -30,6 +30,25 @@ module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder
       expect(quotes, 'real checkout requested tax from TaxCloud').not.to.be.empty;
       quotes.forEach((quote) => quote.request.items.forEach((item) => expect(item).not.to.have.property('exemption')));
     });
+    // Cypress .select() passes unescaped option values to Sizzle find(`option[value="${val}"]`).
+    // When val contains double quotes, Sizzle throws a syntax error.
+    if (Cypress && Cypress.$ && !Cypress.$.fn.__sstFindPatched) {
+      const origFind = Cypress.$.fn.find;
+      Cypress.$.fn.find = function (selector) {
+        try {
+          return origFind.apply(this, arguments);
+        } catch (err) {
+          if (typeof selector === 'string' && err.message && err.message.includes('Syntax error')) {
+            const match = selector.match(/^option\[value="([\s\S]*)"\]$/);
+            if (match) {
+              return this.find('option').filter((_, el) => el.value === match[1]);
+            }
+          }
+          throw err;
+        }
+      };
+      Cypress.$.fn.__sstFindPatched = true;
+    }
     const visitOrder = () => {
       login('admin');
       cy.then(() => cy.visit(fixture.editUrl));
@@ -71,22 +90,35 @@ module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder
       login(); cart();
       cy.then(() => cy.visit(getSite().checkoutBlock));
       cy.get('.wc-block-checkout').should('be.visible');
-      cy.intercept('POST', '**/wc/store/v1/cart/extensions*', (req) => {
-        if (req.body.namespace === 'simple-sales-tax' && req.body.data.certificate_id === fixture.serializedPayload) {
+      cy.intercept('POST', '**/wc/store/v1/**', (req) => {
+        if (req.url.includes('/cart/extensions') && req.body?.namespace === 'simple-sales-tax' && req.body?.data?.certificate_id === fixture.serializedPayload) {
           req.alias = 'serializedBlocksUpdate';
+        } else if (req.url.includes('/batch')) {
+          const extensionReq = req.body?.requests?.find((r) => r.path?.includes('/cart/extensions') && r.body?.namespace === 'simple-sales-tax');
+          if (extensionReq && extensionReq.body?.data?.certificate_id === fixture.serializedPayload) {
+            req.alias = 'serializedBlocksUpdate';
+          }
         }
       });
       cy.then(() => cy.get('#exemption-certificate-input').select(fixture.serializedPayload, { force: true }));
       cy.wait('@serializedBlocksUpdate', { timeout: 60000 }).then(({ request, response }) => {
-        expect(request.body.data).to.include({ action: 'set_certificate_id', certificate_id: fixture.serializedPayload });
-        expect(response.statusCode).to.equal(200);
-        expect(response.body.errors).to.be.empty;
-        expect(Number(response.body.totals.total_tax)).to.equal(1000);
-        expect(Number(response.body.totals.total_price)).to.equal(11000);
+        const batchReq = request.body?.requests?.find((r) => r.path?.includes('/cart/extensions'));
+        const reqData = batchReq ? batchReq.body.data : request.body.data;
+        const respBody = response.body?.responses ? response.body.responses[0].body : response.body;
+        const statusCode = response.body?.responses ? response.body.responses[0].status : response.statusCode;
+        expect(reqData).to.include({ action: 'set_certificate_id', certificate_id: fixture.serializedPayload });
+        expect(statusCode).to.equal(200);
+        expect(respBody.errors).to.be.empty;
+        expect(Number(respBody.totals.total_tax)).to.equal(1000);
+        expect(Number(respBody.totals.total_price)).to.equal(11000);
       });
       sessionSelection('');
       cy.get('.wc-block-components-totals-taxes .wc-block-components-totals-item__value')
-        .should(($tax) => expect(Number($tax.text().replace(/[^\d.]/g, ''))).to.equal(10));
+        .filter(':visible')
+        .should(($values) => {
+          expect($values.length, 'visible tax totals').to.be.greaterThan(0);
+          $values.each((_, value) => expect(Number(value.textContent.replace(/[^\d.]/g, ''))).to.equal(10));
+        });
       // Submit the real Store API endpoint with the same malformed extension
       // data, retaining the authenticated browser's WooCommerce session.
       cy.then(() => cy.request({
