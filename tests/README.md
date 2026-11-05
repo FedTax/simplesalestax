@@ -25,7 +25,7 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **35 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **40 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
@@ -53,6 +53,30 @@ successful orders remain for inspection. These cases are omitted in live mode
 and the plugin suite remains local only.
 
 ## Certificate ID and metadata security regression (DEV-10621)
+
+`npm run test:e2e` includes five fixture-only Cypress cases:
+
+- Classic checkout selects a customer-owned serialized-object ID, then submits
+  that ID again. The session clears it and the saved order retains $10 tax and
+  a $110 total, with no certificate.
+- Checkout Blocks sends the same selection through its real cart-extension
+  request. A final Store API checkout request also submits that ID and must save
+  the same taxable order. The test checks rendered Blocks tax and API totals.
+- An admin order containing a pre-7.0 serialized TaxCloud certificate displays
+  its GUID as the selected certificate.
+- Opening an order and clicking **View Debug Log** must not instantiate a
+  serialized test class. Its harmless `__wakeup()` only increments a scoped
+  fixture counter, which must remain zero after both actions.
+- Recalculating an order with a selection containing `&order_id=` must send only
+  the original order ID and receive an invalid-certificate response. Both the
+  original order and the other order must retain their items, totals and metadata.
+
+These cases use real WordPress serialization, WooCommerce sessions, browser
+scripts and persisted orders. Fixtures deliberately return malformed IDs as
+customer-owned certificates so ownership checks alone cannot satisfy the tests.
+Normal fixture certificate IDs are GUIDs. The temporary helper and scoped
+settings are removed on cleanup; test orders remain for inspection. All five
+cases are omitted in live mode, which remains at **15 expected passing** cases.
 
 Run `npm run test:regression` for the standalone checks; no database or TaxCloud
 connection is needed. Coverage includes both API versions and both checkout
@@ -127,7 +151,7 @@ for `99990`; it does not independently verify either rate against the live API.
 | Category `90505`, quantity changed from 1 to 2 | $15.00 | $13.00 | $228.00 |
 | Category `90505`, Minnesota destination | $10.00 (fixture) | None | $110.00 |
 
-Expect **35 passing** overall, including these **6 Colorado cases**. The first
+Expect **40 passing** overall, including these **6 Colorado cases**. The first
 Colorado test selects and saves category `99990` through the admin UI. Every
 Colorado test checks the effective product TIC, outgoing API payload,
 visible checkout totals and persisted order totals. Eligible Colorado orders
