@@ -8,6 +8,19 @@ function sst_e2e_context() {
   return ! empty( $context['run'] ) && hash_equals( $context['run'], (string) $run ) ? $context : null;
 }
 
+// Harmless deserialization canary for DEV-10621. The fixture stores its serialized
+// string through WooCommerce so WordPress still owns the first metadata decode.
+class SST_E2E_Certificate_Gadget {
+  public $run;
+  public function __construct( $run ) { $this->run = $run; }
+  public function __wakeup() {
+    $context = sst_e2e_context();
+    if ( ! $context || 'fixture' !== $context['mode'] || empty( $context['certificateSecurity'] ) || $this->run !== $context['run'] ) { return; }
+    ++$context['certificateSecurity']['wakeups'];
+    update_option( 'sst_cypress_v3_context', $context, false );
+  }
+}
+
 function sst_e2e_credentials( $context ) {
   if ( 'fixture' === $context['mode'] ) {
     return array(
@@ -40,6 +53,7 @@ add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
     $settings['addresses'][] = wp_json_encode( array( 'ID' => 'cypress-fl-origin', 'Default' => false,
       'Address1' => '200 Cypress St', 'Address2' => '', 'City' => 'Tavares', 'State' => 'FL', 'Zip5' => '32778', 'Zip4' => '' ) );
   }
+  if ( ! empty( $context['certificateSecurity'] ) ) { $settings['log_requests'] = 'yes'; }
   $credentials = sst_e2e_credentials( $context );
   $suffix = ! empty( $context['dataMover'] ) ? 'DataImport' : 'Realtime';
   $settings['tc_id'] = $credentials[ 'apiLoginID' . $suffix ];
@@ -201,7 +215,7 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
       if ( mb_strlen( $body['customerBusinessDescription'] ?? '', 'UTF-8' ) > 20 || mb_strlen( $body['reasonDescription'] ?? '', 'UTF-8' ) > 20 ) {
         $status = 422; $result = array( 'detail' => 'Certificate descriptions must be at most 20 characters.' );
       } else {
-        $id = 'cert-' . wp_generate_uuid4(); $status = 201;
+        $id = wp_generate_uuid4(); $status = 201;
         $result = array_merge( $body, array( 'certificateId' => $id, 'disabledAt' => null, 'createdDate' => gmdate( 'c' ) ) );
         $state['certificates'][ $id ] = $result;
       }
