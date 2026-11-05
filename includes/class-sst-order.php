@@ -17,6 +17,14 @@ use \TaxCloud\ExemptionCertificateBase;
  * @since   5.0
  */
 class SST_Order extends SST_Abstract_Cart {
+	/** Certificate data classes used by orders saved before SST 7.0. */
+	private const LEGACY_CERTIFICATE_CLASSES = array(
+		'TaxCloud\ExemptionCertificateBase',
+		'TaxCloud\ExemptionCertificate',
+		'TaxCloud\ExemptionCertificateDetail',
+		'TaxCloud\ExemptState',
+		'TaxCloud\TaxID',
+	);
 
 	/**
 	 * Prefix for meta keys.
@@ -1286,7 +1294,11 @@ class SST_Order extends SST_Abstract_Cart {
 	public function update_meta( $key, $value ) {
 		$key = self::$prefix . $key;
 
-		// WooCommerce handles serialization when persisting metadata.
+		// The posts data store only slashes strings before WordPress recursively
+		// unslashes metadata. Serialize arrays to preserve nested backslashes.
+		if ( ! is_string( $value ) ) {
+			$value = serialize( $value );
+		}
 		$this->order->update_meta_data( $key, $value );
 	}
 
@@ -1307,13 +1319,7 @@ class SST_Order extends SST_Abstract_Cart {
 			// Pre-7.0 orders can contain a double-serialized certificate. Never
 			// instantiate other plugins' classes from an order meta string.
 			$options = array(
-				'allowed_classes' => array(
-					'TaxCloud\\ExemptionCertificateBase',
-					'TaxCloud\\ExemptionCertificate',
-					'TaxCloud\\ExemptionCertificateDetail',
-					'TaxCloud\\ExemptState',
-					'TaxCloud\\TaxID',
-				),
+				'allowed_classes' => self::LEGACY_CERTIFICATE_CLASSES,
 			);
 			$certificate = @unserialize( $value, $options );
 			if ( false === $certificate ) {
@@ -1327,9 +1333,17 @@ class SST_Order extends SST_Abstract_Cart {
 				$value = $certificate;
 			}
 		} elseif ( is_string( $value ) && in_array( $key, array( 'packages', 'removed_packages' ), true ) && 0 === strpos( $value, 'a:' ) ) {
-			// Older releases also serialized package arrays before passing them
-			// to WooCommerce. Read those arrays without instantiating any classes.
-			$packages = @unserialize( $value, array( 'allowed_classes' => false ) );
+			// Pre-7.0 packages need these data objects for compression/migration.
+			// Never allow WC_Data/WC_Product or unrelated plugin classes to wake up.
+			$packages = @unserialize(
+				$value,
+				array(
+					'allowed_classes' => array_merge(
+						self::LEGACY_CERTIFICATE_CLASSES,
+						array( 'TaxCloud\Request\Lookup', 'TaxCloud\CartItem', 'TaxCloud\Address', 'WC_Shipping_Rate' )
+					),
+				)
+			);
 			if ( is_array( $packages ) ) {
 				$value = $packages;
 			}

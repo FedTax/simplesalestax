@@ -29,6 +29,8 @@ function current_user_can() { return true; }
 function get_current_user_id() { return 42; }
 function get_user_by( $field, $id ) { return 42 === $id ? (object) array( 'ID' => 42 ) : false; }
 function wp_json_encode( $value ) { return json_encode( $value ); }
+function sst_get_api_version() { return 'v1'; }
+function wc_get_orders() { return array( 123 ); }
 function sst_unslash( $value ) {
 	while ( strstr( $value, '\\\\' ) ) { $value = stripslashes( $value ); }
 	return $value;
@@ -58,9 +60,13 @@ class Certificate_Meta_Gadget {
 	public static $wakeups = 0;
 	public function __wakeup() { ++self::$wakeups; }
 }
+class WC_Product extends Certificate_Meta_Gadget {}
 
 require dirname( __DIR__ ) . '/includes/vendor/autoload.php';
 require dirname( __DIR__ ) . '/includes/class-sst-certificates.php';
+require dirname( __DIR__ ) . '/includes/class-sst-addresses.php';
+require dirname( __DIR__ ) . '/includes/vendor/woocommerce/woocommerce/plugins/woocommerce/includes/class-wc-shipping-rate.php';
+require dirname( __DIR__ ) . '/includes/sst-update-functions.php';
 require dirname( __DIR__ ) . '/includes/abstracts/class-sst-abstract-cart.php';
 require getenv( 'SST_ORDER_TEST_FILE' ) ?: dirname( __DIR__ ) . '/includes/class-sst-order.php';
 require dirname( __DIR__ ) . '/includes/class-sst-ajax.php';
@@ -117,6 +123,40 @@ expect_same( 0, Certificate_Meta_Gadget::$wakeups, 'Allowed legacy certificates 
 $test_order->meta['_wootax_single_purchase_cert'] = json_encode( array( 'IDNumber' => 'test\\\\tax\\identifier' ) );
 expect_same( $test_order->meta['_wootax_single_purchase_cert'], $order->get_meta( 'single_purchase_cert' ), 'JSON metadata keeps its intentional backslashes' );
 
+// Pre-7.0 packages must still compress, including in the real 7.0 updater.
+$origin = new TaxCloud\Address( '1 Origin St', '', 'Denver', 'CO', '80202' );
+$destination = new TaxCloud\Address( '2 Destination St', '', 'Denver', 'CO', '80203' );
+$legacy_certificate = new TaxCloud\ExemptionCertificateBase( TEST_CERTIFICATE_ID );
+$legacy_package = array(
+	'user' => array( 'ID' => 42 ), 'cart_id' => 'legacy-cart',
+	'request' => new TaxCloud\Request\Lookup( 'test-login', 'test-key', 42, 'legacy-cart',
+		array( new TaxCloud\CartItem( 0, 'product', 0, 100, 2 ) ), $origin, $destination, false, $legacy_certificate ),
+	'origin' => $origin, 'destination' => $destination,
+	'shipping' => new WC_Shipping_Rate( 'flat_rate:1', 'Flat rate', 5, array(), 'flat_rate' ),
+	'certificate' => $legacy_certificate, 'map' => array( array( 'type' => 'line_item', 'id' => 1 ) ),
+	'contents' => array( array( 'data' => new WC_Product() ) ), 'fees' => array( new Certificate_Meta_Gadget() ),
+);
+foreach ( array( 'packages', 'removed_packages' ) as $key ) {
+	$test_order->meta[ '_wootax_' . $key ] = serialize( array( $legacy_package ) );
+	$decoded = $order->get_meta( $key );
+	expect_same( TaxCloud\Request\Lookup::class, get_class( $decoded[0]['request'] ), "$key: legacy request survives" );
+	expect_same( TaxCloud\CartItem::class, get_class( $decoded[0]['request']->getCartItems()[0] ), "$key: legacy cart item survives" );
+	expect_same( WC_Shipping_Rate::class, get_class( $decoded[0]['shipping'] ), "$key: legacy shipping survives" );
+	expect_same( '__PHP_Incomplete_Class', get_class( $decoded[0]['contents'][0]['data'] ), "$key: WC products stay blocked" );
+	expect_same( '__PHP_Incomplete_Class', get_class( $decoded[0]['fees'][0] ), "$key: unrelated classes stay blocked" );
+}
+$compressed = $order->get_packages()[0];
+expect_same( array( array( 'type' => 'line_item', 'id' => 1, 'qty' => 2, 'tic' => 0, 'price' => 100 ) ), $compressed['cart_items'], 'Pre-7.0 request compresses its cart items' );
+expect_same( 'flat_rate', $compressed['shipping_method'], 'Pre-7.0 shipping method survives compression' );
+expect_same( 5.0, (float) $compressed['shipping_cost'], 'Pre-7.0 shipping cost survives compression' );
+expect_same( SST_Addresses::format( $origin ), $compressed['origin_address'], 'Pre-7.0 origin survives compression' );
+expect_same( SST_Addresses::format( $destination ), $compressed['destination_address'], 'Pre-7.0 destination survives compression' );
+expect_same( TEST_CERTIFICATE_ID, $compressed['certificate_id'], 'Pre-7.0 certificate survives compression' );
+expect_same( 0, Certificate_Meta_Gadget::$wakeups, 'Legacy reads and compression cannot wake products or gadgets' );
+expect_same( false, sst_update_700_compress_packages(), 'Actual background migration completes' );
+expect_same( '7.0.0', $test_order->meta['_wootax_db_version'], 'Actual migration saves the upgraded version' );
+expect_same( array( $compressed ), $order->get_packages(), 'Migrated packages remain usable' );
+
 $packages = array( array( 'api_version' => 'v1', 'cart_id' => 'saved-cart', 'customer_id' => 42,
 	'cart_items' => array( array( 'type' => 'line_item', 'id' => 1, 'qty' => 1, 'price' => 100, 'tic' => 0 ) ) ) );
 foreach ( array( 'packages', 'removed_packages' ) as $key ) {
@@ -125,7 +165,7 @@ foreach ( array( 'packages', 'removed_packages' ) as $key ) {
 }
 expect_same( $packages, $order->get_packages(), 'Legacy saved tax packages remain usable' );
 $order->set_packages( $packages );
-expect_same( $packages, $test_order->meta['_wootax_packages'], 'New packages are passed to WooCommerce as arrays' );
+expect_same( serialize( $packages ), $test_order->meta['_wootax_packages'], 'Package arrays are serialized before the WooCommerce boundary' );
 expect_same( $packages, $order->get_packages(), 'New packages remain usable' );
 $test_order->meta['_wootax_packages'] = serialize( array( new Certificate_Meta_Gadget() ) );
 $order->get_meta( 'packages' );
