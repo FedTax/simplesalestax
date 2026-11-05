@@ -127,9 +127,11 @@ class SST_Ajax {
 			return;
 		}
 
-		$certificate_id = sanitize_text_field(
-			wp_unslash( $_POST['certificate_id'] ?? '' )
-		);
+		$certificate_id = wp_unslash( $_POST['certificate_id'] ?? '' );
+		if ( ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
+			wp_send_json_error( __( 'Invalid exemption certificate ID.', 'simple-sales-tax' ) );
+			return;
+		}
 		$user_id        = absint(
 			wp_unslash( $_POST['user_id'] ?? 0 )
 		);
@@ -298,12 +300,17 @@ class SST_Ajax {
 		$state          = strtoupper( sanitize_text_field( wp_unslash( $_POST['state'] ) ) );
 		$postcode       = strtoupper( sanitize_text_field( wp_unslash( $_POST['postcode'] ) ) );
 		$city           = sanitize_text_field( wp_unslash( $_POST['city'] ) );
-		$certificate_id = sanitize_text_field(
-			wp_unslash( $_POST['exemption_certificate'] ?? '' )
-		);
+		$certificate_id = wp_unslash( $_POST['exemption_certificate'] ?? '' );
 
 		// Let Woo take the reins if the customer is international.
 		if ( 'US' !== $country ) {
+			return;
+		}
+
+		if ( '' === $certificate_id || 'none' === $certificate_id ) {
+			$certificate_id = '';
+		} elseif ( SST_SINGLE_PURCHASE_CERT_ID !== $certificate_id && ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
+			wp_die( esc_html__( 'Invalid exemption certificate ID.', 'simple-sales-tax' ) );
 			return;
 		}
 
@@ -428,8 +435,11 @@ class SST_Ajax {
 		$order_meta['tax']          = $order->get_total_tax();
 
 		// Get order meta.
+		$sst_order = new SST_Order( $order );
 		foreach ( $meta_keys as $key ) {
-			$order_meta[ $key ] = maybe_unserialize( $order->get_meta( $key, true ) );
+			$order_meta[ $key ] = 0 === strpos( $key, '_wootax_' )
+				? $sst_order->get_meta( substr( $key, strlen( '_wootax_' ) ) )
+				: $order->get_meta( $key, true );
 		}
 
 		// Logging
