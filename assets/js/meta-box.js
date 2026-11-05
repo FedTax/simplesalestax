@@ -285,7 +285,7 @@ jQuery(function($) {
 
 			if (settings.data.indexOf('action=woocommerce_calc_line_taxes') >= 0) {
 				var certificateId = this.model.get('selectedCertificate');
-				settings.data += '&exemption_certificate=' + certificateId;
+				settings.data += '&exemption_certificate=' + encodeURIComponent(certificateId);
 			}
 		}
 	});

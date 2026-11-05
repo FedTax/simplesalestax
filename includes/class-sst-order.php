@@ -597,13 +597,11 @@ class SST_Order extends SST_Abstract_Cart {
 
 		// Prior to SST 7.0 we saved the entire certificate object.
 		// Now we just save the certificate ID.
-		if ( is_object( $certificate_or_id ) && method_exists( $certificate_or_id, 'getCertificateID' ) ) {
-			return $certificate_or_id->getCertificateID();
-		} elseif ( is_object( $certificate_or_id ) && method_exists( $certificate_or_id, 'getCertificateId' ) ) {
-			return $certificate_or_id->getCertificateId();
+		if ( $certificate_or_id instanceof ExemptionCertificateBase ) {
+			$certificate_or_id = $certificate_or_id->getCertificateID();
 		}
 
-		return $certificate_or_id;
+		return is_string( $certificate_or_id ) ? $certificate_or_id : '';
 	}
 
 	/**
@@ -1288,10 +1286,7 @@ class SST_Order extends SST_Abstract_Cart {
 	public function update_meta( $key, $value ) {
 		$key = self::$prefix . $key;
 
-		if ( ! is_string( $value ) ) {
-			$value = serialize( $value ); /* $value must be a string */
-		}
-
+		// WooCommerce handles serialization when persisting metadata.
 		$this->order->update_meta_data( $key, $value );
 	}
 
@@ -1308,8 +1303,36 @@ class SST_Order extends SST_Abstract_Cart {
 	public function get_meta( $key = '', $single = true, $context = 'view' ) {
 		$value = $this->order->get_meta( self::$prefix . $key, $single, $context );
 
-		if ( is_string( $value ) ) {
-			$value = maybe_unserialize( sst_unslash( $value ) ); /* for WC 3.1.0+ */
+		if ( is_string( $value ) && 'exempt_cert' === $key && 0 === strpos( $value, 'O:' ) ) {
+			// Pre-7.0 orders can contain a double-serialized certificate. Never
+			// instantiate other plugins' classes from an order meta string.
+			$options = array(
+				'allowed_classes' => array(
+					'TaxCloud\\ExemptionCertificateBase',
+					'TaxCloud\\ExemptionCertificate',
+					'TaxCloud\\ExemptionCertificateDetail',
+					'TaxCloud\\ExemptState',
+					'TaxCloud\\TaxID',
+				),
+			);
+			$certificate = @unserialize( $value, $options );
+			if ( false === $certificate ) {
+				// Some older WooCommerce versions left extra slashes in meta.
+				$unslashed = sst_unslash( $value );
+				if ( $unslashed !== $value ) {
+					$certificate = @unserialize( $unslashed, $options );
+				}
+			}
+			if ( $certificate instanceof ExemptionCertificateBase ) {
+				$value = $certificate;
+			}
+		} elseif ( is_string( $value ) && in_array( $key, array( 'packages', 'removed_packages' ), true ) && 0 === strpos( $value, 'a:' ) ) {
+			// Older releases also serialized package arrays before passing them
+			// to WooCommerce. Read those arrays without instantiating any classes.
+			$packages = @unserialize( $value, array( 'allowed_classes' => false ) );
+			if ( is_array( $packages ) ) {
+				$value = $packages;
+			}
 		}
 
 		if ( empty( $value ) && array_key_exists( $key, self::$defaults ) ) {
