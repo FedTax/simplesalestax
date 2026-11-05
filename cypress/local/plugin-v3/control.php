@@ -52,6 +52,46 @@ if ( 'setup' === $action ) {
   }
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
+} elseif ( 'certificateAccess' === $action ) {
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Certificate access scenarios require fixture mode.' ); }
+  if ( empty( $context['certificateAccess'] ) ) {
+    $access = array( 'ownCertificateId' => wp_generate_uuid4(), 'foreignCertificateId' => wp_generate_uuid4() );
+    foreach ( array( 'foreign' => 'customer', 'manager' => 'shop_manager' ) as $name => $role ) {
+      $id = wp_insert_user( array( 'user_login' => $context['username'] . '-access-' . $name,
+        'user_pass' => $context['password'], 'user_email' => $context['username'] . '-access-' . $name . '@example.test', 'role' => $role ) );
+      if ( is_wp_error( $id ) ) { throw new Exception( $id->get_error_message() ); }
+      $access[ $name . 'UserId' ] = $id;
+    }
+    $context['certificateAccess'] = $access;
+    update_option( 'sst_cypress_v3_context', $context, false );
+  }
+  $access = $context['certificateAccess'];
+  $foreign = get_user_by( 'id', $access['foreignUserId'] );
+  $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array(), 'carts' => array(), 'orders' => array() ) );
+  foreach ( array( $access['ownCertificateId'] => (string) $context['customerId'], $access['foreignCertificateId'] => $foreign->user_email ) as $id => $identity ) {
+    $remote['certificates'][ $id ] = array( 'certificateId' => $id, 'customerId' => $identity,
+      'singlePurchase' => false, 'disabledAt' => null, 'createdDate' => gmdate( 'c' ),
+      'customerName' => 'Cypress Access Customer', 'customerBusinessType' => 'RetailTrade',
+      'reason' => 'Resale', 'reasonDescription' => 'QA resale exemption',
+      'address' => array( 'line1' => '323 Washington Ave N', 'line2' => '', 'city' => 'Minneapolis', 'state' => 'MN', 'zip' => '55401', 'countryCode' => 'US' ),
+      'states' => array( array( 'abbreviation' => 'MN' ) ) );
+  }
+  update_option( 'sst_cypress_v3_remote', $remote, false );
+  update_user_meta( $context['customerId'], 'billing_email', get_user_by( 'id', $context['customerId'] )->user_email );
+  SST_Certificates::delete_certificates( $context['customerId'] );
+  SST_Certificates::delete_certificates( $access['foreignUserId'] );
+  // Simulate a cache populated before DEV-10622; new code must ignore it.
+  set_transient( '_sst_certificates_' . $context['customerId'], wp_json_encode( array(
+    $access['foreignCertificateId'] => SST_Certificates::build_v1_cert_from_v3( $remote['certificates'][ $access['foreignCertificateId'] ] ),
+  ) ), 3 * DAY_IN_SECONDS );
+  $result = array_merge( $access, array( 'foreignEmail' => $foreign->user_email, 'adminId' => $context['adminId'],
+    'managerUsername' => get_user_by( 'id', $access['managerUserId'] )->user_login, 'managerPassword' => $context['password'] ) );
+} elseif ( 'certificateAccessReset' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['certificateAccess'] ) ) { throw new Exception( 'No certificate access scenario.' ); }
+  update_user_meta( $context['customerId'], 'billing_email', get_user_by( 'id', $context['customerId'] )->user_email );
+  SST_Certificates::delete_certificates( $context['customerId'] );
+  delete_transient( '_sst_certificates_' . $context['customerId'] );
+  $result = true;
 } elseif ( 'checkoutExemption' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Checkout exemption security scenarios require fixture mode.' ); }
   if ( empty( $context['foreignExemptionCustomerId'] ) ) {
@@ -329,6 +369,10 @@ if ( 'setup' === $action ) {
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock', 'productId' ) as $key ) { wp_trash_post( $context[ $key ] ); }
   if ( ! empty( $context['adminExemptionProductId'] ) ) { wp_trash_post( $context['adminExemptionProductId'] ); }
   if ( ! empty( $context['coCategoryId'] ) ) { wp_delete_term( $context['coCategoryId'], 'product_cat' ); }
+  if ( ! empty( $context['certificateAccess'] ) ) {
+    ( new WP_User( $context['certificateAccess']['managerUserId'] ) )->set_role( 'customer' );
+    delete_transient( '_sst_certificates_' . $context['customerId'] );
+  }
   foreach ( array( 'Realtime', 'DataImport' ) as $profile ) {
     $credentials = sst_e2e_credentials( $context );
     delete_transient( 'sst_tc_v3_token_' . md5( $credentials[ 'apiLoginID' . $profile ] . ':' . $credentials[ 'apiKey' . $profile ] ) );

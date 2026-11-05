@@ -26,6 +26,8 @@ function wp_die( $message = '' ) { throw new RuntimeException( (string) $message
 function wp_send_json_error( $message ) { throw new RuntimeException( $message ); }
 function wp_send_json_success() { throw new RuntimeException( 'success' ); }
 function current_user_can() { return true; }
+function get_current_user_id() { return 42; }
+function get_user_by( $field, $id ) { return 42 === $id ? (object) array( 'ID' => 42 ) : false; }
 function wp_json_encode( $value ) { return json_encode( $value ); }
 function sst_unslash( $value ) {
 	while ( strstr( $value, '\\\\' ) ) { $value = stripslashes( $value ); }
