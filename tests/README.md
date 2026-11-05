@@ -25,7 +25,7 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **40 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **43 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
@@ -51,6 +51,34 @@ session; it does not select or validate certificates. Fixture settings apply onl
 to the run's cookie and are restored after each case. The extra test customer and
 successful orders remain for inspection. These cases are omitted in live mode
 and the plugin suite remains local only.
+
+## Certificate access security regression (DEV-10622)
+
+`npm run test:e2e` includes three fixture-only cases:
+
+- A customer sends another customer's ID to add, read, refresh and delete with
+  valid nonces. Each request returns HTTP 403 with no certificate data and no
+  TaxCloud request.
+- A customer saves another customer's email through WooCommerce's billing address
+  form. Refreshing still returns only their own certificates. A cache seeded under
+  the old prefix cannot expose the foreign certificate either.
+- An administrator and a temporary shop manager create and read certificates for
+  a permitted customer. The shop manager cannot read an administrator's records.
+
+Only TaxCloud HTTP responses are simulated. The billing email is restored after
+each case, and suite cleanup demotes the temporary shop manager to customer.
+These cases do not run against live TaxCloud connections.
+
+The offline `php tests/certificate-access-regression.php` check covers both API
+paths, unauthorized requests without side effects, self-service, target-user
+permissions, nonce validation, deletion membership, cache invalidation, saved
+checkout selections, server-rendered certificate data, order debug authorization
+and background processing.
+It is included in `npm run test:regression`.
+
+Certificates stored only under a billing email that differs from the account's
+email no longer appear. Authorized staff can recreate them for the correct
+customer. Existing certificate caches are ignored automatically after the fix.
 
 ## Certificate ID and metadata security regression (DEV-10621)
 
