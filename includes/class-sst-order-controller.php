@@ -294,9 +294,13 @@ class SST_Order_Controller {
 			return;
 		}
 
-		$certificate_id = sanitize_text_field(
-			wp_unslash( $_POST['exempt_cert'] ?? '' )
-		);
+		$certificate_id = wp_unslash( $_POST['exempt_cert'] ?? '' );
+		if ( 'none' === $certificate_id ) {
+			$certificate_id = '';
+		}
+		if ( '' !== $certificate_id && SST_SINGLE_PURCHASE_CERT_ID !== $certificate_id && ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
+			return;
+		}
 		if ( $certificate_id && SST_SINGLE_PURCHASE_CERT_ID !== $certificate_id ) {
 			$packages = $order->get_packages();
 			if ( $packages ) {

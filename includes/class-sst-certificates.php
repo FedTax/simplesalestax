@@ -130,6 +130,17 @@ class SST_Certificates {
 	}
 
 	/**
+	 * Check the GUID format used by TaxCloud certificate IDs.
+	 *
+	 * @param mixed $certificate_id Certificate ID.
+	 * @return bool
+	 */
+	public static function is_valid_certificate_id( $certificate_id ) {
+		return is_string( $certificate_id )
+			&& 1 === preg_match( '/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i', $certificate_id );
+	}
+
+	/**
 	 * Validate a checkout certificate selection for the current customer.
 	 *
 	 * @param mixed $certificate_id Certificate ID or the new-certificate selection.
@@ -151,6 +162,10 @@ class SST_Certificates {
 
 		if ( 'new' === $certificate_id ) {
 			return 'new';
+		}
+
+		if ( ! self::is_valid_certificate_id( $certificate_id ) ) {
+			return '';
 		}
 
 		try {

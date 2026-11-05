@@ -822,7 +822,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		if ( isset( $post_data['certificate_id'] ) ) {
 			$selection = is_string( $post_data['certificate_id'] )
-				? sanitize_text_field( wp_unslash( $post_data['certificate_id'] ) )
+				? wp_unslash( $post_data['certificate_id'] )
 				: '';
 			$certificate_id = SST_Certificates::get_checkout_certificate_id( $selection );
 
@@ -1016,7 +1016,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 					$purchaser
 				);
 
-				if ( ! is_string( $certificate_id ) || '' === $certificate_id ) {
+				if ( ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
 					throw new Exception( __( 'TaxCloud did not return an exemption certificate ID.', 'simple-sales-tax' ) );
 				}
 
@@ -1070,7 +1070,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		$order = new SST_Order( $wc_order );
 
-		$certificate_id = $this->get_certificate_id();
+		$certificate_id = SST_Certificates::get_checkout_certificate_id( $this->get_certificate_id() );
 
 		if ( 'new' === $certificate_id ) {
 			$errors = new WP_Error();

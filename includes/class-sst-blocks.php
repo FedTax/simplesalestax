@@ -111,9 +111,7 @@ class SST_Blocks {
 		switch ( $action ) {
 			case 'set_certificate_id':
 				$selection      = $data['certificate_id'] ?? '';
-				$certificate_id = SST_Certificates::get_checkout_certificate_id(
-					is_string( $selection ) ? sanitize_text_field( $selection ) : ''
-				);
+				$certificate_id = SST_Certificates::get_checkout_certificate_id( $selection );
 				WC()->session->set(
 					'sst_certificate_id',
 					$certificate_id
