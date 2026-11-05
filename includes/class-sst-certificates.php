@@ -21,7 +21,31 @@ class SST_Certificates {
 	 * @var string
 	 * @since 5.0
 	 */
-	const TRANS_PREFIX = '_sst_certificates_';
+	// Ignore caches populated using the former, editable billing-email identity.
+	const TRANS_PREFIX = '_sst_certificates_v2_';
+
+	/**
+	 * Check access to a customer's certificates at an interactive entry point.
+	 * Internal reads and creation also run during background order processing.
+	 *
+	 * @param int $user_id Certificate owner's WordPress user ID.
+	 * @return bool
+	 */
+	public static function current_user_can_manage_certificates( $user_id ) {
+		$user_id         = (int) $user_id;
+		$current_user_id = get_current_user_id();
+
+		if ( ! $current_user_id || $user_id < 1 || ! get_user_by( 'id', $user_id ) ) {
+			return false;
+		}
+
+		if ( $user_id === $current_user_id ) {
+			return true;
+		}
+
+		return ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) )
+			&& current_user_can( 'edit_user', $user_id );
+	}
 
 	/**
 	 * Check whether certificates are cached for a customer without triggering an API fetch.
@@ -560,7 +584,6 @@ class SST_Certificates {
 			array(
 				(string) $user->ID,
 				$user->user_email,
-				get_user_meta( $user->ID, 'billing_email', true ),
 				$user->user_login,
 				'customer-' . $user->ID,
 			)
@@ -991,7 +1014,7 @@ class SST_Certificates {
 	 * @return bool Can the user delete the certificate?
 	 */
 	protected static function user_can_delete_certificate( $user_id, $certificate_id ) {
-		if ( ! current_user_can( 'edit_user', $user_id ) ) {
+		if ( ! self::current_user_can_manage_certificates( $user_id ) ) {
 			return false;
 		}
 
