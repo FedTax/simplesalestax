@@ -635,6 +635,7 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
   });
 
   if (fixture) {
+    require('./checkout-exemption')({ task, records, login, cart, checkout, visibleTax, placeOrder, getSite: () => site });
     require('./admin-exemption')({ task, records, login, getSite: () => site });
     require('./co-tax')(() => site);
   }
