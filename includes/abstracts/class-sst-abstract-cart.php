@@ -1402,7 +1402,12 @@ abstract class SST_Abstract_Cart {
 			return 0;
 		}
 
-		if ( ! is_null( $this->get_certificate() ) ) {
+		$certificate = $this->get_certificate();
+		if ( $certificate instanceof \TaxCloud_V3\Model\Exemption ) {
+			$certificate = new \TaxCloud\ExemptionCertificateBase( $certificate->getCertificateID() );
+		}
+		$user_id = $this instanceof SST_Order ? $this->get_customer_id() : get_current_user_id();
+		if ( SST_Certificates::certificate_covers_state( $certificate, $state, $user_id ) ) {
 			return 0;
 		}
 

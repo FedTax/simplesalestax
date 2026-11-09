@@ -26,7 +26,7 @@ add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
   $context = sst_e2e_context();
   if ( ! $context ) { return $settings; }
   $settings = array_merge( $settings, array(
-    'api_version' => 'v3', 'disable_integration' => 'no', 'show_exempt' => 'true',
+    'api_version' => 'v3', 'disable_integration' => 'no', 'show_exempt' => ( $context['showExempt'] ?? true ) ? 'true' : 'false',
     'restrict_exempt' => 'no', 'enable_taxcloud_rate_limit' => 'no',
     'capture_orders_in_taxcloud' => 'yes', 'capture_trigger' => 'completed',
     'show_zero_tax' => 'true', 'disable_virtual_split' => 'no',
@@ -92,6 +92,19 @@ add_filter( 'woocommerce_package_rates', function( $rates ) {
     ? array( 'sst-address-test' => new WC_Shipping_Rate( 'sst-address-test', 'Cypress address test shipping', 0, array(), 'flat_rate' ) )
     : $rates;
 }, 100 );
+foreach ( array( 'woocommerce_enable_guest_checkout' => 'yes', 'woocommerce_enable_signup_and_login_from_checkout' => 'no' ) as $option => $value ) {
+  add_filter( 'option_' . $option, function( $saved ) use ( $value ) {
+    $context = sst_e2e_context();
+    return $context && 'fixture' === $context['mode'] && ! empty( $context['checkoutExemption'] ) ? $value : $saved;
+  } );
+}
+// Observe the real frontend WC session without invoking SST's validating getter.
+add_action( 'template_redirect', function() {
+  if ( ! isset( $_GET['sst_e2e_checkout_exemption_session'] ) ) { return; }
+  $context = sst_e2e_context();
+  if ( ! $context || 'fixture' !== $context['mode'] || empty( $context['checkoutExemption'] ) ) { return; }
+  wp_send_json_success( array( 'certificateId' => WC()->session->get( 'sst_certificate_id', '' ) ) );
+}, 0 );
 // Test emails never go to a mail transport.
 add_filter( 'pre_wp_mail', function( $result ) { return sst_e2e_context() ? true : $result; } );
 add_filter( 'sst_package_order_id', function( $id, $order, $key ) {

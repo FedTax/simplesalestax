@@ -44,7 +44,7 @@ if ( 'setup' === $action ) {
   $result = array_intersect_key( $context, array_flip( array( 'username', 'password', 'productId', 'customerId', 'mode' ) ) );
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock' ) as $key ) { $result[ $key ] = get_permalink( $context[ $key ] ); }
 } elseif ( 'configure' === $action ) {
-  foreach ( array( 'dataMover', 'blocks', 'unconfigured' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
+  foreach ( array( 'dataMover', 'blocks', 'unconfigured', 'showExempt', 'checkoutExemption' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
   if ( array_key_exists( 'failure', $input ) ) {
     if ( ! in_array( $input['failure'], array( false, true, 'capture', 'refund' ), true ) ) { throw new Exception( 'Unknown fixture failure.' ); }
     if ( 'live' === $context['mode'] && false !== $input['failure'] ) { throw new Exception( 'Failure injection is fixture only.' ); }
@@ -113,6 +113,38 @@ if ( 'setup' === $action ) {
     $order->calculate_totals( false ); $order->save();
   }
   $result = array( 'id' => $order->get_id() );
+} elseif ( 'checkoutExemption' === $action ) {
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Checkout exemption security scenarios require fixture mode.' ); }
+  if ( empty( $context['foreignExemptionCustomerId'] ) ) {
+    $user_id = wp_insert_user( array( 'user_login' => $context['username'] . '-foreign',
+      'user_pass' => wp_generate_password( 24, false ), 'user_email' => $context['username'] . '-foreign@example.test', 'role' => 'customer' ) );
+    if ( is_wp_error( $user_id ) ) { throw new Exception( $user_id->get_error_message() ); }
+    $context['foreignExemptionCustomerId'] = $user_id;
+    $context['foreignExemptionCertificateId'] = 'cert-dev-10620-' . $context['run'];
+    $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array(), 'carts' => array(), 'orders' => array() ) );
+    $remote['certificates'][ $context['foreignExemptionCertificateId'] ] = array(
+      'certificateId' => $context['foreignExemptionCertificateId'], 'customerId' => 'customer-' . $user_id,
+      'singlePurchase' => false, 'disabledAt' => null, 'createdDate' => gmdate( 'c' ),
+      'customerName' => 'Cypress Other Customer', 'customerBusinessType' => 'RetailTrade',
+      'reason' => 'Resale', 'reasonDescription' => 'QA resale exemption',
+      'address' => array( 'line1' => '323 Washington Ave N', 'line2' => '', 'city' => 'Minneapolis', 'state' => 'MN', 'zip' => '55401', 'countryCode' => 'US' ),
+      'states' => array( array( 'abbreviation' => 'MN' ) ),
+    );
+    update_option( 'sst_cypress_v3_remote', $remote, false );
+  }
+  $context['checkoutExemption'] = true;
+  $context['showExempt'] = true;
+  update_option( 'sst_cypress_v3_context', $context, false );
+  SST_Certificates::delete_certificates( $context['customerId'] );
+  $result = array( 'foreignCustomerId' => $context['foreignExemptionCustomerId'], 'foreignCertificateId' => $context['foreignExemptionCertificateId'] );
+} elseif ( 'checkoutExemptionState' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['checkoutExemption'] ) ) { throw new Exception( 'No checkout exemption security scenario.' ); }
+  $order_ids = wc_get_orders( array( 'customer_id' => $context['customerId'], 'return' => 'ids', 'limit' => -1 ) );
+  sort( $order_ids, SORT_NUMERIC );
+  $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array() ) );
+  $certificate_ids = array_keys( $remote['certificates'] );
+  sort( $certificate_ids, SORT_STRING );
+  $result = array( 'orderIds' => $order_ids, 'certificateIds' => $certificate_ids );
 } elseif ( 'adminExemption' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Admin exemption scenarios require fixture mode.' ); }
   wp_set_current_user( $context['adminId'] );
@@ -204,8 +236,10 @@ if ( 'setup' === $action ) {
   $result = true;
 } elseif ( 'order' === $action ) {
   $order = wc_get_order( $input['id'] );
-  if ( ! $order || (int) $order->get_customer_id() !== (int) $context['customerId'] ) { throw new Exception( 'This is not an order belonging to the test customer.' ); }
-  $result = array( 'id' => $order->get_id(), 'status' => $order->get_status(), 'tax' => (float) $order->get_total_tax(),
+  $guest_order = $order && 'fixture' === $context['mode'] && ! empty( $context['checkoutExemption'] )
+    && 0 === (int) $order->get_customer_id() && $order->get_billing_email() === $context['username'] . '-guest@example.test';
+  if ( ! $order || ( (int) $order->get_customer_id() !== (int) $context['customerId'] && ! $guest_order ) ) { throw new Exception( 'This is not an order belonging to the test customer.' ); }
+  $result = array( 'id' => $order->get_id(), 'customerId' => (int) $order->get_customer_id(), 'status' => $order->get_status(), 'tax' => (float) $order->get_total_tax(),
     'total' => (float) $order->get_total(), 'taxcloudStatus' => $order->get_meta( '_wootax_status' ),
     'refunded' => (float) $order->get_total_refunded(), 'remainingRefund' => (float) $order->get_remaining_refund_amount(),
     'refundIds' => array_map( function( $refund ) { return $refund->get_id(); }, $order->get_refunds() ),

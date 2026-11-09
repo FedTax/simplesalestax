@@ -339,6 +339,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @return bool
 	 */
 	protected function new_certificate_covers_packages( $state ) {
+		if ( ! is_string( $state ) ) {
+			return false;
+		}
+
 		$state = strtoupper( trim( (string) $state ) );
 		if ( ! $state || ! WC()->cart ) {
 			return false;
@@ -364,6 +368,31 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Include an eligible new certificate in the excise tax estimate.
+	 * Its fields must still be validated and the certificate saved at checkout.
+	 *
+	 * @param array  $items Cart items.
+	 * @param string $state Destination state.
+	 * @return float
+	 */
+	protected function calculate_excise_tax( $items, $state ) {
+		if ( 'new' === $this->get_certificate_id() ) {
+			$post_data    = $this->get_post_data();
+			$exempt_state = $post_data['certificate']['ExemptState']
+				?? WC()->session->get( 'sst_new_certificate_state', '' );
+			if (
+				is_string( $exempt_state )
+				&& strtoupper( trim( $exempt_state ) ) === strtoupper( $state )
+				&& $this->new_certificate_covers_packages( $exempt_state )
+			) {
+				return 0;
+			}
+		}
+
+		return parent::calculate_excise_tax( $items, $state );
 	}
 
 	/**
@@ -777,7 +806,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	/**
 	 * Get the exemption certificate for the customer.
 	 *
-	 * @return ExemptionCertificateBase
+	 * @return ExemptionCertificateBase|null
 	 */
 	public function get_certificate() {
 		if ( 'data_mover' === sst_integration_mode() ) {
@@ -786,7 +815,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		$certificate_id = $this->get_certificate_id();
 
-		if ( $certificate_id && 'none' !== $certificate_id ) {
+		if ( $certificate_id && 'new' !== $certificate_id ) {
 			// Apply saved entity-based cert
 			return new ExemptionCertificateBase( $certificate_id );
 		}
@@ -822,37 +851,39 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return;
 		}
 
-		if ( 'data_mover' === sst_integration_mode() ) {
-			WC()->session->set( 'sst_certificate_id', '' );
+		// Revalidate selections retained from earlier requests or customers.
+		$current_cert_id = $this->get_certificate_id();
+		if ( ! is_user_logged_in() || ! sst_should_show_tax_exemption_form() || 'data_mover' === sst_integration_mode() ) {
 			return;
 		}
 
 		$post_data = $this->get_post_data();
 
 		if ( isset( $post_data['certificate_id'] ) ) {
-			$certificate_id = sanitize_text_field(
-				wp_unslash( $post_data['certificate_id'] )
-			);
+			$selection = is_string( $post_data['certificate_id'] )
+				? sanitize_text_field( wp_unslash( $post_data['certificate_id'] ) )
+				: '';
+			$certificate_id = SST_Certificates::get_checkout_certificate_id( $selection );
 
-			if ( 'none' === $certificate_id ) {
-				$certificate_id = '';
+			if ( 'none' === $selection || '' === $selection ) {
 				WC()->session->set( 'sst_cert_explicitly_cleared', true );
 			} else {
 				WC()->session->set( 'sst_cert_explicitly_cleared', false );
 			}
 
-			if ( $certificate_id !== WC()->session->get( 'sst_certificate_id' ) ) {
+			if ( $certificate_id !== $current_cert_id ) {
 				WC()->session->set( 'sst_certificate_id', $certificate_id );
 				WC()->session->set( 'sst_packages', array() ); // Clear cache on selection change
+				WC()->session->set( 'sst_new_certificate_state', '' );
 			}
 		} else {
-			$current_cert_id = WC()->session->get( 'sst_certificate_id' );
-			$is_cleared      = (bool) WC()->session->get( 'sst_cert_explicitly_cleared', false );
+			$is_cleared = (bool) WC()->session->get( 'sst_cert_explicitly_cleared', false );
 
-			if ( ( is_null( $current_cert_id ) || '' === $current_cert_id ) && ! $is_cleared ) {
-				$default_id = $this->get_default_certificate_id();
+			if ( '' === $current_cert_id && ! $is_cleared ) {
+				$default_id = SST_Certificates::get_checkout_certificate_id( $this->get_default_certificate_id() );
 				if ( ! empty( $default_id ) ) {
 					WC()->session->set( 'sst_certificate_id', $default_id );
+					WC()->session->set( 'sst_packages', array() );
 				}
 			}
 		}
@@ -871,7 +902,20 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 7.0.0
 	 */
 	public function get_certificate_id() {
-		return WC()->session->get( 'sst_certificate_id', '' );
+		if ( ! WC()->session ) {
+			return '';
+		}
+
+		$selection      = WC()->session->get( 'sst_certificate_id', '' );
+		$certificate_id = SST_Certificates::get_checkout_certificate_id( $selection );
+
+		if ( $certificate_id !== $selection ) {
+			WC()->session->set( 'sst_certificate_id', $certificate_id );
+			WC()->session->set( 'sst_packages', array() );
+			WC()->session->set( 'sst_new_certificate_state', '' );
+		}
+
+		return $certificate_id;
 	}
 
 	/**
@@ -970,8 +1014,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 	protected function create_exemption_certificate( $data, $order ) {
 		$certificate = $data['certificate'] ?? [];
 
-		if ( ! $certificate ) {
-			return;
+		if ( ! is_array( $certificate ) || ! $certificate ) {
+			throw new Exception( __( 'Required exemption certificate fields are missing', 'simple-sales-tax' ) );
 		}
 
 		if ( $order->get_certificate_id() ) {
@@ -1010,6 +1054,10 @@ class SST_Checkout extends SST_Abstract_Cart {
 					$certificate,
 					$purchaser
 				);
+
+				if ( ! is_string( $certificate_id ) || '' === $certificate_id ) {
+					throw new Exception( __( 'TaxCloud did not return an exemption certificate ID.', 'simple-sales-tax' ) );
+				}
 
 				$order->set_certificate_id( $certificate_id );
 			} else {
@@ -1062,13 +1110,14 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$order = new SST_Order( $wc_order );
 		SST_Addresses::save_order_verification( $wc_order, WC()->session->get( 'sst_address_verification', array() ) );
 
-		if ( 'data_mover' === sst_integration_mode() ) {
-			$certificate_id = '';
-		} else {
-			$certificate_id = $data['certificate_id'] ?? '';
-		}
+		$certificate_id = $this->get_certificate_id();
 
 		if ( 'new' === $certificate_id ) {
+			$errors = new WP_Error();
+			$this->validate_exemption_certificate( $data, $errors );
+			if ( $errors->has_errors() ) {
+				throw new Exception( esc_html( $errors->get_error_message() ) );
+			}
 			$this->create_exemption_certificate( $data, $order );
 			return;
 		}
@@ -1272,8 +1321,8 @@ class SST_Checkout extends SST_Abstract_Cart {
 			return;
 		}
 
-		$certificate_id = $data['certificate_id'] ?? '';
-		$certificate    = $data['certificate'] ?? [];
+		$certificate_id = $this->get_certificate_id();
+		$certificate    = isset( $data['certificate'] ) && is_array( $data['certificate'] ) ? $data['certificate'] : array();
 
 		if ( 'new' !== $certificate_id ) {
 			return;
