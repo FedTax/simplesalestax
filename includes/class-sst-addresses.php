@@ -112,7 +112,12 @@ class SST_Addresses {
 	 * @since 5.0
 	 */
 	public static function verify_address( $address, &$outcome = null ) {
-		$outcome = array( 'status' => 'skipped', 'reason' => 'missing_street_or_zip', 'changes' => array() );
+		$outcome = array(
+			'input_hash' => md5( wp_json_encode( $address ) ),
+			'status'     => 'skipped',
+			'reason'     => 'missing_street_or_zip',
+			'changes'    => array(),
+		);
 		$is_v3   = 'v3' === sst_get_api_version();
 		if (
 			is_null( $address )
@@ -121,8 +126,6 @@ class SST_Addresses {
 		) {
 			return $address;
 		}
-		$outcome['input_hash'] = md5( wp_json_encode( $address ) );
-
 		// TaxCloud VerifyAddress requires a street address (Address1) and Zip5.
 		// If either is missing, skip the API call to avoid 400 Bad Request errors.
 		if ( empty( $address->getAddress1() ) || empty( $address->getZip5() ) ) {
