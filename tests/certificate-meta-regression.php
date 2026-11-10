@@ -155,6 +155,20 @@ expect_same( false, sst_update_700_compress_packages(), 'Actual background migra
 expect_same( '7.0.0', $test_order->meta['_wootax_db_version'], 'Actual migration saves the upgraded version' );
 expect_same( array( $compressed ), $order->get_packages(), 'Migrated packages remain usable' );
 
+// Old WooCommerce rows can have an extra layer of slashes on serialized packages.
+foreach ( array( 'packages', 'removed_packages' ) as $key ) {
+	$test_order->meta[ '_wootax_' . $key ] = addslashes( serialize( array( $legacy_package ) ) );
+	$decoded = $order->get_meta( $key );
+	expect_same( true, is_array( $decoded ), "$key: slashed legacy packages decode to arrays" );
+	expect_same( TaxCloud\Request\Lookup::class, get_class( $decoded[0]['request'] ), "$key: slashed legacy request survives" );
+	expect_same( '__PHP_Incomplete_Class', get_class( $decoded[0]['contents'][0]['data'] ), "$key: slashed WC products remain blocked" );
+	expect_same( '__PHP_Incomplete_Class', get_class( $decoded[0]['fees'][0] ), "$key: slashed unrelated classes remain blocked" );
+}
+expect_same( array( $compressed ), $order->get_packages(), 'Slashed pre-7.0 packages still compress' );
+expect_same( false, sst_update_700_compress_packages(), 'Actual migration accepts slashed legacy package rows' );
+expect_same( array( $compressed ), $order->get_packages(), 'Migrated slashed packages remain usable' );
+expect_same( 0, Certificate_Meta_Gadget::$wakeups, 'Unslashing never bypasses the allowed-class list' );
+
 $packages = array( array( 'api_version' => 'v1', 'cart_id' => 'saved-cart', 'customer_id' => 42,
 	'cart_items' => array( array( 'type' => 'line_item', 'id' => 1, 'qty' => 1, 'price' => 100, 'tic' => 0 ) ) ) );
 foreach ( array( 'packages', 'removed_packages' ) as $key ) {

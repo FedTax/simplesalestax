@@ -1318,30 +1318,18 @@ class SST_Order extends SST_Abstract_Cart {
 		if ( is_string( $value ) && 'exempt_cert' === $key && 0 === strpos( $value, 'O:' ) ) {
 			// Pre-7.0 orders can contain a double-serialized certificate. Never
 			// instantiate other plugins' classes from an order meta string.
-			$options = array(
-				'allowed_classes' => self::LEGACY_CERTIFICATE_CLASSES,
-			);
-			$certificate = @unserialize( $value, $options );
-			if ( false === $certificate ) {
-				// Some older WooCommerce versions left extra slashes in meta.
-				$unslashed = sst_unslash( $value );
-				if ( $unslashed !== $value ) {
-					$certificate = @unserialize( $unslashed, $options );
-				}
-			}
+			$certificate = $this->decode_legacy_meta( $value, self::LEGACY_CERTIFICATE_CLASSES );
 			if ( $certificate instanceof ExemptionCertificateBase ) {
 				$value = $certificate;
 			}
 		} elseif ( is_string( $value ) && in_array( $key, array( 'packages', 'removed_packages' ), true ) && 0 === strpos( $value, 'a:' ) ) {
 			// Pre-7.0 packages need these data objects for compression/migration.
 			// Never allow WC_Data/WC_Product or unrelated plugin classes to wake up.
-			$packages = @unserialize(
+			$packages = $this->decode_legacy_meta(
 				$value,
-				array(
-					'allowed_classes' => array_merge(
-						self::LEGACY_CERTIFICATE_CLASSES,
-						array( 'TaxCloud\Request\Lookup', 'TaxCloud\CartItem', 'TaxCloud\Address', 'WC_Shipping_Rate' )
-					),
+				array_merge(
+					self::LEGACY_CERTIFICATE_CLASSES,
+					array( 'TaxCloud\Request\Lookup', 'TaxCloud\CartItem', 'TaxCloud\Address', 'WC_Shipping_Rate' )
 				)
 			);
 			if ( is_array( $packages ) ) {
@@ -1354,6 +1342,27 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Decode legacy metadata, retaining the same class restrictions on a retry.
+	 *
+	 * @param string $value           Serialized metadata.
+	 * @param array  $allowed_classes Legacy data classes allowed for this key.
+	 * @return mixed Decoded value, or false on failure.
+	 */
+	private function decode_legacy_meta( $value, $allowed_classes ) {
+		$options = array( 'allowed_classes' => $allowed_classes );
+		$decoded = @unserialize( $value, $options );
+		if ( false === $decoded ) {
+			// Some older WooCommerce versions left extra slashes in meta. Try the
+			// original first so valid serialized strings keep their backslashes.
+			$unslashed = sst_unslash( $value );
+			if ( $unslashed !== $value ) {
+				$decoded = @unserialize( $unslashed, $options );
+			}
+		}
+		return $decoded;
 	}
 
 	/**
