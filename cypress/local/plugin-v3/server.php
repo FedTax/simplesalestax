@@ -8,6 +8,23 @@ function sst_e2e_context() {
   return ! empty( $context['run'] ) && hash_equals( $context['run'], (string) $run ) ? $context : null;
 }
 
+// LocalWP may have live gateway integrations absent from the seeded Docker site.
+// These scenarios use cheque payments; keep unrelated Stripe scripts off test pages.
+add_filter( 'option_active_plugins', function( $plugins ) {
+  $context = sst_e2e_context();
+  return $context && ! empty( $context['localwp'] )
+    ? array_values( array_diff( $plugins, array( 'woocommerce-gateway-stripe/woocommerce-gateway-stripe.php' ) ) )
+    : $plugins;
+} );
+
+// Astra's fallback menu otherwise lists the run's long disposable page titles,
+// pushing checkout summaries out of view. Keep normal storefront navigation.
+add_filter( 'wp_list_pages_excludes', function( $ids ) {
+  $context = sst_e2e_context();
+  return $context ? array_merge( $ids, array_values( array_intersect_key( $context,
+    array_flip( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock' ) ) ) ) ) : $ids;
+} );
+
 // Harmless deserialization canary for DEV-10621. The fixture stores its serialized
 // string through WooCommerce so WordPress still owns the first metadata decode.
 class SST_E2E_Certificate_Gadget {
@@ -40,7 +57,10 @@ add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
   if ( ! $context ) { return $settings; }
   $settings = array_merge( $settings, array(
     'api_version' => 'v3', 'disable_integration' => 'no', 'show_exempt' => ( $context['showExempt'] ?? true ) ? 'true' : 'false',
-    'restrict_exempt' => 'no', 'enable_taxcloud_rate_limit' => 'no',
+    'restrict_exempt' => 'no', 'enable_taxcloud_rate_limit' => ! empty( $context['rateLimit'] ) ? 'yes' : 'no',
+    'taxcloud_rate_limit_requests' => 5, 'taxcloud_rate_limit_window' => 60,
+    'taxcloud_rate_limit_scope' => 'customer', 'taxcloud_rate_limit_skip_admin' => 'no',
+    'show_rate_limit_notice' => 'no', 'force_tax_lookup' => ! empty( $context['rateLimit'] ) ? 'yes' : 'no',
     'capture_orders_in_taxcloud' => 'yes', 'capture_trigger' => 'completed',
     'show_zero_tax' => 'true', 'disable_virtual_split' => 'no',
     'data_mover' => ! empty( $context['dataMover'] ),
@@ -87,9 +107,41 @@ add_filter( 'option_woocommerce_cheque_settings', function( $settings ) {
 foreach ( array( 'woocommerce_enable_guest_checkout' => 'yes', 'woocommerce_enable_signup_and_login_from_checkout' => 'no' ) as $option => $value ) {
   add_filter( 'option_' . $option, function( $saved ) use ( $value ) {
     $context = sst_e2e_context();
-    return $context && 'fixture' === $context['mode'] && ! empty( $context['checkoutExemption'] ) ? $value : $saved;
+    return $context && 'fixture' === $context['mode'] && ( ! empty( $context['checkoutExemption'] ) || ! empty( $context['rateLimit'] ) ) ? $value : $saved;
   } );
 }
+// Match the Docker test helper on LocalWP, scoped strictly to this run.
+add_filter( 'woocommerce_store_api_disable_nonce_check', function( $disabled ) {
+  $context = sst_e2e_context();
+  return $context && ! empty( $context['localwp'] ) ? true : $disabled;
+} );
+add_action( 'woocommerce_order_status_on-hold', function( $id ) {
+  $context = sst_e2e_context();
+  if ( ! $context || empty( $context['localwp'] ) ) { return; }
+  $order = wc_get_order( $id );
+  if ( $order && 'cheque' === $order->get_payment_method()
+    && in_array( $order->get_billing_email(), array( $context['username'] . '@example.test', $context['username'] . '-guest@example.test' ), true ) ) {
+    $order->payment_complete();
+  }
+} );
+// Observe real limiter/cache state; this endpoint neither sets counters nor quotes.
+add_action( 'template_redirect', function() {
+  if ( ! isset( $_GET['sst_e2e_rate_limit_state'] ) ) { return; }
+  $context = sst_e2e_context();
+  if ( ! $context || 'fixture' !== $context['mode'] || empty( $context['rateLimit'] ) ) { return; }
+  $cache = WC()->session->get( 'sst_package_cache', array() );
+  wp_send_json_success( array(
+    'limited' => ( new SST_Rate_Limit() )->limit_reached(),
+    'enabled' => SST_Settings::get( 'enable_taxcloud_rate_limit' ),
+    'requests' => (int) SST_Settings::get( 'taxcloud_rate_limit_requests' ),
+    'forceLookup' => SST_Settings::get( 'force_tax_lookup' ),
+    'notice' => SST_Settings::get( 'show_rate_limit_notice' ),
+    'customerId' => get_current_user_id(),
+    'cache' => array_values( array_map( function( $package ) {
+      return array( 'hasResponse' => ! empty( $package['response'] ), 'hasError' => is_wp_error( $package['response'] ?? null ) );
+    }, $cache ) ),
+  ) );
+}, 0 );
 // Observe the real frontend WC session without invoking SST's validating getter.
 add_action( 'template_redirect', function() {
   if ( ! isset( $_GET['sst_e2e_checkout_exemption_session'] ) ) { return; }

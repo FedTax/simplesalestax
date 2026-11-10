@@ -11,12 +11,17 @@ module.exports = (on, config) => {
 
   Object.assign(config, {video: false, retries: 0, supportFile: false, taskTimeout: 90000});
   if (suite === 'plugin') {
-    if (new URL(config.baseUrl).hostname !== 'localhost') {
-      throw new Error('Plugin E2E tests require the local Docker WordPress site.');
+    const hostname = new URL(config.baseUrl).hostname;
+    if (process.env.SST_E2E_WORDPRESS_PATH
+      ? !['localhost', '127.0.0.1'].includes(hostname) && !hostname.endsWith('.local')
+      : hostname !== 'localhost') {
+      throw new Error('Plugin E2E tests require localhost, or an explicitly configured LocalWP .local site.');
     }
     Object.assign(config, {
       specPattern: 'cypress/local/plugin-v3/**/*.cy.js',
       experimentalInteractiveRunEvents: true,
+      viewportWidth: 1440,
+      viewportHeight: 1000,
       defaultCommandTimeout: 20000,
       requestTimeout: 60000,
       responseTimeout: 60000,

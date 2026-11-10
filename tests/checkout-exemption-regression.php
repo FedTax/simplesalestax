@@ -247,6 +247,7 @@ namespace {
 					$request = new class( $payload ) {
 						private $id;
 						public function __construct( $id ) { $this->id = $id; }
+						public function get_method() { return 'POST'; }
 						public function get_param( $key ) { return array( 'simple-sales-tax' => array( 'certificate_id' => $this->id ) ); }
 					};
 					$checkout->handle_checkout( $order, $request );
