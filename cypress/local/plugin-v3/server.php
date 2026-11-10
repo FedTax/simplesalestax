@@ -8,14 +8,21 @@ function sst_e2e_context() {
   return ! empty( $context['run'] ) && hash_equals( $context['run'], (string) $run ) ? $context : null;
 }
 
-// LocalWP may have live gateway integrations absent from the seeded Docker site.
-// These scenarios use cheque payments; keep unrelated Stripe scripts off test pages.
+// Keep LocalWP test requests on WooCommerce's native checkout with cheque payments.
 add_filter( 'option_active_plugins', function( $plugins ) {
   $context = sst_e2e_context();
   return $context && ! empty( $context['localwp'] )
-    ? array_values( array_diff( $plugins, array( 'woocommerce-gateway-stripe/woocommerce-gateway-stripe.php' ) ) )
+    ? array_values( array_diff( $plugins, array(
+      'woocommerce-gateway-stripe/woocommerce-gateway-stripe.php',
+      'checkoutwc-lite/checkout-for-woocommerce.php',
+    ) ) )
     : $plugins;
 } );
+
+// Admin view transitions can reject when Cypress navigates to the login page.
+add_action( 'admin_enqueue_scripts', function() {
+  if ( sst_e2e_context() ) { wp_dequeue_style( 'wp-view-transitions-admin' ); }
+}, 20 );
 
 // Astra's fallback menu otherwise lists the run's long disposable page titles,
 // pushing checkout summaries out of view. Keep normal storefront navigation.
