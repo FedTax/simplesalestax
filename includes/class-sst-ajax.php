@@ -317,18 +317,31 @@ class SST_Ajax {
 		$state          = strtoupper( sanitize_text_field( wp_unslash( $_POST['state'] ) ) );
 		$postcode       = strtoupper( sanitize_text_field( wp_unslash( $_POST['postcode'] ) ) );
 		$city           = sanitize_text_field( wp_unslash( $_POST['city'] ) );
-		$certificate_id = wp_unslash( $_POST['exemption_certificate'] ?? '' );
 
 		// Let Woo take the reins if the customer is international.
 		if ( 'US' !== $country ) {
 			return;
 		}
 
-		if ( '' === $certificate_id || 'none' === $certificate_id ) {
-			$certificate_id = '';
-		} elseif ( SST_SINGLE_PURCHASE_CERT_ID !== $certificate_id && ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
-			wp_die( esc_html__( 'Invalid exemption certificate ID.', 'simple-sales-tax' ) );
+		$order = wc_get_order( $order_id );
+		if ( ! $order ) {
+			wp_die( esc_html__( 'Invalid order ID.', 'simple-sales-tax' ) );
 			return;
+		}
+
+		$customer_id = (int) $order->get_customer_id();
+		$update_certificate = isset( $_POST['exemption_certificate'] ) && ( $customer_id
+			? SST_Certificates::current_user_can_manage_certificates( $customer_id )
+			: ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) ) );
+
+		if ( $update_certificate ) {
+			$certificate_id = wp_unslash( $_POST['exemption_certificate'] );
+			if ( '' === $certificate_id || 'none' === $certificate_id ) {
+				$certificate_id = '';
+			} elseif ( SST_SINGLE_PURCHASE_CERT_ID !== $certificate_id && ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
+				wp_die( esc_html__( 'Invalid exemption certificate ID.', 'simple-sales-tax' ) );
+				return;
+			}
 		}
 
 		// Parse jQuery serialized items.
@@ -340,7 +353,6 @@ class SST_Ajax {
 		// Save items and recalc taxes.
 		wc_save_order_items( $order_id, $items );
 
-		$order          = wc_get_order( $order_id );
 		$posted_address = compact(
 			'country',
 			'state',
@@ -351,7 +363,11 @@ class SST_Ajax {
 		self::ensure_order_address( $order, 'billing', $posted_address );
 		self::ensure_order_address( $order, 'shipping', $posted_address );
 
-		$order->update_meta_data( '_wootax_exempt_cert', $certificate_id );
+		// Hidden certificate controls omit this field. Preserve the existing
+		// selection unless an authorized user explicitly changes or clears it.
+		if ( $update_certificate ) {
+			$order->update_meta_data( '_wootax_exempt_cert', $certificate_id );
+		}
 
 		$result = sst_order_calculate_taxes( $order );
 
