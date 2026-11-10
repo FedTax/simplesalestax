@@ -1257,7 +1257,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		if ( $placing_order ) {
-			$this->validate_rate_limit( $errors );
+			$this->validate_rate_limit( $errors, $data );
 		}
 		$this->validate_exemption_certificate( $data, $errors );
 	}
@@ -1267,8 +1267,9 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * Estimates may omit tax, but both checkout routes must stop before payment.
 	 *
 	 * @param WP_Error $errors Checkout errors.
+	 * @param array    $data   Submitted checkout data.
 	 */
-	protected function validate_rate_limit( $errors ) {
+	protected function validate_rate_limit( $errors, $data = array() ) {
 		if (
 			'yes' !== SST_Settings::get( 'enable_taxcloud_rate_limit', 'no' )
 			|| 'data_mover' === sst_integration_mode()
@@ -1284,11 +1285,21 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		// Rebuild from the submitted cart/address instead of trusting stale session packages.
 		$this->cart = new SST_Cart_Proxy( WC()->cart );
+		// A new certificate has no quote yet. Its fields are still validated by
+		// validate_checkout() and it must be created successfully during processing.
+		if (
+			'new' === $this->get_certificate_id()
+			&& isset( $data['certificate'] ) && is_array( $data['certificate'] )
+			&& $this->new_certificate_covers_packages( $data['certificate']['ExemptState'] ?? '' )
+		) {
+			return;
+		}
+
 		foreach ( $this->do_lookup() as $package ) {
 			if ( empty( $package['response'] ) || is_wp_error( $package['response'] ) ) {
 				$errors->add(
 					'sst_tax_rate_limit',
-					__( 'Sales tax could not be calculated. Please wait a few minutes and try placing your order again.', 'simple-sales-tax' )
+					__( 'Sales tax could not be calculated. Please try again later or contact the store.', 'simple-sales-tax' )
 				);
 				return;
 			}

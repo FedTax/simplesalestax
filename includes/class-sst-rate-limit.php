@@ -28,7 +28,7 @@ class SST_Rate_Limit {
 	 * @return string
 	 */
 	public static function get_notice_message() {
-		return __( 'Tax calculation is temporarily unavailable. Please try again shortly.', 'simple-sales-tax' );
+		return __( 'Tax calculation is temporarily unavailable. Please try again later.', 'simple-sales-tax' );
 	}
 
 	/**
