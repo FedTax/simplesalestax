@@ -198,7 +198,7 @@ class SST_Addresses {
 			// Only recognizable address errors are permanent rejections.
 			$message  = $ex->getMessage();
 			$rejected = $ex instanceof \TaxCloud\Exceptions\VerifyAddressException
-				&& preg_match( '/address (?:was )?not found|invalid address|multiple addresses|(?:street|house|box) number.*(?:range|invalid)|(?:invalid|missing) (?:city|state|zip)|(?:city|state|zip).*mismatch|no (?:address )?match/i', $message )
+				&& preg_match( '/address (?:was )?not found|address has no delivery point value|invalid address|multiple addresses|(?:street|house|box) number.*(?:range|invalid)|(?:invalid|missing) (?:city|state|zip)|(?:city|state|zip).*mismatch|no (?:address )?match/i', $message )
 				&& ! preg_match( '/auth|credential|api ?key|login|timeout|timed out|unavailable|rate.?limit|too many|server error|HTTP\s*5\d\d/i', $message );
 			$outcome = array_merge( $outcome, self::verification_failure( $message, (bool) $rejected, (bool) preg_match( '/rate.?limit|too many requests/i', $message ) ) );
 		}
