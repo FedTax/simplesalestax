@@ -30,6 +30,7 @@ class SST_Subscriptions {
 		add_action( 'woocommerce_checkout_update_order_meta', array( $this, 'destroy_session' ) );
 		add_filter( 'wc_subscriptions_subscription_data', array( $this, 'exclude_address_verification_meta' ) );
 		add_filter( 'wc_subscriptions_renewal_order_data', array( $this, 'exclude_address_verification_meta' ) );
+		add_filter( 'wc_subscriptions_resubscribe_order_data', array( $this, 'exclude_address_verification_meta' ) );
 		add_filter( 'wcs_renewal_order_created', array( $this, 'recalc_taxes_for_renewal' ), 1, 2 );
 		add_filter( 'wootax_save_packages_for_capture', array( $this, 'should_save_packages_for_capture' ) );
 		add_filter( 'woocommerce_subscriptions_calculated_total', array( $this, 'filter_calculated_total' ) );
