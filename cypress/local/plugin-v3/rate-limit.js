@@ -2,7 +2,7 @@
 // as reached. Only the existing TaxCloud HTTP boundary returns fixture responses.
 module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder, getSite }) => {
   describe('DEV-10623 checkout rate limiting (local fixtures only)', () => {
-    const message = 'Sales tax could not be calculated. Please wait a few minutes and try placing your order again.';
+    const message = 'Sales tax could not be calculated. Please try again later or contact the store.';
     let limitedOffset;
     const state = () => cy.request({ url: '/', qs: { sst_e2e_rate_limit_state: 1 } }).then(({ body }) => {
       expect(body.success).to.equal(true);
@@ -148,6 +148,64 @@ module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder
           cy.screenshot(`DEV-10623-${label}-cached-tax-preserved`);
         });
       }
+    }
+
+    for (const blocks of [false, true]) {
+      const label = blocks ? 'Blocks' : 'classic';
+      it(`${label}: creates a valid new exemption at quota without a quote for the current cart`, () => {
+        task('configure', { showExempt: true });
+        login(); cart(); checkout();
+        visibleTax(10);
+        exhaust().its('limited').should('equal', true);
+        records().then((rows) => { limitedOffset = rows.length; });
+        quantity(2);
+        visitCheckout(blocks, 0);
+
+        cy.get(blocks ? '#exemption-certificate-input' : '#certificate_id').select('new', { force: true });
+        cy.get('#exempt_state').select('MN', { force: true });
+        if (blocks) cy.contains('label', 'Federal Employer ID').click();
+        else cy.get('#tax_type').select('FEIN', { force: true });
+        cy.get('#id_number').clear().type('QA-RATE-LIMIT');
+        cy.get('#purchaser_business_type').select('RetailTrade', { force: true });
+        cy.get('#purchaser_exemption_reason').select('Resale', { force: true });
+        cy.get('#purchaser_exemption_reason_value').clear().type('QA resale exemption').blur();
+        cy.get('.blockUI', { timeout: 60000 }).should('not.exist');
+        state().its('limited').should('equal', true);
+        noMoreLookups();
+
+        cy.intercept('POST', blocks ? '**/wc/store/v1/checkout*' : '**/*wc-ajax=checkout*').as('newExemptCheckout');
+        cy.get(blocks ? '.wc-block-components-checkout-place-order-button' : '#place_order').should('not.be.disabled').click();
+        cy.wait('@newExemptCheckout', { timeout: 60000 }).then(({ request, response }) => {
+          expect(response.statusCode).to.equal(200);
+          if (blocks) {
+            expect(request.body.extensions['simple-sales-tax'].certificate).to.include({ ExemptState: 'MN', TaxType: 'FEIN', IDNumber: 'QA-RATE-LIMIT' });
+            expect(response.body.payment_result.payment_status).to.equal('success');
+          } else {
+            const fields = new URLSearchParams(request.body);
+            expect(fields.get('certificate[ExemptState]')).to.equal('MN');
+            expect(fields.get('certificate[IDNumber]')).to.equal('QA-RATE-LIMIT');
+            expect(response.body.result, JSON.stringify(response.body)).to.equal('success');
+          }
+        });
+        cy.location('pathname', { timeout: 60000 }).should('include', '/order-received/').then((pathname) => {
+          const id = Number(pathname.match(/order-received\/(\d+)/)[1]);
+          records().then((rows) => {
+            const certificates = rows.slice(limitedOffset).filter((row) => row.method === 'POST' && /\/exemption-certificates$/.test(row.path));
+            expect(certificates, 'the new certificate is created exactly once before checkout succeeds').to.have.length(1);
+            expect(certificates[0].status).to.equal(201);
+            const certificateId = certificates[0].response.certificateId;
+            task('order', { id }).then((order) => {
+              expect(order.tax).to.equal(0);
+              expect(order.total).to.equal(200);
+              expect(order.certificate).to.equal(certificateId);
+              expect(order.packages).not.to.be.empty;
+              order.packages.forEach((pack) => expect(pack.certificate_id).to.equal(certificateId));
+            });
+          });
+        });
+        noMoreLookups();
+        cy.screenshot(`DEV-10623-${label}-new-certificate-at-quota`);
+      });
     }
   });
 };

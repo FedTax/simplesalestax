@@ -77,9 +77,10 @@ namespace {
 	}
 	class Rate_Limit_Request {
 		private $method;
-		public function __construct( $method = 'POST' ) { $this->method = $method; }
+		private $extensions;
+		public function __construct( $method = 'POST', $extensions = array() ) { $this->method = $method; $this->extensions = $extensions; }
 		public function get_method() { return $this->method; }
-		public function get_param( $key ) { return array(); }
+		public function get_param( $key ) { return 'extensions' === $key ? $this->extensions : null; }
 	}
 	require dirname( __DIR__ ) . '/includes/vendor/autoload.php';
 	require dirname( __DIR__ ) . '/includes/class-sst-addresses.php';
@@ -92,7 +93,9 @@ namespace {
 		public $tax = 0.0;
 		public $processed = 0;
 		public $package_count = 1;
-		public function get_certificate_id() { return ''; }
+		public $certificate_id = '';
+		public $states = array( 'MN' );
+		public function get_certificate_id() { return $this->certificate_id; }
 		protected function process_checkout( $data, $order ) { ++$this->processed; }
 		protected function create_packages() {
 			$packages = array();
@@ -100,7 +103,7 @@ namespace {
 				$packages[] = array(
 					'user' => array( 'ID' => get_current_user_id() ), 'certificate' => null, 'shipping' => null, 'fees' => array(),
 					'origin' => new \TaxCloud\Address( '323 Washington Ave N', '', 'Minneapolis', 'MN', '55401' ),
-					'destination' => new \TaxCloud\Address( '1 Main St', '', 'Minneapolis', 'MN', '55401' ),
+					'destination' => new \TaxCloud\Address( '1 Main St', '', 'Minneapolis', $this->states[ $index ] ?? 'MN', '55401' ),
 					'contents' => array( array( 'key' => 'item-' . $index, 'data' => new Rate_Limit_Product(), 'product_id' => 123,
 						'variation_id' => 0, 'quantity' => $this->quantity, 'line_total' => 100 * $this->quantity ) ),
 				);
@@ -211,6 +214,55 @@ namespace {
 			$settings['enable_taxcloud_rate_limit'] = 'yes';
 			$settings['disable_integration'] = 'yes';
 			expect_same( false, validate_classic( $checkout )->has_errors(), "$label disabled integration does not block" );
+		}
+	}
+
+	// A new certificate's exempt preview intentionally has no cached tax quote.
+	// Exercise the real shared validators with each route's final submitted data.
+	$certificate = array( 'ExemptState' => 'MN', 'TaxType' => 'FEIN', 'IDNumber' => 'QA-RATE-LIMIT',
+		'PurchaserBusinessType' => 'RetailTrade', 'PurchaserExemptionReason' => 'Resale',
+		'PurchaserExemptionReasonOtherValue' => 'QA resale exemption' );
+	foreach ( array( 'v1', 'v3' ) as $version ) {
+		foreach ( array( 'classic', 'blocks' ) as $path ) {
+			$label = "$version $path new certificate at quota";
+			$checkout = reset_checkout( $version, 42 );
+			$checkout->certificate_id = 'new';
+			( new SST_Rate_Limit() )->increment_count();
+			$_POST = array( 'certificate' => $certificate );
+			expect_same( true, $checkout->calculate_taxes(), "$label: exempt preview succeeds" );
+			expect_same( array(), WC()->session->get( 'sst_package_cache', array() ), "$label: no non-exempt quote exists" );
+			if ( 'classic' === $path ) {
+				expect_same( false, validate_classic( $checkout )->has_errors(), "$label: complete matching certificate accepted" );
+			} else {
+				$checkout->handle_checkout( new \stdClass(), new Rate_Limit_Request( 'POST', array( 'simple-sales-tax' => $_POST ) ) );
+				expect_same( 1, $checkout->processed, "$label: complete matching certificate proceeds to creation" );
+			}
+			expect_same( true, ( new SST_Rate_Limit() )->limit_reached(), "$label: quota remains exhausted" );
+			expect_same( 0, Rate_Limit_API::$calls, "$label: validation makes no tax lookup" );
+
+			foreach ( array( 'missing', 'incomplete', 'malformed', 'wrong-state', 'mixed-destinations', 'unselected' ) as $invalid ) {
+				$checkout = reset_checkout( $version, 42 );
+				$checkout->certificate_id = 'unselected' === $invalid ? '' : 'new';
+				( new SST_Rate_Limit() )->increment_count();
+				WC()->session->set( 'sst_new_certificate_state', 'MN' );
+				$data = array( 'certificate_id' => 'new', 'certificate' => $certificate );
+				if ( 'missing' === $invalid ) { unset( $data['certificate'] ); }
+				if ( 'incomplete' === $invalid ) { $data['certificate'] = array( 'ExemptState' => 'MN' ); }
+				if ( 'malformed' === $invalid ) { $data['certificate'] = 'MN'; }
+				if ( 'wrong-state' === $invalid ) { $data['certificate']['ExemptState'] = 'NY'; }
+				if ( 'mixed-destinations' === $invalid ) { $checkout->package_count = 2; $checkout->states = array( 'MN', 'CO' ); }
+				$_POST = $data;
+				if ( 'classic' === $path ) {
+					expect_same( true, validate_classic( $checkout )->has_errors(), "$label: $invalid certificate cannot bypass validation" );
+				} else {
+					$status = null;
+					try { $checkout->handle_checkout( new \stdClass(), new Rate_Limit_Request( 'POST', array( 'simple-sales-tax' => $data ) ) ); }
+					catch ( \Automattic\WooCommerce\StoreApi\Exceptions\RouteException $error ) { $status = $error->status; }
+					expect_same( 400, $status, "$label: $invalid certificate rejects Store API checkout" );
+				}
+				expect_same( 0, $checkout->processed, "$label: $invalid certificate never processes an order" );
+				expect_same( 0, Rate_Limit_API::$calls, "$label: $invalid certificate cannot bypass lookup quota" );
+			}
 		}
 	}
 	echo "Rate limit regression checks passed ($assertions assertions).\n";
