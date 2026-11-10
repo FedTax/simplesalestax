@@ -1245,8 +1245,9 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 *
 	 * @param array    $data   POST data.
 	 * @param WP_Error $errors Checkout errors.
+	 * @param bool     $placing_order Whether this request places an order.
 	 */
-	protected function validate_checkout( $data, $errors ) {
+	protected function validate_checkout( $data, $errors, $placing_order = true ) {
 		if ( ! $this->is_integration_active() ) {
 			return;
 		}
@@ -1255,7 +1256,43 @@ class SST_Checkout extends SST_Abstract_Cart {
 			$errors->add( 'tax', $error_message );
 		}
 
+		if ( $placing_order ) {
+			$this->validate_rate_limit( $errors );
+		}
 		$this->validate_exemption_certificate( $data, $errors );
+	}
+
+	/**
+	 * Require a quote for every current package when the lookup limit is reached.
+	 * Estimates may omit tax, but both checkout routes must stop before payment.
+	 *
+	 * @param WP_Error $errors Checkout errors.
+	 */
+	protected function validate_rate_limit( $errors ) {
+		if (
+			'yes' !== SST_Settings::get( 'enable_taxcloud_rate_limit', 'no' )
+			|| 'data_mover' === sst_integration_mode()
+			|| WC()->session->get( 'is_tax_exempt', false )
+		) {
+			return;
+		}
+
+		$rate_limit = new SST_Rate_Limit();
+		if ( ! $rate_limit->limit_reached() ) {
+			return;
+		}
+
+		// Rebuild from the submitted cart/address instead of trusting stale session packages.
+		$this->cart = new SST_Cart_Proxy( WC()->cart );
+		foreach ( $this->do_lookup() as $package ) {
+			if ( empty( $package['response'] ) || is_wp_error( $package['response'] ) ) {
+				$errors->add(
+					'sst_tax_rate_limit',
+					__( 'Sales tax could not be calculated. Please wait a few minutes and try placing your order again.', 'simple-sales-tax' )
+				);
+				return;
+			}
+		}
 	}
 
 	/**
@@ -1498,7 +1535,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		$error = new WP_Error();
-		$this->validate_checkout( $data, $error );
+		$this->validate_checkout( $data, $error, 'POST' === $request->get_method() );
 
 		if ( $error->has_errors() ) {
 			throw new RouteException(
