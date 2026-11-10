@@ -127,14 +127,23 @@ class SST_Ajax {
 			return;
 		}
 
+		$user_id = absint(
+			wp_unslash( $_POST['user_id'] ?? 0 )
+		);
+		if ( 0 === $user_id ) {
+			$user_id = get_current_user_id();
+		}
+
+		if ( ! SST_Certificates::current_user_can_manage_certificates( $user_id ) ) {
+			wp_send_json_error( __( 'Unauthorized.', 'simple-sales-tax' ), 403 );
+			return;
+		}
+
 		$certificate_id = wp_unslash( $_POST['certificate_id'] ?? '' );
 		if ( ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
 			wp_send_json_error( __( 'Invalid exemption certificate ID.', 'simple-sales-tax' ) );
 			return;
 		}
-		$user_id        = absint(
-			wp_unslash( $_POST['user_id'] ?? 0 )
-		);
 
 		try {
 			SST_Certificates::delete_certificate( $certificate_id, $user_id );
@@ -169,8 +178,9 @@ class SST_Ajax {
 			$user_id = get_current_user_id();
 		}
 
-		if ( ! current_user_can( 'edit_user', $user_id ) && $user_id !== get_current_user_id() ) {
-			wp_send_json_error( __( 'Unauthorized.', 'simple-sales-tax' ) );
+		if ( ! SST_Certificates::current_user_can_manage_certificates( $user_id ) ) {
+			wp_send_json_error( __( 'Unauthorized.', 'simple-sales-tax' ), 403 );
+			return;
 		}
 
 		try {
@@ -201,6 +211,16 @@ class SST_Ajax {
 			return;
 		}
 
+		$user_id = absint( wp_unslash( $_POST['user_id'] ?? 0 ) );
+		if ( 0 === $user_id ) {
+			$user_id = get_current_user_id();
+		}
+
+		if ( ! SST_Certificates::current_user_can_manage_certificates( $user_id ) ) {
+			wp_send_json_error( __( 'Unauthorized.', 'simple-sales-tax' ), 403 );
+			return;
+		}
+
 		if ( ! isset( $_POST['address'], $_POST['certificate'] ) ) {
 			wp_send_json_error( __( 'Invalid request.', 'simple-sales-tax' ) );
 		}
@@ -214,7 +234,6 @@ class SST_Ajax {
 			'sanitize_text_field',
 			wp_unslash( $_POST['address'] )
 		); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-		$user_id     = absint( $_POST['user_id'] ?? 0 );
 
 		// Add certificate.
 		try {
@@ -256,14 +275,12 @@ class SST_Ajax {
 			$user_id = get_current_user_id();
 		}
 
-		$certificates = array();
-
-		if ( ( $user_id && $user_id === get_current_user_id() ) || current_user_can( 'edit_user', $user_id ) ) {
-			$certificates = SST_Certificates::get_certificates_formatted(
-				$user_id
-			);
+		if ( ! SST_Certificates::current_user_can_manage_certificates( $user_id ) ) {
+			wp_send_json_error( __( 'Unauthorized.', 'simple-sales-tax' ), 403 );
+			return;
 		}
 
+		$certificates = SST_Certificates::get_certificates_formatted( $user_id );
 		wp_send_json_success( $certificates );
 	}
 
@@ -300,18 +317,31 @@ class SST_Ajax {
 		$state          = strtoupper( sanitize_text_field( wp_unslash( $_POST['state'] ) ) );
 		$postcode       = strtoupper( sanitize_text_field( wp_unslash( $_POST['postcode'] ) ) );
 		$city           = sanitize_text_field( wp_unslash( $_POST['city'] ) );
-		$certificate_id = wp_unslash( $_POST['exemption_certificate'] ?? '' );
 
 		// Let Woo take the reins if the customer is international.
 		if ( 'US' !== $country ) {
 			return;
 		}
 
-		if ( '' === $certificate_id || 'none' === $certificate_id ) {
-			$certificate_id = '';
-		} elseif ( SST_SINGLE_PURCHASE_CERT_ID !== $certificate_id && ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
-			wp_die( esc_html__( 'Invalid exemption certificate ID.', 'simple-sales-tax' ) );
+		$order = wc_get_order( $order_id );
+		if ( ! $order ) {
+			wp_die( esc_html__( 'Invalid order ID.', 'simple-sales-tax' ) );
 			return;
+		}
+
+		$customer_id = (int) $order->get_customer_id();
+		$update_certificate = isset( $_POST['exemption_certificate'] ) && ( $customer_id
+			? SST_Certificates::current_user_can_manage_certificates( $customer_id )
+			: ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) ) );
+
+		if ( $update_certificate ) {
+			$certificate_id = wp_unslash( $_POST['exemption_certificate'] );
+			if ( '' === $certificate_id || 'none' === $certificate_id ) {
+				$certificate_id = '';
+			} elseif ( SST_SINGLE_PURCHASE_CERT_ID !== $certificate_id && ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
+				wp_die( esc_html__( 'Invalid exemption certificate ID.', 'simple-sales-tax' ) );
+				return;
+			}
 		}
 
 		// Parse jQuery serialized items.
@@ -322,8 +352,9 @@ class SST_Ajax {
 
 		// Save items and recalc taxes.
 		wc_save_order_items( $order_id, $items );
+		// Item saving recalculates totals on another instance of the order.
+		$order = wc_get_order( $order_id );
 
-		$order          = wc_get_order( $order_id );
 		$posted_address = compact(
 			'country',
 			'state',
@@ -334,7 +365,11 @@ class SST_Ajax {
 		self::ensure_order_address( $order, 'billing', $posted_address );
 		self::ensure_order_address( $order, 'shipping', $posted_address );
 
-		$order->update_meta_data( '_wootax_exempt_cert', $certificate_id );
+		// Hidden certificate controls omit this field. Preserve the existing
+		// selection unless an authorized user explicitly changes or clears it.
+		if ( $update_certificate ) {
+			$order->update_meta_data( '_wootax_exempt_cert', $certificate_id );
+		}
 
 		$result = sst_order_calculate_taxes( $order );
 
@@ -412,6 +447,17 @@ class SST_Ajax {
 		$order = wc_get_order( $order_id );
 		if ( ! $order ) {
 			wp_send_json_error( __( 'Invalid order ID.', 'simple-sales-tax' ) );
+			return;
+		}
+
+		$user_id    = (int) $order->get_customer_id();
+		$can_manage = $user_id
+			? SST_Certificates::current_user_can_manage_certificates( $user_id )
+			: ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) );
+
+		if ( ! $can_manage || ! current_user_can( 'edit_shop_order', $order_id ) ) {
+			wp_send_json_error( __( 'Unauthorized.', 'simple-sales-tax' ), 403 );
+			return;
 		}
 
 		// Meta keys

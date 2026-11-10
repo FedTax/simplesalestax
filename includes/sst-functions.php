@@ -404,49 +404,57 @@ function sst_get_order_shipping_address( $order ) {
  * @param SST_Order $order The order being edited.
  */
 function sst_render_tax_meta_box( $order ) {
-	$status      = $order->get_taxcloud_status( 'view' );
-	$certificate = $order->get_single_purchase_certificate();
+	$status     = $order->get_taxcloud_status( 'view' );
+	$user_id    = (int) $order->get_user_id();
+	$can_manage = $user_id
+		? SST_Certificates::current_user_can_manage_certificates( $user_id )
+		: ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) );
+	$certificate = $can_manage ? $order->get_single_purchase_certificate() : null;
 
 	if ( $certificate instanceof ExemptionCertificate ) {
 		$certificate = SST_Certificates::format_certificate( $certificate );
 	}
 
-	wp_enqueue_script( 'sst-meta-box' );
-	wp_localize_script(
-		'sst-meta-box',
-		'SSTMetaBox',
-		array(
-			'edit_user_url'               => add_query_arg(
-				'user_id',
-				'{user_id}',
-				admin_url('user-edit.php#exemption_certificates')
-			),
-			'order_status'                => $order->get_taxcloud_status(),
-			'selected_certificate'        => $order->get_certificate_id(),
-			'single_purchase_certificate' => $certificate,
-			'single_purchase_cert_id'     => SST_SINGLE_PURCHASE_CERT_ID,
-			'get_certificates_nonce'      => wp_create_nonce( 'sst_get_certificates' ),
-			'i18n'                        => array(
-				'none'                        => __( 'None', 'simple-sales-tax' ),
-				'single_purchase_certificate' => __( 'Single Purchase Certificate', 'simple-sales-tax' ),
-				'certificate_added'           => __(
-					"Certificate added successfully! Don't forget to recalculate taxes.",
-					'simple-sales-tax'
+	if ( $can_manage ) {
+		wp_enqueue_script( 'sst-meta-box' );
+		wp_localize_script(
+			'sst-meta-box',
+			'SSTMetaBox',
+			array(
+				'edit_user_url'               => add_query_arg(
+					'user_id',
+					'{user_id}',
+					admin_url('user-edit.php#exemption_certificates')
 				),
-				'add_certificate_failed'      => __(
-					'Failed to add certificate',
-					'simple-sales-tax'
+				'order_status'                => $order->get_taxcloud_status(),
+				'selected_certificate'        => $order->get_certificate_id(),
+				'single_purchase_certificate' => $certificate,
+				'single_purchase_cert_id'     => SST_SINGLE_PURCHASE_CERT_ID,
+				'get_certificates_nonce'      => wp_create_nonce( 'sst_get_certificates' ),
+				'i18n'                        => array(
+					'none'                        => __( 'None', 'simple-sales-tax' ),
+					'single_purchase_certificate' => __( 'Single Purchase Certificate', 'simple-sales-tax' ),
+					'certificate_added'           => __(
+						"Certificate added successfully! Don't forget to recalculate taxes.",
+						'simple-sales-tax'
+					),
+					'add_certificate_failed'      => __(
+						'Failed to add certificate',
+						'simple-sales-tax'
+					),
 				),
-			),
-		)
-	);
+			)
+		);
+	}
 
 	sst_load_template(
 		'includes/views/html-meta-box.php',
-		array( 'status' => $status, 'order_id' => $order->get_id() )
+		array( 'status' => $status, 'order_id' => $order->get_id(), 'can_manage_certificates' => $can_manage )
 	);
-	sst_load_template( 'includes/views/html-add-certificate-modal.php' );
-	sst_load_template( 'includes/views/html-view-certificate.php' );
+	if ( $can_manage ) {
+		sst_load_template( 'includes/views/html-add-certificate-modal.php' );
+		sst_load_template( 'includes/views/html-view-certificate.php' );
+	}
 }
 
 add_action( 'sst_output_tax_meta_box', 'sst_render_tax_meta_box' );
@@ -478,6 +486,10 @@ function sst_load_template( $path, $args = array() ) {
 function sst_render_certificate_table( $user_id = 0, $options = array() ) {
 	if ( ! $user_id ) {
 		$user_id = get_current_user_id();
+	}
+
+	if ( ! SST_Certificates::current_user_can_manage_certificates( $user_id ) ) {
+		return;
 	}
 
 	$customer        = new WC_Customer( $user_id );

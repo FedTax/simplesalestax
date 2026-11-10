@@ -294,6 +294,15 @@ class SST_Order_Controller {
 			return;
 		}
 
+		// Order editing alone does not grant access to the customer's certificates.
+		$customer_id = (int) $order->get_customer_id();
+		$can_manage  = $customer_id
+			? SST_Certificates::current_user_can_manage_certificates( $customer_id )
+			: ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) );
+		if ( ! $can_manage ) {
+			return;
+		}
+
 		$certificate_id = wp_unslash( $_POST['exempt_cert'] ?? '' );
 		if ( 'none' === $certificate_id ) {
 			$certificate_id = '';

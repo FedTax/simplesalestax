@@ -30,13 +30,35 @@ module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder
       expect(quotes, 'real checkout requested tax from TaxCloud').not.to.be.empty;
       quotes.forEach((quote) => quote.request.items.forEach((item) => expect(item).not.to.have.property('exemption')));
     });
+    // Limit the Cypress/Sizzle quote workaround to a malformed option selection.
+    // Restore it even if .select() fails, so later tests keep normal selectors.
+    let restoreFind;
+    const selectSerializedOption = (selector, value) => {
+      const originalFind = Cypress.$.fn.find;
+      restoreFind = () => { Cypress.$.fn.find = originalFind; restoreFind = null; };
+      Cypress.$.fn.find = function (optionSelector) {
+        try {
+          return originalFind.apply(this, arguments);
+        } catch (err) {
+          const match = typeof optionSelector === 'string' && optionSelector.match(/^option\[value="([\s\S]*)"\]$/);
+          if (match && err.message?.includes('Syntax error')) {
+            return originalFind.call(this, 'option').filter((_, el) => el.value === match[1]);
+          }
+          throw err;
+        }
+      };
+      return cy.get(selector).select(value, { force: true }).then(() => restoreFind());
+    };
     const visitOrder = () => {
       login('admin');
       cy.then(() => cy.visit(fixture.editUrl));
       cy.get('#exempt_cert').should('exist');
     };
 
-    afterEach(() => task('certificateSecurityCleanup'));
+    afterEach(() => {
+      if (restoreFind) restoreFind();
+      return task('certificateSecurityCleanup');
+    });
 
     it('ignores a customer-owned serialized ID in classic cart refresh and checkout', () => {
       begin('checkout');
@@ -47,7 +69,7 @@ module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder
       });
       // The malformed value comes from the customer's fixture certificate list,
       // so the ownership check succeeds unless the GUID format is also checked.
-      cy.then(() => cy.get('#certificate_id').select(fixture.serializedPayload, { force: true }));
+      cy.then(() => selectSerializedOption('#certificate_id', fixture.serializedPayload));
       cy.wait('@serializedClassicReview', { timeout: 60000 }).its('response.statusCode').should('equal', 200);
       cy.get('.blockUI', { timeout: 60000 }).should('not.exist');
       sessionSelection('');
@@ -71,22 +93,35 @@ module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder
       login(); cart();
       cy.then(() => cy.visit(getSite().checkoutBlock));
       cy.get('.wc-block-checkout').should('be.visible');
-      cy.intercept('POST', '**/wc/store/v1/cart/extensions*', (req) => {
-        if (req.body.namespace === 'simple-sales-tax' && req.body.data.certificate_id === fixture.serializedPayload) {
+      cy.intercept('POST', '**/wc/store/v1/**', (req) => {
+        if (req.url.includes('/cart/extensions') && req.body?.namespace === 'simple-sales-tax' && req.body?.data?.certificate_id === fixture.serializedPayload) {
           req.alias = 'serializedBlocksUpdate';
+        } else if (req.url.includes('/batch')) {
+          const extensionReq = req.body?.requests?.find((r) => r.path?.includes('/cart/extensions') && r.body?.namespace === 'simple-sales-tax');
+          if (extensionReq && extensionReq.body?.data?.certificate_id === fixture.serializedPayload) {
+            req.alias = 'serializedBlocksUpdate';
+          }
         }
       });
-      cy.then(() => cy.get('#exemption-certificate-input').select(fixture.serializedPayload, { force: true }));
+      cy.then(() => selectSerializedOption('#exemption-certificate-input', fixture.serializedPayload));
       cy.wait('@serializedBlocksUpdate', { timeout: 60000 }).then(({ request, response }) => {
-        expect(request.body.data).to.include({ action: 'set_certificate_id', certificate_id: fixture.serializedPayload });
-        expect(response.statusCode).to.equal(200);
-        expect(response.body.errors).to.be.empty;
-        expect(Number(response.body.totals.total_tax)).to.equal(1000);
-        expect(Number(response.body.totals.total_price)).to.equal(11000);
+        const batchReq = request.body?.requests?.find((r) => r.path?.includes('/cart/extensions'));
+        const reqData = batchReq ? batchReq.body.data : request.body.data;
+        const respBody = response.body?.responses ? response.body.responses[0].body : response.body;
+        const statusCode = response.body?.responses ? response.body.responses[0].status : response.statusCode;
+        expect(reqData).to.include({ action: 'set_certificate_id', certificate_id: fixture.serializedPayload });
+        expect(statusCode).to.equal(200);
+        expect(respBody.errors).to.be.empty;
+        expect(Number(respBody.totals.total_tax)).to.equal(1000);
+        expect(Number(respBody.totals.total_price)).to.equal(11000);
       });
       sessionSelection('');
       cy.get('.wc-block-components-totals-taxes .wc-block-components-totals-item__value')
-        .should(($tax) => expect(Number($tax.text().replace(/[^\d.]/g, ''))).to.equal(10));
+        .filter(':visible')
+        .should(($values) => {
+          expect($values.length, 'visible tax totals').to.be.greaterThan(0);
+          $values.each((_, value) => expect(Number(value.textContent.replace(/[^\d.]/g, ''))).to.equal(10));
+        });
       // Submit the real Store API endpoint with the same malformed extension
       // data, retaining the authenticated browser's WooCommerce session.
       cy.then(() => cy.request({
