@@ -92,6 +92,7 @@ class WP_Error {
 class WP_REST_Request {
 	private $params = array();
 	public function __construct( $params = array() ) { $this->params = $params; }
+	public function get_method() { return 'POST'; }
 	public function get_param( $key ) { return $this->params[ $key ] ?? null; }
 }
 

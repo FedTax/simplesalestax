@@ -215,12 +215,25 @@ abstract class SST_Abstract_Cart {
 			$saved_package 		= $this->get_saved_package( $hash );
 			$force_tax_lookup	= SST_Settings::get( 'force_tax_lookup' );
 
+			if ( ! $data_mover ) {
+				// A skipped lookup is not a tax quote, even if an older request cached it.
+				if ( empty( $saved_package['response'] ) ) {
+					$saved_package = false;
+				} elseif ( 'yes' === $force_tax_lookup && ! is_wp_error( $saved_package['response'] ) ) {
+					// Keep a usable quote when a forced refresh would exceed the limit.
+					$rate_limit = new SST_Rate_Limit();
+					if ( $rate_limit->limit_reached() ) {
+						$force_tax_lookup = 'no';
+					}
+				}
+			}
+
 			if ( 'yes' === $force_tax_lookup || false === $saved_package ) {
 				$saved_package = $this->compress_package_data(
 					$this->do_package_lookup( $package, $key )
 				);
 
-				if ( $saved_package ) {
+				if ( $saved_package && ( $data_mover || ! empty( $saved_package['response'] ) ) ) {
 					$this->save_package( $hash, $saved_package );
 				}
 			} else {

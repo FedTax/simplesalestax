@@ -7,8 +7,11 @@ if ( 'setup' !== $action && ( $context['run'] ?? '' ) !== $input['run'] ) { thro
 $result = null;
 if ( 'setup' === $action ) {
   if ( $context ) { throw new Exception( 'A previous Cypress run needs cleanup before another can start.' ); }
-  $context = array( 'run' => $input['run'], 'mode' => $input['mode'],
-    'adminId' => get_user_by( 'login', 'admin' )->ID,
+  $localwp = ! empty( $input['localwp'] );
+  $admin = $localwp ? ( get_users( array( 'role' => 'administrator', 'number' => 1 ) )[0] ?? null ) : get_user_by( 'login', 'admin' );
+  if ( ! $admin ) { throw new Exception( 'The test site needs an administrator.' ); }
+  $context = array( 'run' => $input['run'], 'mode' => $input['mode'], 'localwp' => $localwp,
+    'adminId' => $admin->ID,
     'password' => wp_generate_password( 24, false ), 'username' => 'cy-' . substr( $input['run'], 0, 12 ),
     'dataMover' => false, 'blocks' => false, 'failure' => false );
   $user_id = wp_insert_user( array( 'user_login' => $context['username'], 'user_pass' => $context['password'],
@@ -41,10 +44,10 @@ if ( 'setup' === $action ) {
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
 } elseif ( 'info' === $action ) {
-  $result = array_intersect_key( $context, array_flip( array( 'username', 'password', 'productId', 'customerId', 'mode' ) ) );
+  $result = array_intersect_key( $context, array_flip( array( 'username', 'password', 'productId', 'customerId', 'mode', 'localwp' ) ) );
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock' ) as $key ) { $result[ $key ] = get_permalink( $context[ $key ] ); }
 } elseif ( 'configure' === $action ) {
-  foreach ( array( 'dataMover', 'blocks', 'unconfigured', 'showExempt', 'checkoutExemption' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
+  foreach ( array( 'dataMover', 'blocks', 'unconfigured', 'showExempt', 'checkoutExemption', 'rateLimit' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
   if ( array_key_exists( 'failure', $input ) ) {
     if ( ! in_array( $input['failure'], array( false, true, 'capture', 'refund' ), true ) ) { throw new Exception( 'Unknown fixture failure.' ); }
     if ( 'live' === $context['mode'] && false !== $input['failure'] ) { throw new Exception( 'Failure injection is fixture only.' ); }
@@ -113,6 +116,90 @@ if ( 'setup' === $action ) {
     $order->calculate_totals( false ); $order->save();
   }
   $result = array( 'id' => $order->get_id() );
+} elseif ( 'rateLimitReset' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['rateLimit'] ) ) { throw new Exception( 'No rate limit regression scenario.' ); }
+  // Start each case with an empty quota. Tests exhaust it through real WC requests.
+  delete_transient( 'sst_rate_limit_user_' . $context['customerId'] );
+  $result = true;
+} elseif ( 'rateLimitOrders' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['rateLimit'] ) ) { throw new Exception( 'No rate limit regression scenario.' ); }
+  $result = array( 'placed' => array(), 'drafts' => array() );
+  $orders = wc_get_orders( array( 'billing_email' => $context['username'] . ( ! empty( $input['guest'] ) ? '-guest' : '' ) . '@example.test',
+    'status' => array_keys( wc_get_order_statuses() ), 'limit' => -1, 'orderby' => 'ID', 'order' => 'ASC' ) );
+  foreach ( $orders as $order ) {
+    $result[ 'checkout-draft' === $order->get_status() ? 'drafts' : 'placed' ][] = array(
+      'id' => $order->get_id(), 'status' => $order->get_status(), 'paid' => $order->is_paid() );
+  }
+} elseif ( 'certificateAccess' === $action ) {
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Certificate access scenarios require fixture mode.' ); }
+  if ( empty( $context['certificateAccess'] ) ) {
+    $access = array( 'ownCertificateId' => wp_generate_uuid4(), 'foreignCertificateId' => wp_generate_uuid4() );
+    foreach ( array( 'foreign' => 'customer', 'manager' => 'shop_manager' ) as $name => $role ) {
+      $id = wp_insert_user( array( 'user_login' => $context['username'] . '-access-' . $name,
+        'user_pass' => $context['password'], 'user_email' => $context['username'] . '-access-' . $name . '@example.test', 'role' => $role ) );
+      if ( is_wp_error( $id ) ) { throw new Exception( $id->get_error_message() ); }
+      $access[ $name . 'UserId' ] = $id;
+    }
+    $context['certificateAccess'] = $access;
+    update_option( 'sst_cypress_v3_context', $context, false );
+  }
+  $access = $context['certificateAccess'];
+  $foreign = get_user_by( 'id', $access['foreignUserId'] );
+  $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array(), 'carts' => array(), 'orders' => array() ) );
+  foreach ( array( $access['ownCertificateId'] => (string) $context['customerId'], $access['foreignCertificateId'] => $foreign->user_email ) as $id => $identity ) {
+    $remote['certificates'][ $id ] = array( 'certificateId' => $id, 'customerId' => $identity,
+      'singlePurchase' => false, 'disabledAt' => null, 'createdDate' => gmdate( 'c' ),
+      'customerName' => 'Cypress Access Customer', 'customerBusinessType' => 'RetailTrade',
+      'reason' => 'Resale', 'reasonDescription' => 'QA resale exemption',
+      'address' => array( 'line1' => '323 Washington Ave N', 'line2' => '', 'city' => 'Minneapolis', 'state' => 'MN', 'zip' => '55401', 'countryCode' => 'US' ),
+      'states' => array( array( 'abbreviation' => 'MN' ) ) );
+  }
+  update_option( 'sst_cypress_v3_remote', $remote, false );
+  update_user_meta( $context['customerId'], 'billing_email', get_user_by( 'id', $context['customerId'] )->user_email );
+  SST_Certificates::delete_certificates( $context['customerId'] );
+  SST_Certificates::delete_certificates( $access['foreignUserId'] );
+  // Simulate a cache populated before DEV-10622; new code must ignore it.
+  set_transient( '_sst_certificates_' . $context['customerId'], wp_json_encode( array(
+    $access['foreignCertificateId'] => SST_Certificates::build_v1_cert_from_v3( $remote['certificates'][ $access['foreignCertificateId'] ] ),
+  ) ), 3 * DAY_IN_SECONDS );
+  $result = array_merge( $access, array( 'foreignEmail' => $foreign->user_email, 'adminId' => $context['adminId'],
+    'managerUsername' => get_user_by( 'id', $access['managerUserId'] )->user_login, 'managerPassword' => $context['password'] ) );
+} elseif ( 'certificateAccessReset' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['certificateAccess'] ) ) { throw new Exception( 'No certificate access scenario.' ); }
+  update_user_meta( $context['customerId'], 'billing_email', get_user_by( 'id', $context['customerId'] )->user_email );
+  SST_Certificates::delete_certificates( $context['customerId'] );
+  // This fixture deliberately seeds the old prefix to test upgrade isolation.
+  delete_transient( '_sst_certificates_' . $context['customerId'] );
+  $result = true;
+} elseif ( 'certificateOrderSave' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['certificateAccess'] ) ) { throw new Exception( 'No certificate access scenario.' ); }
+  wp_set_current_user( $context['adminId'] );
+  $id = wp_generate_uuid4();
+  $remote = get_option( 'sst_cypress_v3_remote' );
+  $certificate = $remote['certificates'][ $context['certificateAccess']['ownCertificateId'] ];
+  $certificate['certificateId'] = $id;
+  $certificate['customerId'] = (string) $context['adminId'];
+  $remote['certificates'][ $id ] = $certificate;
+  update_option( 'sst_cypress_v3_remote', $remote, false );
+  SST_Certificates::delete_certificates( $context['adminId'] );
+  $order = wc_create_order( array( 'customer_id' => $context['adminId'], 'status' => 'pending', 'created_via' => 'cypress-dev-10622' ) );
+  if ( is_wp_error( $order ) ) { throw new Exception( $order->get_error_message() ); }
+  $address = array( 'first_name' => 'Cypress', 'last_name' => 'Admin', 'country' => 'US',
+    'address_1' => '323 Washington Ave N', 'city' => 'Minneapolis', 'state' => 'MN', 'postcode' => '55401',
+    'email' => get_user_by( 'id', $context['adminId'] )->user_email );
+  $order->set_address( $address, 'billing' ); $order->set_address( $address, 'shipping' );
+  $order->add_product( wc_get_product( $context['productId'] ), 1 );
+  $order->update_meta_data( '_wootax_exempt_cert', $id );
+  $order->save();
+  if ( ! ( new SST_Order( $order ) )->calculate_taxes() ) { throw new Exception( 'Unable to calculate protected order fixture.' ); }
+  $order->calculate_totals( false ); $order->save();
+  $context['certificateAccess']['orderSaveId'] = $order->get_id();
+  update_option( 'sst_cypress_v3_context', $context, false );
+  $result = array( 'id' => $order->get_id(), 'editUrl' => $order->get_edit_order_url(), 'certificateId' => $id );
+} elseif ( 'certificateOrderSaveState' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['certificateAccess']['orderSaveId'] ) ) { throw new Exception( 'No order-save scenario.' ); }
+  $order = wc_get_order( $context['certificateAccess']['orderSaveId'] );
+  $result = array( 'certificateId' => $order->get_meta( '_wootax_exempt_cert' ), 'customerId' => $order->get_customer_id() );
 } elseif ( 'checkoutExemption' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Checkout exemption security scenarios require fixture mode.' ); }
   if ( empty( $context['foreignExemptionCustomerId'] ) ) {
@@ -120,7 +207,7 @@ if ( 'setup' === $action ) {
       'user_pass' => wp_generate_password( 24, false ), 'user_email' => $context['username'] . '-foreign@example.test', 'role' => 'customer' ) );
     if ( is_wp_error( $user_id ) ) { throw new Exception( $user_id->get_error_message() ); }
     $context['foreignExemptionCustomerId'] = $user_id;
-    $context['foreignExemptionCertificateId'] = 'cert-dev-10620-' . $context['run'];
+    $context['foreignExemptionCertificateId'] = wp_generate_uuid4();
     $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array(), 'carts' => array(), 'orders' => array() ) );
     $remote['certificates'][ $context['foreignExemptionCertificateId'] ] = array(
       'certificateId' => $context['foreignExemptionCertificateId'], 'customerId' => 'customer-' . $user_id,
@@ -158,7 +245,7 @@ if ( 'setup' === $action ) {
     $context['adminExemptionCertificates'] = array();
     $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array(), 'carts' => array(), 'orders' => array() ) );
     foreach ( array( 'FL', 'NY' ) as $state ) {
-      $id = 'cert-admin-' . strtolower( $state ) . '-' . $context['run'];
+      $id = wp_generate_uuid4();
       $context['adminExemptionCertificates'][ $state ] = $id;
       $remote['certificates'][ $id ] = array(
         'certificateId' => $id, 'customerId' => 'customer-' . $context['customerId'],
@@ -191,6 +278,89 @@ if ( 'setup' === $action ) {
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = array( 'id' => $order->get_id(), 'editUrl' => $order->get_edit_order_url(),
     'certificates' => $context['adminExemptionCertificates'], 'adminId' => $context['adminId'] );
+} elseif ( 'certificateSecurity' === $action ) {
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Certificate security scenarios require fixture mode.' ); }
+  $scenario = $input['scenario'] ?? '';
+  if ( ! in_array( $scenario, array( 'checkout', 'legacy', 'object', 'recalculation' ), true ) || ! empty( $context['certificateSecurity'] ) ) {
+    throw new Exception( 'Unknown or unfinished certificate security scenario.' );
+  }
+  wp_set_current_user( $context['adminId'] );
+  $guid = wp_generate_uuid4();
+  $serialized = 'O:8:"stdClass":0:{}';
+  $security = array( 'wakeups' => 0, 'orderIds' => array(), 'certificateIds' => array( $guid, $serialized ) );
+  $address = array( 'first_name' => 'Cypress', 'last_name' => 'Buyer', 'country' => 'US',
+    'address_1' => '323 Washington Ave N', 'address_2' => '', 'city' => 'Minneapolis', 'state' => 'MN',
+    'postcode' => '55401', 'email' => $context['username'] . '@example.test', 'phone' => '6125550100' );
+  $result = array( 'certificateId' => $guid, 'serializedPayload' => $serialized, 'billingAddress' => $address );
+  if ( 'checkout' !== $scenario ) {
+    $create_order = function( $quantity ) use ( $context, $address ) {
+      $order = wc_create_order( array( 'customer_id' => $context['customerId'], 'status' => 'pending', 'created_via' => 'cypress-dev-10621' ) );
+      if ( is_wp_error( $order ) ) { throw new Exception( $order->get_error_message() ); }
+      $order->set_address( $address, 'billing' ); $order->set_address( $address, 'shipping' );
+      $order->add_product( wc_get_product( $context['productId'] ), $quantity );
+      $order->calculate_totals( false ); $order->save();
+      return $order;
+    };
+    $order = $create_order( 1 );
+    $security['orderIds'][] = $order->get_id();
+    $result['orderId'] = $order->get_id(); $result['editUrl'] = $order->get_edit_order_url();
+    if ( 'legacy' === $scenario ) {
+      $order->update_meta_data( '_wootax_exempt_cert', serialize( new TaxCloud\ExemptionCertificateBase( $guid ) ) );
+    } elseif ( 'object' === $scenario ) {
+      $order->update_meta_data( '_wootax_exempt_cert', serialize( new SST_E2E_Certificate_Gadget( $context['run'] ) ) );
+    } else {
+      $protected = $create_order( 2 );
+      $security['orderIds'][] = $protected->get_id();
+      $result['protectedOrderId'] = $protected->get_id();
+      $result['queryPayload'] = $guid . '&order_id=' . $protected->get_id();
+      $security['certificateIds'][] = $result['queryPayload'];
+      $order->update_meta_data( '_wootax_exempt_cert', $result['queryPayload'] );
+    }
+    $order->save();
+  }
+  // Return both malformed selections as customer-owned certificates. This makes
+  // GUID validation necessary; ownership validation alone cannot pass the test.
+  $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array(), 'carts' => array(), 'orders' => array() ) );
+  foreach ( $security['certificateIds'] as $id ) {
+    $remote['certificates'][ $id ] = array(
+      'certificateId' => $id, 'customerId' => 'customer-' . $context['customerId'],
+      'singlePurchase' => false, 'disabledAt' => null, 'createdDate' => gmdate( 'c' ),
+      'customerName' => 'Cypress Buyer', 'customerBusinessType' => 'RetailTrade',
+      'reason' => 'Resale', 'reasonDescription' => 'QA resale exemption',
+      'address' => array( 'line1' => $address['address_1'], 'line2' => '', 'city' => $address['city'], 'state' => 'MN', 'zip' => $address['postcode'], 'countryCode' => 'US' ),
+      'states' => array( array( 'abbreviation' => 'MN' ) ),
+    );
+  }
+  update_option( 'sst_cypress_v3_remote', $remote, false );
+  $context['certificateSecurity'] = $security;
+  $context['checkoutExemption'] = true; $context['showExempt'] = true;
+  update_option( 'sst_cypress_v3_context', $context, false );
+  SST_Certificates::delete_certificates( $context['customerId'] );
+} elseif ( 'certificateSecurityState' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['certificateSecurity'] ) ) { throw new Exception( 'No certificate security scenario.' ); }
+  $result = array( 'wakeups' => $context['certificateSecurity']['wakeups'], 'orders' => array() );
+  foreach ( $context['certificateSecurity']['orderIds'] as $id ) {
+    $order = wc_get_order( $id );
+    if ( ! $order || (int) $order->get_customer_id() !== (int) $context['customerId'] ) { throw new Exception( 'Security fixture order not found.' ); }
+    // Observe WC metadata without calling SST's getters or unserializing again.
+    $result['orders'][ $id ] = array( 'customerId' => (int) $order->get_customer_id(),
+      'tax' => (float) $order->get_total_tax(), 'total' => (float) $order->get_total(),
+      'certificate' => $order->get_meta( '_wootax_exempt_cert' ), 'packages' => $order->get_meta( '_wootax_packages' ),
+      'items' => array_values( array_map( function( $item ) {
+        return array( 'id' => $item->get_id(), 'productId' => $item->get_product_id(),
+          'quantity' => $item->get_quantity(), 'subtotal' => $item->get_subtotal(), 'total' => $item->get_total(), 'taxes' => $item->get_taxes() );
+      }, $order->get_items() ) ) );
+  }
+} elseif ( 'certificateSecurityCleanup' === $action ) {
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Certificate security scenarios require fixture mode.' ); }
+  $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array() ) );
+  foreach ( $context['certificateSecurity']['certificateIds'] ?? array() as $id ) { unset( $remote['certificates'][ $id ] ); }
+  update_option( 'sst_cypress_v3_remote', $remote, false );
+  unset( $context['certificateSecurity'] );
+  $context['checkoutExemption'] = false; $context['blocks'] = false; $context['showExempt'] = true;
+  update_option( 'sst_cypress_v3_context', $context, false );
+  SST_Certificates::delete_certificates( $context['customerId'] );
+  $result = true;
 } elseif ( 'coTax' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Colorado scenarios require fixture mode.' ); }
   $category_tic = (string) ( $input['categoryTic'] ?? '' );
@@ -236,7 +406,7 @@ if ( 'setup' === $action ) {
   $result = true;
 } elseif ( 'order' === $action ) {
   $order = wc_get_order( $input['id'] );
-  $guest_order = $order && 'fixture' === $context['mode'] && ! empty( $context['checkoutExemption'] )
+  $guest_order = $order && 'fixture' === $context['mode'] && ( ! empty( $context['checkoutExemption'] ) || ! empty( $context['rateLimit'] ) )
     && 0 === (int) $order->get_customer_id() && $order->get_billing_email() === $context['username'] . '-guest@example.test';
   if ( ! $order || ( (int) $order->get_customer_id() !== (int) $context['customerId'] && ! $guest_order ) ) { throw new Exception( 'This is not an order belonging to the test customer.' ); }
   $result = array( 'id' => $order->get_id(), 'customerId' => (int) $order->get_customer_id(), 'status' => $order->get_status(), 'tax' => (float) $order->get_total_tax(),
@@ -316,6 +486,18 @@ if ( 'setup' === $action ) {
   if ( ! empty( $context['adminExemptionProductId'] ) ) { wp_trash_post( $context['adminExemptionProductId'] ); }
   if ( ! empty( $context['addressProductId'] ) ) { wp_trash_post( $context['addressProductId'] ); }
   if ( ! empty( $context['coCategoryId'] ) ) { wp_delete_term( $context['coCategoryId'], 'product_cat' ); }
+  if ( ! empty( $context['certificateAccess'] ) ) {
+    ( new WP_User( $context['certificateAccess']['managerUserId'] ) )->set_role( 'customer' );
+    if ( ! empty( $context['certificateAccess']['orderSaveId'] ) ) {
+      $order = wc_get_order( $context['certificateAccess']['orderSaveId'] );
+      if ( $order ) { $order->delete( false ); }
+      SST_Certificates::delete_certificates( $context['adminId'] );
+    }
+    SST_Certificates::delete_certificates( $context['customerId'] );
+    SST_Certificates::delete_certificates( $context['certificateAccess']['foreignUserId'] );
+    // Remove the deliberately seeded legacy cache as well as the current caches.
+    delete_transient( '_sst_certificates_' . $context['customerId'] );
+  }
   foreach ( array( 'Realtime', 'DataImport' ) as $profile ) {
     $credentials = sst_e2e_credentials( $context );
     delete_transient( 'sst_tc_v3_token_' . md5( $credentials[ 'apiLoginID' . $profile ] . ':' . $credentials[ 'apiKey' . $profile ] ) );

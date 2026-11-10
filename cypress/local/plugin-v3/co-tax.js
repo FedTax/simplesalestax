@@ -11,7 +11,9 @@ module.exports = (getSite) => describe('Colorado category TIC and excise behavio
     cy.clearAllCookies();
     cy.visit('/wp-login.php');
     cy.setCookie('sst_e2e_run', Cypress.env('pluginV3Run'));
-    cy.request({ method: 'POST', url: '/wp-login.php', form: true, log: false,
+    if (admin && site.localwp) {
+      cy.visit('/wp-admin/?localwp_auto_login=1');
+    } else cy.request({ method: 'POST', url: '/wp-login.php', form: true, log: false,
       body: { log: admin ? 'admin' : site.username, pwd: admin ? 'password' : site.password,
         'wp-submit': 'Log In', testcookie: '1' } });
     cy.getAllCookies().should((cookies) => {

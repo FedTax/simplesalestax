@@ -139,7 +139,7 @@ function lookup_package( $state, $certificate_id ) {
 
 $nc_cert = certificate_data( 'nc-only', array( 'NC' ), '2026-09-17T12:00:00Z' );
 $ny_cert = certificate_data( 'ny-only', array( 'NY' ), '2026-09-16T12:00:00Z' );
-$certificate_transients['_sst_certificates_19151'] = json_encode( array( 'nc-only' => $nc_cert, 'ny-only' => $ny_cert ) );
+$certificate_transients[SST_Certificates::TRANS_PREFIX . 19151] = json_encode( array( 'nc-only' => $nc_cert, 'ny-only' => $ny_cert ) );
 
 expect_same( 'nc-only', SST_Certificates::get_default_certificate_id_for_state( 'NC', 19151 ), 'NC auto-selection' );
 expect_same( 'ny-only', SST_Certificates::get_default_certificate_id_for_state( 'NY', 19151 ), 'NY auto-selection' );
@@ -266,7 +266,7 @@ foreach ( array( 'v1', 'v3' ) as $version ) {
 	$cart->test_certificate = new TaxCloud\ExemptionCertificateBase( 'nc-only' );
 	foreach ( array( 1, 12, 0, 19151 ) as $acting_user_id ) {
 		$test_current_user_id = $acting_user_id;
-		$certificate_transients['_sst_certificates_' . $acting_user_id] = $certificate_transients['_sst_certificates_' . $acting_user_id] ?? '[]';
+		$certificate_transients[SST_Certificates::TRANS_PREFIX . $acting_user_id] = $certificate_transients[SST_Certificates::TRANS_PREFIX . $acting_user_id] ?? '[]';
 		foreach ( array( 19151, 0 ) as $customer_id ) {
 			$raw['user']['ID'] = $customer_id;
 			foreach ( array( false, true ) as $already_split ) {
