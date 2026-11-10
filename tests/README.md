@@ -25,7 +25,7 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **35 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **40 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
@@ -51,6 +51,63 @@ session; it does not select or validate certificates. Fixture settings apply onl
 to the run's cookie and are restored after each case. The extra test customer and
 successful orders remain for inspection. These cases are omitted in live mode
 and the plugin suite remains local only.
+
+## Certificate ID and metadata security regression (DEV-10621)
+
+`npm run test:e2e` includes five fixture-only Cypress cases:
+
+- Classic checkout selects a customer-owned serialized-object ID, then submits
+  that ID again. The session clears it and the saved order retains $10 tax and
+  a $110 total, with no certificate.
+- Checkout Blocks sends the same selection through its real cart-extension
+  request. A final Store API checkout request also submits that ID and must save
+  the same taxable order. The test checks rendered Blocks tax and API totals.
+- An admin order containing a pre-7.0 serialized TaxCloud certificate displays
+  its GUID as the selected certificate.
+- Opening an order and clicking **View Debug Log** must not instantiate a
+  serialized test class. Its harmless `__wakeup()` only increments a scoped
+  fixture counter, which must remain zero after both actions.
+- Recalculating an order with a selection containing `&order_id=` must send only
+  the original order ID and receive an invalid-certificate response. Both the
+  original order and the other order must retain their items, totals and metadata.
+
+These cases use real WordPress serialization, WooCommerce sessions, browser
+scripts and persisted orders. Fixtures deliberately return malformed IDs as
+customer-owned certificates so ownership checks alone cannot satisfy the tests.
+Normal fixture certificate IDs are GUIDs. The temporary helper and scoped
+settings are removed on cleanup; test orders remain for inspection. All five
+cases are omitted in live mode, which remains at **15 expected passing** cases.
+
+Run `npm run test:regression` for the standalone checks; no database or TaxCloud
+connection is needed. Coverage includes both API versions and both checkout
+paths, with serialized-object and query-string payloads placed in the certificate
+cache and session. Malformed IDs must not persist even when cached package IDs
+match. Valid customer GUIDs, `new`, and clearing a selection remain supported.
+
+The metadata checks verify that arbitrary classes cannot be instantiated by
+order reads or debug logging, that pre-7.0 certificate objects still provide
+their IDs and details, and that existing double-serialized package arrays remain
+usable. Pre-7.0 object-based packages also remain readable and compress correctly
+during the 7.0 background migration. Package reads allow only the legacy TaxCloud
+data classes and `WC_Shipping_Rate`; products and unrelated classes remain blocked.
+Package writes serialize arrays to strings before passing them to WooCommerce so
+the posts data store preserves nested backslashes and stable package hashes.
+`tests/order-meta-storage-regression.php` exercises WooCommerce's real posts-meta
+writer with a modeled WordPress unslashing/persistence boundary, without a database.
+Admin save, delete and recalculation reject malformed IDs; recalculation also preserves the
+internal single-purchase certificate selection.
+
+The JavaScript check executes the real request filter and parses its result to
+verify that `&order_id=` inside a selection cannot replace the original order or
+items. It checks the minified asset when present. After editing the source,
+regenerate that asset with:
+
+```sh
+node node_modules/uglify-js/bin/uglifyjs assets/js/meta-box.js --compress --mangle --output assets/js/meta-box.min.js
+```
+
+These checks stub the WordPress/WooCommerce boundary; they do not replace the
+browser suite or verify checkout against a running store.
 
 ## Admin order exemption regression (DEV-10586)
 
@@ -100,7 +157,7 @@ for `99990`; it does not independently verify either rate against the live API.
 | Category `90505`, quantity changed from 1 to 2 | $15.00 | $13.00 | $228.00 |
 | Category `90505`, Minnesota destination | $10.00 (fixture) | None | $110.00 |
 
-Expect **35 passing** overall, including these **6 Colorado cases**. The first
+Expect **40 passing** overall, including these **6 Colorado cases**. The first
 Colorado test selects and saves category `99990` through the admin UI. Every
 Colorado test checks the effective product TIC, outgoing API payload,
 visible checkout totals and persisted order totals. Eligible Colorado orders
