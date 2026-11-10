@@ -7,8 +7,11 @@ if ( 'setup' !== $action && ( $context['run'] ?? '' ) !== $input['run'] ) { thro
 $result = null;
 if ( 'setup' === $action ) {
   if ( $context ) { throw new Exception( 'A previous Cypress run needs cleanup before another can start.' ); }
-  $context = array( 'run' => $input['run'], 'mode' => $input['mode'],
-    'adminId' => get_user_by( 'login', 'admin' )->ID,
+  $localwp = ! empty( $input['localwp'] );
+  $admin = $localwp ? ( get_users( array( 'role' => 'administrator', 'number' => 1 ) )[0] ?? null ) : get_user_by( 'login', 'admin' );
+  if ( ! $admin ) { throw new Exception( 'The test site needs an administrator.' ); }
+  $context = array( 'run' => $input['run'], 'mode' => $input['mode'], 'localwp' => $localwp,
+    'adminId' => $admin->ID,
     'password' => wp_generate_password( 24, false ), 'username' => 'cy-' . substr( $input['run'], 0, 12 ),
     'dataMover' => false, 'blocks' => false, 'failure' => false );
   $user_id = wp_insert_user( array( 'user_login' => $context['username'], 'user_pass' => $context['password'],
@@ -41,10 +44,10 @@ if ( 'setup' === $action ) {
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
 } elseif ( 'info' === $action ) {
-  $result = array_intersect_key( $context, array_flip( array( 'username', 'password', 'productId', 'customerId', 'mode' ) ) );
+  $result = array_intersect_key( $context, array_flip( array( 'username', 'password', 'productId', 'customerId', 'mode', 'localwp' ) ) );
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock' ) as $key ) { $result[ $key ] = get_permalink( $context[ $key ] ); }
 } elseif ( 'configure' === $action ) {
-  foreach ( array( 'dataMover', 'blocks', 'unconfigured', 'showExempt', 'checkoutExemption' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
+  foreach ( array( 'dataMover', 'blocks', 'unconfigured', 'showExempt', 'checkoutExemption', 'rateLimit' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
   if ( array_key_exists( 'failure', $input ) ) {
     if ( ! in_array( $input['failure'], array( false, true, 'capture', 'refund' ), true ) ) { throw new Exception( 'Unknown fixture failure.' ); }
     if ( 'live' === $context['mode'] && false !== $input['failure'] ) { throw new Exception( 'Failure injection is fixture only.' ); }
@@ -52,6 +55,20 @@ if ( 'setup' === $action ) {
   }
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
+} elseif ( 'rateLimitReset' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['rateLimit'] ) ) { throw new Exception( 'No rate limit regression scenario.' ); }
+  // Start each case with an empty quota. Tests exhaust it through real WC requests.
+  delete_transient( 'sst_rate_limit_user_' . $context['customerId'] );
+  $result = true;
+} elseif ( 'rateLimitOrders' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['rateLimit'] ) ) { throw new Exception( 'No rate limit regression scenario.' ); }
+  $result = array( 'placed' => array(), 'drafts' => array() );
+  $orders = wc_get_orders( array( 'billing_email' => $context['username'] . ( ! empty( $input['guest'] ) ? '-guest' : '' ) . '@example.test',
+    'status' => array_keys( wc_get_order_statuses() ), 'limit' => -1, 'orderby' => 'ID', 'order' => 'ASC' ) );
+  foreach ( $orders as $order ) {
+    $result[ 'checkout-draft' === $order->get_status() ? 'drafts' : 'placed' ][] = array(
+      'id' => $order->get_id(), 'status' => $order->get_status(), 'paid' => $order->is_paid() );
+  }
 } elseif ( 'certificateAccess' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Certificate access scenarios require fixture mode.' ); }
   if ( empty( $context['certificateAccess'] ) ) {
@@ -328,7 +345,7 @@ if ( 'setup' === $action ) {
   $result = true;
 } elseif ( 'order' === $action ) {
   $order = wc_get_order( $input['id'] );
-  $guest_order = $order && 'fixture' === $context['mode'] && ! empty( $context['checkoutExemption'] )
+  $guest_order = $order && 'fixture' === $context['mode'] && ( ! empty( $context['checkoutExemption'] ) || ! empty( $context['rateLimit'] ) )
     && 0 === (int) $order->get_customer_id() && $order->get_billing_email() === $context['username'] . '-guest@example.test';
   if ( ! $order || ( (int) $order->get_customer_id() !== (int) $context['customerId'] && ! $guest_order ) ) { throw new Exception( 'This is not an order belonging to the test customer.' ); }
   $result = array( 'id' => $order->get_id(), 'customerId' => (int) $order->get_customer_id(), 'status' => $order->get_status(), 'tax' => (float) $order->get_total_tax(),

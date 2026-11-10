@@ -25,11 +25,54 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **44 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **50 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
 Setup failures or skipped workflows do not count as successful verification.
+
+## Checkout rate limit regression (DEV-10623)
+
+`npm run test:e2e` includes six fixture-only Cypress cases: guest and logged-in
+customers using classic and Blocks checkout, plus new exemption certificates on
+both checkout routes. Each case starts with an empty
+quota, obtains a real plugin quote, and exhausts the five-request limit through
+WooCommerce requests. The tests never seed an already-reached counter.
+
+With forced lookups enabled and the optional notice disabled, changing quantity
+must leave the estimate available but reject order submission with the tax error.
+Classic checkout creates no order; any Store API draft stays unpaid. Restoring
+the quoted quantity must permit checkout with $10 tax and a $110 persisted total.
+The tests check saved packages, absence of additional TaxCloud lookup requests,
+and that skipped lookups never enter the quote cache. A scoped read-only endpoint
+observes the real limiter/cache; only external TaxCloud responses are simulated.
+Settings apply only to the run's cookie/CLI context and reset after each case.
+The two new-certificate cases change to an uncached cart after exhausting the
+quota, submit a complete certificate covering that destination, and verify the
+certificate is created exactly once and the order saves $0 tax and a $200 total.
+Ten screenshots are saved under `cypress/screenshots/` with `DEV-10623` names.
+These cases do not run in live mode.
+
+Run `php tests/rate-limit-regression.php` or `npm run test:regression`.
+The standalone check runs the real lookup, package hash/cache, rate limiter and
+checkout validators with controlled API clients and a modeled WooCommerce boundary.
+Its 248 assertions cover V1/V3 and guest/authenticated sessions:
+
+- A reached limit blocks uncached classic and Store API order submissions, even
+  when the optional rate-limit notice is disabled or no estimate was calculated.
+- Cached positive-tax and legitimate zero-tax quotes permit checkout. Forced
+  refreshes retain a matching cached quote when the limit has been reached.
+- Changed carts, response-less legacy caches and partially quoted multi-package
+  carts cannot bypass validation. An expired quota permits a fresh lookup.
+- Estimates and Store API PATCH requests stay available. Disabled integrations,
+  Data Import and the existing external tax-exemption flag retain their behavior.
+- A complete new certificate covering every package can proceed at the limit
+  without a cached quote. Missing, incomplete, malformed, mismatched-state and
+  unselected certificates still reject checkout, including mixed destinations.
+  Final submission cannot substitute a previously previewed certificate state.
+
+Skipped lookups are no longer cached as quotes, and existing response-less cache
+entries are ignored. These standalone checks do not make external requests.
 
 ## Checkout exemption security regression (DEV-10620)
 
@@ -202,7 +245,7 @@ for `99990`; it does not independently verify either rate against the live API.
 | Category `90505`, quantity changed from 1 to 2 | $15.00 | $13.00 | $228.00 |
 | Category `90505`, Minnesota destination | $10.00 (fixture) | None | $110.00 |
 
-Expect **40 passing** overall, including these **6 Colorado cases**. The first
+Expect **50 passing** overall, including these **6 Colorado cases**. The first
 Colorado test selects and saves category `99990` through the admin UI. Every
 Colorado test checks the effective product TIC, outgoing API payload,
 visible checkout totals and persisted order totals. Eligible Colorado orders
@@ -304,6 +347,32 @@ including Resale. The browser suite verifies that the modal blocks an empty
 description and that Blocks displays the description field for Resale. Server
 regressions cover missing/blank descriptions, V1 compatibility, malformed
 successful quotes, and rate-limit accounting for rejected quote attempts.
+
+## LocalWP setup (without Docker)
+
+The plugin suite can also run against a LocalWP site that loads this exact
+checkout. Set its WordPress root and, if your PHP CLI needs it, its MySQL socket:
+
+```sh
+SST_E2E_WORDPRESS_PATH='/path/to/site/app/public' \
+SST_E2E_MYSQL_SOCKET='/path/to/localwp/run/site-id/mysql/mysqld.sock' \
+npm run test:e2e -- --browser chrome --config baseUrl=http://dev-taxcloud.local
+```
+
+Use the same environment variables with `test:e2e:open` or `test:cleanup`.
+The supplied base URL must match WordPress's saved home URL and use a local
+hostname. Customer logins use the run's generated account; admin tests use
+LocalWP's existing `localwp_auto_login=1` flow. The runner uses `php` and `wp`
+from PATH; `SST_E2E_PHP_BINARY` and `SST_E2E_WP_CLI` can override them.
+
+The temporary MU helper provides the Docker test helper's Store API nonce and
+cheque-payment behavior only for the test cookie/CLI context. Local test requests
+omit the unused Stripe gateway, and disposable pages stay out of fallback menus.
+The plugin suite uses a 1440×1000 desktop viewport. Saved merchant
+settings and other visitors keep their normal behavior. Automatic cleanup
+removes the helper, secret file and disposable product/pages, while preserving
+the run's customers and orders for inspection. Docker remains the default when
+`SST_E2E_WORDPRESS_PATH` is unset.
 
 ## Docker setup
 
