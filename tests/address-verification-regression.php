@@ -19,7 +19,7 @@ namespace {
 	function esc_html( $value ) { return $value; }
 	function add_action( $hook, $callback ) { $GLOBALS['hooks'][ $hook ] = $callback; }
 	function add_filter( $hook, $callback ) {
-		if ( in_array( $hook, array( 'wc_subscriptions_subscription_data', 'wc_subscriptions_renewal_order_data' ), true ) ) {
+		if ( in_array( $hook, array( 'wc_subscriptions_subscription_data', 'wc_subscriptions_renewal_order_data', 'wc_subscriptions_resubscribe_order_data' ), true ) ) {
 			$GLOBALS['copy_filters'][ $hook ][] = $callback;
 		}
 	}
@@ -66,8 +66,16 @@ namespace {
 			public function VerifyAddress( $request ) {
 				++$GLOBALS['calls'];
 				$mode = $GLOBALS['mode'];
-				if ( in_array( $mode, array( 'reject', 'mismatch', 'timeout', 'auth', 'server', 'rate' ), true ) ) {
-					$messages = array( 'reject' => 'Error -2147219401: Address Not Found.', 'mismatch' => 'Error: City State Mismatch.', 'timeout' => 'cURL error 28: Operation timed out', 'auth' => 'API Key not set.', 'server' => 'HTTP 503 Server error: Address not found', 'rate' => 'Too many requests' );
+				if ( in_array( $mode, array( 'reject', 'no-delivery-point', 'mismatch', 'timeout', 'auth', 'server', 'rate' ), true ) ) {
+					$messages = array(
+						'reject'            => 'Error -2147219401: Address Not Found.',
+						'no-delivery-point' => 'Error 97: Address has no delivery point value',
+						'mismatch'          => 'Error: City State Mismatch.',
+						'timeout'           => 'cURL error 28: Operation timed out',
+						'auth'              => 'API Key not set.',
+						'server'            => 'HTTP 503 Server error: Address not found',
+						'rate'              => 'Too many requests',
+					);
 					throw new \TaxCloud\Exceptions\VerifyAddressException( $messages[ $mode ] );
 				}
 				return new \TaxCloud\Address( '1 Main Dr', '', 'corrected' === $mode ? 'Riverside' : ( 'standardized' === $mode ? strtoupper( $request->getCity() ) : $request->getCity() ), 'state' === $mode ? 'NV' : $request->getState(), 'zip' === $mode ? '92509' : $request->getZip5(), '8114' );
@@ -162,13 +170,17 @@ namespace {
 		same( 'v1' === $version ? '92509-8114' : '92509-1234', $zip['changes']['zip']['to'], "$version five-digit ZIP correction noted" );
 		$mode = 'state'; $transients = array(); SST_Addresses::verify_address( address( 'Riverside' ), $state );
 		same( array( 'from' => 'CA', 'to' => 'NV' ), $state['changes']['state'], "$version corrected state noted" );
-		foreach ( array( 'v1' === $version ? 'reject' : 400, 'mismatch', 'timeout', 'auth', 'v1' === $version ? 'server' : 503, 'v1' === $version ? 'rate' : 429 ) as $mode ) {
+		$failure_modes = 'v1' === $version
+			? array( 'reject', 'no-delivery-point', 'mismatch', 'timeout', 'auth', 'server', 'rate' )
+			: array( 400, 'mismatch', 'timeout', 'auth', 503, 429 );
+		foreach ( $failure_modes as $mode ) {
 			$transients = array(); $before = $calls;
 			$returned = SST_Addresses::verify_address( $input, $failure );
-			$rejected = in_array( $mode, array( 'reject', 400, 'mismatch' ), true );
+			$rejected = in_array( $mode, array( 'reject', 'no-delivery-point', 400, 'mismatch' ), true );
 			same( $input, $returned, "$version $mode falls back to typed address" );
 			same( $rejected ? 'rejected' : 'transient_failure', $failure['status'], "$version $mode classified" );
 			if ( 'mismatch' === $mode ) { same( 'city_zip_mismatch', $failure['reason'], "$version mismatch reason" ); }
+			if ( 'no-delivery-point' === $mode ) { same( 'address_not_found', $failure['reason'], 'Live V1 error 97 is an address-not-found rejection' ); }
 			SST_Addresses::verify_address( $input, $retry );
 			same( $rejected ? 1 : ( 'auth' === $mode && 'v3' === $version ? 0 : 2 ), $calls - $before, "$version $mode retry/cache policy" );
 			same( $rejected, ! empty( $transients['sst_verified_addresses'] ), "$version $mode only rejections cached" );
@@ -250,6 +262,15 @@ namespace {
 	$unrelated_meta = array( '_fixture_subscription_meta' => 'keep' );
 	same( $unrelated_meta, $subscription_meta, 'Parent-to-subscription copy keeps only unrelated metadata' );
 	same( $unrelated_meta, apply_filters( 'wc_subscriptions_renewal_order_data', $parent->meta ), 'Existing subscription-to-renewal copy keeps only unrelated metadata' );
+	$resubscribe       = new WC_Order();
+	$resubscribe->id   = 502;
+	$resubscribe->meta = apply_filters( 'wc_subscriptions_resubscribe_order_data', $parent->meta );
+	$sst_resubscribe   = new Fixture_Order( $resubscribe );
+	$sst_resubscribe->record( $failure );
+	same( $parent->notes, $resubscribe->notes, 'Resubscribe order gets its own verification note' );
+	$sst_resubscribe->record( $failure );
+	same( 1, count( $resubscribe->notes ), 'Recalculation of resubscribe order does not duplicate its note' );
+	same( $unrelated_meta, apply_filters( 'wc_subscriptions_resubscribe_order_data', $parent->meta ), 'Resubscribe copy keeps only unrelated metadata' );
 	same( 1, count( $parent->notes ), 'Parent keeps its verification note' );
 	echo "Address verification regression checks passed ($assertions assertions).\n";
 }
