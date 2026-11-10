@@ -352,6 +352,8 @@ class SST_Ajax {
 
 		// Save items and recalc taxes.
 		wc_save_order_items( $order_id, $items );
+		// Item saving recalculates totals on another instance of the order.
+		$order = wc_get_order( $order_id );
 
 		$posted_address = compact(
 			'country',

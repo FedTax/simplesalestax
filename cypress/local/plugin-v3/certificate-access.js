@@ -109,5 +109,45 @@ module.exports = ({ task, records, login }) => {
         expect(creates, 'both staff requests target the selected customer').to.have.length(2);
       });
     });
+
+    it('preserves an administrator’s certificate against forged shop-manager order-form saves', () => {
+      let order;
+      task('certificateOrderSave').then((data) => { order = data; });
+      cy.clearAllCookies();
+      cy.setCookie('sst_e2e_run', Cypress.env('pluginV3Run'));
+      cy.visit('/wp-login.php');
+      cy.then(() => cy.request({ method: 'POST', url: '/wp-login.php', form: true, log: false,
+        body: { log: fixture.managerUsername, pwd: fixture.managerPassword, 'wp-submit': 'Log In', testcookie: '1' } }));
+      cy.then(() => cy.visit(order.editUrl));
+      cy.get('#exempt-cert-select').should('not.exist');
+      task('certificateOrderSaveState').then((state) => {
+        expect(state.customerId).to.equal(fixture.adminId);
+        expect(state.certificateId, 'fixture starts with a saved exemption').to.equal(order.certificateId);
+      });
+      ['', 'none', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'].forEach((posted) => {
+        cy.intercept('POST', '**/wp-admin/**', (req) => {
+          if (new URLSearchParams(req.body).get('exempt_cert') === posted) req.alias = 'forgedCertificateOrderSave';
+        });
+        cy.get('#order_status').should('have.value', 'wc-pending');
+        cy.get('#save-order, button.save_order').first().closest('form').then(($form) => {
+          // Keep WooCommerce's real form, action, order ID and nonce intact.
+          Cypress.$('<input>', { type: 'hidden', name: 'exempt_cert', value: posted }).appendTo($form);
+        });
+        cy.get('#save-order, button.save_order').first().click();
+        cy.wait('@forgedCertificateOrderSave').then(({ response }) => expect(response.statusCode).to.be.within(200, 399));
+        cy.get('#exempt-cert-select').should('not.exist');
+        task('certificateOrderSaveState').then((state) => {
+          expect(state.customerId).to.equal(fixture.adminId);
+          expect(state.certificateId, 'forged regular-form save preserves the exemption').to.equal(order.certificateId);
+        });
+      });
+      // The same order form must still allow an authorized administrator to clear it.
+      login('admin');
+      cy.then(() => cy.visit(order.editUrl));
+      cy.get('#exempt_cert').select('', { force: true });
+      cy.get('#save-order, button.save_order').first().click();
+      cy.get('#order_status').should('have.value', 'wc-pending');
+      task('certificateOrderSaveState').its('certificateId').should('equal', '');
+    });
   });
 };

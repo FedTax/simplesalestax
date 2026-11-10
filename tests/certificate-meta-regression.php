@@ -22,8 +22,19 @@ function sanitize_text_field( $value ) { return is_string( $value ) ? trim( $val
 function absint( $value ) { return abs( (int) $value ); }
 function wc_clean( $value ) { return $value; }
 function wc_get_order( $id ) { return $GLOBALS['test_order']; }
-function wc_save_order_items( $id, $items ) { $GLOBALS['saved_items'][] = $id; }
-function sst_order_calculate_taxes( $order ) { throw new RuntimeException( 'recalculation reached' ); }
+function wc_save_order_items( $id, $items ) {
+	$GLOBALS['saved_items'][] = $id;
+	if ( ! empty( $GLOBALS['simulate_item_save'] ) ) {
+		// WooCommerce saves totals on its own order instance. A previously loaded
+		// instance must not retain its old props when tax recalculation starts.
+		$GLOBALS['test_order'] = clone $GLOBALS['test_order'];
+		$GLOBALS['test_order']->total = 120;
+	}
+}
+function sst_order_calculate_taxes( $order ) {
+	$GLOBALS['recalculated_order'] = $order;
+	throw new RuntimeException( 'recalculation reached' );
+}
 function wp_die( $message = '' ) { throw new RuntimeException( (string) $message ); }
 function wp_send_json_error( $message ) { throw new RuntimeException( $message ); }
 function wp_send_json_success() { throw new RuntimeException( 'success' ); }
@@ -48,13 +59,15 @@ class SST_Logger {
 class WC_Order {
 	public $meta = array();
 	public $customer_id = 42;
+	public $save_calls = 0;
+	public $total = 110;
 	public function get_meta( $key, $single = true, $context = 'view' ) { return $this->meta[ $key ] ?? ''; }
 	public function update_meta_data( $key, $value ) { $this->meta[ $key ] = $value; }
-	public function save() {}
+	public function save() { ++$this->save_calls; }
 	public function get_id() { return 123; }
 	public function get_status() { return 'pending'; }
 	public function get_customer_id() { return $this->customer_id; }
-	public function get_total() { return 110; }
+	public function get_total() { return $this->total; }
 	public function get_shipping_total() { return 0; }
 	public function get_total_tax() { return 10; }
 	public function __call( $method, $args ) { return 'existing address'; }
@@ -253,6 +266,52 @@ $test_order->customer_id = 0;
 $_POST = $recalculate_post + array( 'exemption_certificate' => 'none' );
 expect_same( 'recalculation reached', response_from( array( 'SST_Ajax', 'calc_line_taxes' ) ), 'Authorized staff can still edit guest-order selections' );
 expect_same( '', $test_order->meta['_wootax_exempt_cert'], 'Explicit clearing on an authorized guest order is retained' );
+
+// The regular order form must enforce the same rule as AJAX recalculation.
+$replacement_id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+foreach ( array(
+	array( 2, 1, array( 'edit_shop_orders', 'manage_woocommerce' ), false ),
+	array( 43, 42, array( 'edit_shop_orders', 'edit_user' ), false ),
+	array( 43, 0, array( 'edit_shop_orders' ), false ),
+	array( 0, 42, array(), false ),
+	array( 1, 42, array( 'edit_shop_orders', 'manage_options', 'edit_user' ), true ),
+	array( 2, 42, array( 'edit_shop_orders', 'manage_woocommerce', 'edit_user' ), true ),
+	array( 1, 0, array( 'edit_shop_orders', 'manage_options' ), true ),
+) as $case ) {
+	list( $acting_user_id, $test_order->customer_id, $acting_capabilities, $allowed ) = $case;
+	foreach ( array( null, '', 'none', $replacement_id, SST_SINGLE_PURCHASE_CERT_ID ) as $posted ) {
+		$test_order->meta = array( '_wootax_status' => 'pending', '_wootax_exempt_cert' => TEST_CERTIFICATE_ID,
+			'_wootax_packages' => serialize( array( array( 'certificate_id' => $replacement_id, 'cart_items' => array() ) ) ) );
+		$before = $test_order->meta;
+		$test_order->save_calls = 0;
+		$_POST = null === $posted ? array() : array( 'exempt_cert' => $posted );
+		( new SST_Order_Controller() )->save_certficiate( 123 );
+		$changed = $allowed && null !== $posted;
+		$expected = $changed ? ( 'none' === $posted ? '' : $posted ) : TEST_CERTIFICATE_ID;
+		expect_same( $expected, $test_order->meta['_wootax_exempt_cert'], 'Order-save selection changes require certificate access and an explicit field' );
+		expect_same( $changed ? 1 : 0, $test_order->save_calls, 'Rejected or omitted selections do not save certificate metadata' );
+		if ( ! $changed ) {
+			expect_same( $before, $test_order->meta, 'Unauthorized order saves leave all certificate and package metadata untouched' );
+		}
+	}
+}
+
+// Saving items changes stored totals on another copy of the order. Recalculation
+// must use those updated props while retaining certificate authorization behavior.
+$acting_user_id = 1;
+$acting_capabilities = array( 'edit_shop_orders', 'manage_options', 'edit_user' );
+$simulate_item_save = true;
+foreach ( array( null, 'none' ) as $posted ) {
+	$test_order = new WC_Order();
+	$test_order->total = 100;
+	$test_order->meta['_wootax_exempt_cert'] = TEST_CERTIFICATE_ID;
+	$_POST = $recalculate_post;
+	if ( null !== $posted ) { $_POST['exemption_certificate'] = $posted; }
+	expect_same( 'recalculation reached', response_from( array( 'SST_Ajax', 'calc_line_taxes' ) ), 'Recalculation runs after item persistence' );
+	expect_same( 120, $recalculated_order->get_total(), 'Recalculation sees the totals persisted by the item save' );
+	expect_same( null === $posted ? TEST_CERTIFICATE_ID : '', $recalculated_order->get_meta( '_wootax_exempt_cert' ), 'Reloaded orders preserve omitted selections and allow authorized clears' );
+}
+$simulate_item_save = false;
 
 expect_same( true, SST_Certificates::is_valid_certificate_id( 'ABCDEFAB-CDEF-ABCD-EFAB-CDEFABCDEFAB' ), 'GUIDs accept uppercase hex without imposing a UUID version' );
 

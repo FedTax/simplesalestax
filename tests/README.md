@@ -25,7 +25,7 @@ Close the Cypress app before starting another plugin run.
 
 | Mode | Expected result | What it proves |
 | --- | --- | --- |
-| Default (fixture) | **43 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
+| Default (fixture) | **44 passing**, zero failures | Real WooCommerce/plugin workflows, known positive tax, rejected requests and recovery; only TaxCloud HTTP responses are replaced |
 | `--live` | **15 passing**, zero failures | The supported workflows authenticate and work against both configured TaxCloud connections |
 
 A successful headless run ends with **All specs passed!** and exit code **0**.
@@ -54,7 +54,7 @@ and the plugin suite remains local only.
 
 ## Certificate access security regression (DEV-10622)
 
-`npm run test:e2e` includes three fixture-only cases:
+`npm run test:e2e` includes four fixture-only cases:
 
 - A customer sends another customer's ID to add, read, refresh and delete with
   valid nonces. Each request returns HTTP 403 with no certificate data and no
@@ -64,6 +64,9 @@ and the plugin suite remains local only.
   the old prefix cannot expose the foreign certificate either.
 - An administrator and a temporary shop manager create and read certificates for
   a permitted customer. The shop manager cannot read an administrator's records.
+- A shop manager submits forged empty, `none`, and replacement certificate values
+  through the real order form for an administrator's order. The saved exemption
+  must remain unchanged. An administrator can then explicitly clear it normally.
 
 Only TaxCloud HTTP responses are simulated. The billing email is restored after
 each case, and suite cleanup demotes the temporary shop manager to customer.
@@ -76,10 +79,13 @@ checkout selections, server-rendered certificate data, order debug authorization
 and background processing.
 It is included in `npm run test:regression`.
 
-The metadata regression also checks that order recalculation preserves existing
-certificates when the field is omitted, and ignores posted selections from order
-editors who cannot manage the customer's certificates. Authorized users can
-still explicitly select or clear certificates, including on guest orders.
+The metadata regression also checks both recalculation and regular order saves:
+omitting the field preserves the selection, and editors without certificate
+access cannot clear or replace it. Rejected regular saves do not write certificate
+or package metadata. Authorized users can still explicitly select or clear
+certificates, including on guest orders.
+Recalculation also reloads the order after WooCommerce saves its items so it
+uses the newly persisted totals rather than properties from an earlier instance.
 
 Certificates stored only under a billing email that differs from the account's
 email no longer appear. Authorized staff can recreate them for the correct

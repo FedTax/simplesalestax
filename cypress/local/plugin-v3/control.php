@@ -93,6 +93,35 @@ if ( 'setup' === $action ) {
   // This fixture deliberately seeds the old prefix to test upgrade isolation.
   delete_transient( '_sst_certificates_' . $context['customerId'] );
   $result = true;
+} elseif ( 'certificateOrderSave' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['certificateAccess'] ) ) { throw new Exception( 'No certificate access scenario.' ); }
+  wp_set_current_user( $context['adminId'] );
+  $id = wp_generate_uuid4();
+  $remote = get_option( 'sst_cypress_v3_remote' );
+  $certificate = $remote['certificates'][ $context['certificateAccess']['ownCertificateId'] ];
+  $certificate['certificateId'] = $id;
+  $certificate['customerId'] = (string) $context['adminId'];
+  $remote['certificates'][ $id ] = $certificate;
+  update_option( 'sst_cypress_v3_remote', $remote, false );
+  SST_Certificates::delete_certificates( $context['adminId'] );
+  $order = wc_create_order( array( 'customer_id' => $context['adminId'], 'status' => 'pending', 'created_via' => 'cypress-dev-10622' ) );
+  if ( is_wp_error( $order ) ) { throw new Exception( $order->get_error_message() ); }
+  $address = array( 'first_name' => 'Cypress', 'last_name' => 'Admin', 'country' => 'US',
+    'address_1' => '323 Washington Ave N', 'city' => 'Minneapolis', 'state' => 'MN', 'postcode' => '55401',
+    'email' => get_user_by( 'id', $context['adminId'] )->user_email );
+  $order->set_address( $address, 'billing' ); $order->set_address( $address, 'shipping' );
+  $order->add_product( wc_get_product( $context['productId'] ), 1 );
+  $order->update_meta_data( '_wootax_exempt_cert', $id );
+  $order->save();
+  if ( ! ( new SST_Order( $order ) )->calculate_taxes() ) { throw new Exception( 'Unable to calculate protected order fixture.' ); }
+  $order->calculate_totals( false ); $order->save();
+  $context['certificateAccess']['orderSaveId'] = $order->get_id();
+  update_option( 'sst_cypress_v3_context', $context, false );
+  $result = array( 'id' => $order->get_id(), 'editUrl' => $order->get_edit_order_url(), 'certificateId' => $id );
+} elseif ( 'certificateOrderSaveState' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['certificateAccess']['orderSaveId'] ) ) { throw new Exception( 'No order-save scenario.' ); }
+  $order = wc_get_order( $context['certificateAccess']['orderSaveId'] );
+  $result = array( 'certificateId' => $order->get_meta( '_wootax_exempt_cert' ), 'customerId' => $order->get_customer_id() );
 } elseif ( 'checkoutExemption' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Checkout exemption security scenarios require fixture mode.' ); }
   if ( empty( $context['foreignExemptionCustomerId'] ) ) {
@@ -372,6 +401,11 @@ if ( 'setup' === $action ) {
   if ( ! empty( $context['coCategoryId'] ) ) { wp_delete_term( $context['coCategoryId'], 'product_cat' ); }
   if ( ! empty( $context['certificateAccess'] ) ) {
     ( new WP_User( $context['certificateAccess']['managerUserId'] ) )->set_role( 'customer' );
+    if ( ! empty( $context['certificateAccess']['orderSaveId'] ) ) {
+      $order = wc_get_order( $context['certificateAccess']['orderSaveId'] );
+      if ( $order ) { $order->delete( false ); }
+      SST_Certificates::delete_certificates( $context['adminId'] );
+    }
     SST_Certificates::delete_certificates( $context['customerId'] );
     SST_Certificates::delete_certificates( $context['certificateAccess']['foreignUserId'] );
     // Remove the deliberately seeded legacy cache as well as the current caches.
