@@ -76,11 +76,22 @@ checkout selections, server-rendered certificate data, order debug authorization
 and background processing.
 It is included in `npm run test:regression`.
 
+The metadata regression also checks that order recalculation preserves existing
+certificates when the field is omitted, and ignores posted selections from order
+editors who cannot manage the customer's certificates. Authorized users can
+still explicitly select or clear certificates, including on guest orders.
+
 Certificates stored only under a billing email that differs from the account's
 email no longer appear. Authorized staff can recreate them for the correct
 customer. Existing certificate caches are ignored automatically after the fix.
 
 ## Certificate ID and metadata security regression (DEV-10621)
+
+Test-runner compatibility fixes retained alongside these scenarios unset
+`ELECTRON_RUN_AS_NODE` before launching Cypress and support Store API batch
+requests. The Sizzle quote-selector workaround is active only during the two
+serialized-option selections and is restored on completion or test failure.
+These adjustments do not alter plugin authorization or TaxCloud responses.
 
 `npm run test:e2e` includes five fixture-only Cypress cases:
 

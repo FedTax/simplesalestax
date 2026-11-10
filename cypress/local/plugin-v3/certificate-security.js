@@ -30,32 +30,35 @@ module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder
       expect(quotes, 'real checkout requested tax from TaxCloud').not.to.be.empty;
       quotes.forEach((quote) => quote.request.items.forEach((item) => expect(item).not.to.have.property('exemption')));
     });
-    // Cypress .select() passes unescaped option values to Sizzle find(`option[value="${val}"]`).
-    // When val contains double quotes, Sizzle throws a syntax error.
-    if (Cypress && Cypress.$ && !Cypress.$.fn.__sstFindPatched) {
-      const origFind = Cypress.$.fn.find;
-      Cypress.$.fn.find = function (selector) {
+    // Limit the Cypress/Sizzle quote workaround to a malformed option selection.
+    // Restore it even if .select() fails, so later tests keep normal selectors.
+    let restoreFind;
+    const selectSerializedOption = (selector, value) => {
+      const originalFind = Cypress.$.fn.find;
+      restoreFind = () => { Cypress.$.fn.find = originalFind; restoreFind = null; };
+      Cypress.$.fn.find = function (optionSelector) {
         try {
-          return origFind.apply(this, arguments);
+          return originalFind.apply(this, arguments);
         } catch (err) {
-          if (typeof selector === 'string' && err.message && err.message.includes('Syntax error')) {
-            const match = selector.match(/^option\[value="([\s\S]*)"\]$/);
-            if (match) {
-              return this.find('option').filter((_, el) => el.value === match[1]);
-            }
+          const match = typeof optionSelector === 'string' && optionSelector.match(/^option\[value="([\s\S]*)"\]$/);
+          if (match && err.message?.includes('Syntax error')) {
+            return originalFind.call(this, 'option').filter((_, el) => el.value === match[1]);
           }
           throw err;
         }
       };
-      Cypress.$.fn.__sstFindPatched = true;
-    }
+      return cy.get(selector).select(value, { force: true }).then(() => restoreFind());
+    };
     const visitOrder = () => {
       login('admin');
       cy.then(() => cy.visit(fixture.editUrl));
       cy.get('#exempt_cert').should('exist');
     };
 
-    afterEach(() => task('certificateSecurityCleanup'));
+    afterEach(() => {
+      if (restoreFind) restoreFind();
+      return task('certificateSecurityCleanup');
+    });
 
     it('ignores a customer-owned serialized ID in classic cart refresh and checkout', () => {
       begin('checkout');
@@ -66,7 +69,7 @@ module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder
       });
       // The malformed value comes from the customer's fixture certificate list,
       // so the ownership check succeeds unless the GUID format is also checked.
-      cy.then(() => cy.get('#certificate_id').select(fixture.serializedPayload, { force: true }));
+      cy.then(() => selectSerializedOption('#certificate_id', fixture.serializedPayload));
       cy.wait('@serializedClassicReview', { timeout: 60000 }).its('response.statusCode').should('equal', 200);
       cy.get('.blockUI', { timeout: 60000 }).should('not.exist');
       sessionSelection('');
@@ -100,7 +103,7 @@ module.exports = ({ task, records, login, cart, checkout, visibleTax, placeOrder
           }
         }
       });
-      cy.then(() => cy.get('#exemption-certificate-input').select(fixture.serializedPayload, { force: true }));
+      cy.then(() => selectSerializedOption('#exemption-certificate-input', fixture.serializedPayload));
       cy.wait('@serializedBlocksUpdate', { timeout: 60000 }).then(({ request, response }) => {
         const batchReq = request.body?.requests?.find((r) => r.path?.includes('/cart/extensions'));
         const reqData = batchReq ? batchReq.body.data : request.body.data;

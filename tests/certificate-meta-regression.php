@@ -7,6 +7,8 @@ const TEST_CERTIFICATE_ID = '11111111-2222-3333-4444-555555555555';
 $assertions = 0;
 $saved_items = array();
 $logged_meta = array();
+$acting_user_id = 42;
+$acting_capabilities = null;
 
 function __( $message ) { return $message; }
 function esc_html__( $message ) { return $message; }
@@ -25,9 +27,9 @@ function sst_order_calculate_taxes( $order ) { throw new RuntimeException( 'reca
 function wp_die( $message = '' ) { throw new RuntimeException( (string) $message ); }
 function wp_send_json_error( $message ) { throw new RuntimeException( $message ); }
 function wp_send_json_success() { throw new RuntimeException( 'success' ); }
-function current_user_can() { return true; }
-function get_current_user_id() { return 42; }
-function get_user_by( $field, $id ) { return 42 === $id ? (object) array( 'ID' => 42 ) : false; }
+function current_user_can( $cap, $target = 0 ) { return null === $GLOBALS['acting_capabilities'] || in_array( $cap, $GLOBALS['acting_capabilities'], true ); }
+function get_current_user_id() { return $GLOBALS['acting_user_id']; }
+function get_user_by( $field, $id ) { return in_array( $id, array( 1, 42 ), true ) ? (object) array( 'ID' => $id ) : false; }
 function wp_json_encode( $value ) { return json_encode( $value ); }
 function sst_get_api_version() { return 'v1'; }
 function wc_get_orders() { return array( 123 ); }
@@ -45,12 +47,13 @@ class SST_Logger {
 }
 class WC_Order {
 	public $meta = array();
+	public $customer_id = 42;
 	public function get_meta( $key, $single = true, $context = 'view' ) { return $this->meta[ $key ] ?? ''; }
 	public function update_meta_data( $key, $value ) { $this->meta[ $key ] = $value; }
 	public function save() {}
 	public function get_id() { return 123; }
 	public function get_status() { return 'pending'; }
-	public function get_customer_id() { return 42; }
+	public function get_customer_id() { return $this->customer_id; }
 	public function get_total() { return 110; }
 	public function get_shipping_total() { return 0; }
 	public function get_total_tax() { return 10; }
@@ -220,6 +223,37 @@ foreach ( array( TEST_CERTIFICATE_ID, strtoupper( TEST_CERTIFICATE_ID ), '', 'no
 	expect_same( 'recalculation reached', response_from( array( 'SST_Ajax', 'calc_line_taxes' ) ), 'Valid IDs, clear selections and the internal single-purchase marker can recalculate' );
 	expect_same( 'none' === $id ? '' : $id, $test_order->meta['_wootax_exempt_cert'], 'Allowed recalculation selection is saved' );
 }
+// Recalculation must preserve a selection when the certificate UI is absent.
+$recalculate_post = array( 'order_id' => 123, 'country' => 'US', 'state' => 'CO', 'postcode' => '80202', 'city' => 'Denver', 'items' => '' );
+foreach ( array( TEST_CERTIFICATE_ID, SST_SINGLE_PURCHASE_CERT_ID, serialize( $certificate ) ) as $saved ) {
+	$test_order->meta['_wootax_exempt_cert'] = $saved;
+	$_POST = $recalculate_post;
+	expect_same( 'recalculation reached', response_from( array( 'SST_Ajax', 'calc_line_taxes' ) ), 'Omitting the certificate still recalculates the order' );
+	expect_same( $saved, $test_order->meta['_wootax_exempt_cert'], 'Omitting the field preserves saved and legacy certificates' );
+}
+
+foreach ( array(
+	array( 43, 42, array( 'edit_shop_orders' ) ),
+	array( 2, 1, array( 'edit_shop_orders', 'manage_woocommerce' ) ),
+	array( 43, 0, array( 'edit_shop_orders' ) ),
+) as $case ) {
+	list( $acting_user_id, $test_order->customer_id, $acting_capabilities ) = $case;
+	foreach ( array( null, '', 'none', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', array( 'invalid' ) ) as $posted ) {
+		$test_order->meta['_wootax_exempt_cert'] = TEST_CERTIFICATE_ID;
+		$_POST = $recalculate_post;
+		if ( null !== $posted ) { $_POST['exemption_certificate'] = $posted; }
+		expect_same( 'recalculation reached', response_from( array( 'SST_Ajax', 'calc_line_taxes' ) ), 'Order editors without certificate access can still recalculate' );
+		expect_same( TEST_CERTIFICATE_ID, $test_order->meta['_wootax_exempt_cert'], 'Unauthorized posted selections cannot replace or clear a certificate' );
+	}
+}
+
+$acting_user_id = 1;
+$acting_capabilities = array( 'edit_shop_orders', 'manage_options' );
+$test_order->customer_id = 0;
+$_POST = $recalculate_post + array( 'exemption_certificate' => 'none' );
+expect_same( 'recalculation reached', response_from( array( 'SST_Ajax', 'calc_line_taxes' ) ), 'Authorized staff can still edit guest-order selections' );
+expect_same( '', $test_order->meta['_wootax_exempt_cert'], 'Explicit clearing on an authorized guest order is retained' );
+
 expect_same( true, SST_Certificates::is_valid_certificate_id( 'ABCDEFAB-CDEF-ABCD-EFAB-CDEFABCDEFAB' ), 'GUIDs accept uppercase hex without imposing a UUID version' );
 
 echo "Certificate metadata security regression checks passed ($assertions assertions).\n";

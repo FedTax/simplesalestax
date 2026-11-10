@@ -90,6 +90,7 @@ if ( 'setup' === $action ) {
   if ( 'fixture' !== $context['mode'] || empty( $context['certificateAccess'] ) ) { throw new Exception( 'No certificate access scenario.' ); }
   update_user_meta( $context['customerId'], 'billing_email', get_user_by( 'id', $context['customerId'] )->user_email );
   SST_Certificates::delete_certificates( $context['customerId'] );
+  // This fixture deliberately seeds the old prefix to test upgrade isolation.
   delete_transient( '_sst_certificates_' . $context['customerId'] );
   $result = true;
 } elseif ( 'checkoutExemption' === $action ) {
@@ -371,6 +372,9 @@ if ( 'setup' === $action ) {
   if ( ! empty( $context['coCategoryId'] ) ) { wp_delete_term( $context['coCategoryId'], 'product_cat' ); }
   if ( ! empty( $context['certificateAccess'] ) ) {
     ( new WP_User( $context['certificateAccess']['managerUserId'] ) )->set_role( 'customer' );
+    SST_Certificates::delete_certificates( $context['customerId'] );
+    SST_Certificates::delete_certificates( $context['certificateAccess']['foreignUserId'] );
+    // Remove the deliberately seeded legacy cache as well as the current caches.
     delete_transient( '_sst_certificates_' . $context['customerId'] );
   }
   foreach ( array( 'Realtime', 'DataImport' ) as $profile ) {
