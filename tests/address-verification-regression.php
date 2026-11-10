@@ -11,15 +11,24 @@ namespace {
 	define( 'DAY_IN_SECONDS', 86400 );
 	define( 'HOUR_IN_SECONDS', 3600 );
 	$settings = array( 'api_version' => 'v3', 'tc_id' => 'fixture', 'tc_key' => 'fixture', 'require_verified_shipping_address' => 'no' );
-	$transients = $hooks = array();
+	$transients = $hooks = $copy_filters = array();
 	$mode = 'corrected';
 	$calls = $assertions = 0;
 	function __( $value ) { return $value; }
 	function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 	function esc_html( $value ) { return $value; }
 	function add_action( $hook, $callback ) { $GLOBALS['hooks'][ $hook ] = $callback; }
-	function add_filter() {}
-	function apply_filters( $hook, $value ) { return 'wootax_add_fees' === $hook ? false : $value; }
+	function add_filter( $hook, $callback ) {
+		if ( in_array( $hook, array( 'wc_subscriptions_subscription_data', 'wc_subscriptions_renewal_order_data' ), true ) ) {
+			$GLOBALS['copy_filters'][ $hook ][] = $callback;
+		}
+	}
+	function apply_filters( $hook, $value ) {
+		foreach ( $GLOBALS['copy_filters'][ $hook ] ?? array() as $callback ) {
+			$value = $callback( $value );
+		}
+		return 'wootax_add_fees' === $hook ? false : $value;
+	}
 	function sst_storefront_active() { return false; }
 	function sst_get_api_version() { return SST_Settings::get( 'api_version' ); }
 	function wp_json_encode( $value ) { return json_encode( $value ); }
@@ -216,5 +225,31 @@ namespace {
 	same( 0, count( $order->notes ), 'No orphan notes before order exists' );
 	$order->id = 999; ( new SST_Order_Controller() )->add_address_verification_notes( 999, $order );
 	same( 1, count( $order->notes ), 'New order receives pending verification note' );
+
+	// Subscriptions copies metadata, but order notes belong to the original order.
+	require dirname( __DIR__ ) . '/includes/integrations/class-sst-subscriptions.php';
+	$mode       = 'timeout';
+	$transients = array();
+	SST_Addresses::verify_address( address(), $failure );
+	$parent     = new WC_Order();
+	$parent->id = 500;
+	$parent->update_meta_data( '_fixture_subscription_meta', 'keep' );
+	( new Fixture_Order( $parent ) )->record( $failure );
+	$subscription_meta = apply_filters( 'wc_subscriptions_subscription_data', $parent->meta );
+	foreach ( array( 'new' => $subscription_meta, 'existing' => $parent->meta ) as $type => $meta ) {
+		$renewal              = new WC_Order();
+		$renewal->id          = 501;
+		$renewal->created_via = 'subscription';
+		$renewal->meta        = apply_filters( 'wc_subscriptions_renewal_order_data', $meta );
+		$sst_renewal = new Fixture_Order( $renewal );
+		$sst_renewal->record( $failure );
+		same( $parent->notes, $renewal->notes, "Renewal from $type subscription gets its own verification note" );
+		$sst_renewal->record( $failure );
+		same( 1, count( $renewal->notes ), "Recalculation of renewal from $type subscription does not duplicate its note" );
+	}
+	$unrelated_meta = array( '_fixture_subscription_meta' => 'keep' );
+	same( $unrelated_meta, $subscription_meta, 'Parent-to-subscription copy keeps only unrelated metadata' );
+	same( $unrelated_meta, apply_filters( 'wc_subscriptions_renewal_order_data', $parent->meta ), 'Existing subscription-to-renewal copy keeps only unrelated metadata' );
+	same( 1, count( $parent->notes ), 'Parent keeps its verification note' );
 	echo "Address verification regression checks passed ($assertions assertions).\n";
 }
