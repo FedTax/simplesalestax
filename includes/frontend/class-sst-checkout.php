@@ -528,48 +528,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	protected function create_virtual_package() {
 		$digital_items = $this->get_items_not_needing_shipping();
 
-		if ( ! empty( $digital_items ) ) {
-			$destination = array(
-				'country'   => WC()->customer->get_billing_country(),
-				'address'   => WC()->customer->get_billing_address(),
-				'address_2' => WC()->customer->get_billing_address_2(),
-				'city'      => WC()->customer->get_billing_city(),
-				'state'     => WC()->customer->get_billing_state(),
-				'postcode'  => WC()->customer->get_billing_postcode(),
-			);
-
-			if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
-				$shipping_country   = WC()->customer->get_shipping_country();
-				$shipping_address   = WC()->customer->get_shipping_address();
-				$shipping_address_2 = WC()->customer->get_shipping_address_2();
-				$shipping_city      = WC()->customer->get_shipping_city();
-				$shipping_state     = WC()->customer->get_shipping_state();
-				$shipping_postcode  = WC()->customer->get_shipping_postcode();
-
-				if ( ! empty( $shipping_country ) && ! empty( $shipping_state ) ) {
-					$destination = array(
-						'country'   => $shipping_country,
-						'address'   => $shipping_address,
-						'address_2' => $shipping_address_2,
-						'city'      => $shipping_city,
-						'state'     => $shipping_state,
-						'postcode'  => $shipping_postcode,
-					);
-				}
-			}
-
-			return sst_create_package(
-				array(
-					'contents'    => $digital_items,
-					'destination' => $destination,
-					'user'        => array(
-						'ID' => get_current_user_id(),
-					),
-				)
-			);
-		}
-
-		return false;
+		return $digital_items ? sst_create_virtual_cart_package( $digital_items ) : false;
 	}
 
 	/**

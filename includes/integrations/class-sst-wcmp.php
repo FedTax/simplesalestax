@@ -179,6 +179,15 @@ class SST_WCMP extends SST_Marketplace_Integration {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 */
+	protected function get_seller_id_for_product( $product_id ) {
+		$vendor = get_wcmp_product_vendors( $product_id );
+
+		return $vendor ? (int) $vendor->id : parent::get_seller_id_for_product( $product_id );
+	}
+
+	/**
 	 * Saves the TIC for a product.
 	 *
 	 * @param WC_Product $product   The product being saved.

@@ -155,6 +155,53 @@ function sst_create_package( $package = array() ) {
 }
 
 /**
+ * Create a checkout package for items that do not need shipping.
+ *
+ * @param array $items Cart items keyed by cart item ID.
+ * @return array
+ */
+function sst_create_virtual_cart_package( $items ) {
+	$destination = array(
+		'country'   => WC()->customer->get_billing_country(),
+		'address'   => WC()->customer->get_billing_address(),
+		'address_2' => WC()->customer->get_billing_address_2(),
+		'city'      => WC()->customer->get_billing_city(),
+		'state'     => WC()->customer->get_billing_state(),
+		'postcode'  => WC()->customer->get_billing_postcode(),
+	);
+
+	if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
+		$shipping_country   = WC()->customer->get_shipping_country();
+		$shipping_address   = WC()->customer->get_shipping_address();
+		$shipping_address_2 = WC()->customer->get_shipping_address_2();
+		$shipping_city      = WC()->customer->get_shipping_city();
+		$shipping_state     = WC()->customer->get_shipping_state();
+		$shipping_postcode  = WC()->customer->get_shipping_postcode();
+
+		if ( ! empty( $shipping_country ) && ! empty( $shipping_state ) ) {
+			$destination = array(
+				'country'   => $shipping_country,
+				'address'   => $shipping_address,
+				'address_2' => $shipping_address_2,
+				'city'      => $shipping_city,
+				'state'     => $shipping_state,
+				'postcode'  => $shipping_postcode,
+			);
+		}
+	}
+
+	return sst_create_package(
+		array(
+			'contents'    => $items,
+			'destination' => $destination,
+			'user'        => array(
+				'ID' => get_current_user_id(),
+			),
+		)
+	);
+}
+
+/**
  * Strip all slashes from a given value.
  *
  * @param string $value Value to strip slashes from.

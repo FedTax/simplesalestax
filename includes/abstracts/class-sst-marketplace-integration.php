@@ -71,40 +71,79 @@ abstract class SST_Marketplace_Integration {
      * @return array
      */
     public function filter_wootax_cart_packages( $packages, $cart ) {
-        $packages = array();
-
-        // There should be one package per seller. We'll loop over each package
-        // and add in any of the seller's virtual/downloadable products since
-        // these aren't included in shipping packages by default.
+        $packages          = array();
+        $virtual_by_seller = array();
+        $virtual_keys      = array();
         $shipping_packages = WC()->shipping->get_packages();
 
+        foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+            if ( ! isset( $cart_item['data'] ) || $cart_item['data']->needs_shipping() ) {
+                continue;
+            }
+
+            // WooCommerce uses the parent product ID for variations.
+            $seller_id = $this->get_seller_id_for_product( $cart_item['product_id'] );
+            if ( $seller_id <= 0 || ! $this->is_user_seller( $seller_id ) ) {
+                $seller_id = 0;
+            }
+
+            $virtual_by_seller[ $seller_id ][ $cart_item_key ] = $cart_item;
+            $virtual_keys[ $cart_item_key ]                   = true;
+        }
+
         foreach ( $shipping_packages as $key => $package ) {
-            $seller_id = $this->get_seller_id_for_cart_package( $package );
-
-            // Add in virtual products not needing shipping.
-            $virtual_products = array();
-
-            foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
-                if ( isset( $cart_item['data'] ) && ! $cart_item['data']->needs_shipping() ) {
-                    $virtual_products[ $cart_item_key ] = $cart_item;
+            // Reassign virtual lines even if an upstream shipping filter included them.
+            $removed_items = array();
+            foreach ( $package['contents'] as $item_key => $item ) {
+                if ( isset( $virtual_keys[ $item['key'] ?? $item_key ] ) ) {
+                    $removed_items[ $item_key ] = $item;
+                    unset( $package['contents'][ $item_key ] );
                 }
             }
 
-            if ( $virtual_products ) {
-                $package['contents']      += $virtual_products;
-                $package['contents_cost'] += array_sum( wp_list_pluck( $virtual_products, 'line_total' ) );
+            if ( $removed_items && empty( $package['contents'] ) ) {
+                continue;
             }
 
-            // Set origin address based on seller's store address if package is
-            // for seller.
-            if ( $this->is_user_seller( $seller_id ) ) {
+            $seller_id = $this->get_seller_id_for_cart_package( $package );
+            if ( $seller_id && $this->is_user_seller( $seller_id ) ) {
                 $package['origin'] = $this->get_seller_address( $seller_id );
+            } else {
+                $seller_id = 0;
+            }
+
+            $virtual_items = $virtual_by_seller[ $seller_id ] ?? array();
+            if ( $virtual_items || $removed_items ) {
+                $contents_cost = $package['contents_cost'] ?? array_sum( wp_list_pluck( $package['contents'] + $removed_items, 'line_total' ) );
+                $package['contents'] += $virtual_items;
+                $package['contents_cost'] = $contents_cost
+                    + array_sum( wp_list_pluck( $virtual_items, 'line_total' ) )
+                    - array_sum( wp_list_pluck( $removed_items, 'line_total' ) );
+                unset( $virtual_by_seller[ $seller_id ] );
             }
 
             $packages[ $key ] = $package;
         }
 
+        foreach ( $virtual_by_seller as $seller_id => $items ) {
+            $package = sst_create_virtual_cart_package( $items );
+            if ( $seller_id ) {
+                $package['origin'] = $this->get_seller_address( $seller_id );
+            }
+
+            $packages[] = $package;
+        }
+
         return $packages;
+    }
+
+    /**
+     * Get the seller ID for a product.
+     * @param int $product_id Parent product ID for variations.
+     * @return int
+     */
+    protected function get_seller_id_for_product( $product_id ) {
+        return (int) get_post_field( 'post_author', $product_id );
     }
 
     /**
@@ -123,7 +162,29 @@ abstract class SST_Marketplace_Integration {
             }
         }
 
-        return 0;
+        // Some marketplaces (including WCFM) identify their shipping package
+        // by name and omit a seller ID. Infer the seller only when every
+        // shippable product in the package belongs to that same seller.
+        $seller_id = 0;
+        foreach ( $package['contents'] ?? array() as $item ) {
+            $product_id = (int) ( $item['product_id'] ?? 0 );
+            if ( ! $product_id ) {
+                continue;
+            }
+
+            $item_seller_id = $this->get_seller_id_for_product( $product_id );
+            if ( $item_seller_id <= 0 || ! $this->is_user_seller( $item_seller_id ) ) {
+                return 0;
+            }
+
+            if ( $seller_id && (int) $seller_id !== (int) $item_seller_id ) {
+                return 0;
+            }
+
+            $seller_id = $item_seller_id;
+        }
+
+        return $seller_id;
     }
 
     /**
@@ -156,7 +217,7 @@ abstract class SST_Marketplace_Integration {
         $order_items        = sst_format_order_items( $order->get_items() );
 
         foreach ( $order_items as $item_id => $item ) {
-            $seller_id = get_post_field( 'post_author', $item['product_id'] );
+            $seller_id = $this->get_seller_id_for_product( $item['product_id'] );
             if ( ! isset( $items_by_seller[ $seller_id ] ) ) {
                 $items_by_seller[ $seller_id ] = array();
             }

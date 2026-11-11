@@ -210,6 +210,15 @@ class SST_WCFM extends SST_Marketplace_Integration {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 */
+	protected function get_seller_id_for_product( $product_id ) {
+		$seller_id = wcfm_get_vendor_id_by_post( $product_id );
+
+		return $seller_id ? (int) $seller_id : parent::get_seller_id_for_product( $product_id );
+	}
+
+	/**
 	 * Adds wcfm_variation_added to the list of JS events that trigger TIC
 	 * select initialization.
 	 *
