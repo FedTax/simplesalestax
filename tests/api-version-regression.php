@@ -118,6 +118,8 @@ namespace {
 	function wp_remote_retrieve_response_code( $response ) { return $response['response']['code']; }
 
 	class WP_Error {
+		public function get_error_data() { return null; }
+		public function get_error_code() { return ''; }
 		private $message;
 		public function __construct( $code, $message ) { $this->message = $message; }
 		public function get_error_message() { return $this->message; }
@@ -148,6 +150,7 @@ namespace {
 		public static function is_local_delivery( $method ) { return 'local_delivery' === $method; }
 	}
 	class WC_Order {
+		public function save_meta_data() {}
 		public $meta = array();
 		public $notes = array();
 		public function get_id() { return 42; }

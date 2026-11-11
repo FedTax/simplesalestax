@@ -28,6 +28,9 @@ class SST_Subscriptions {
 		add_filter( 'woocommerce_calculated_total', array( $this, 'save_shipping_taxes' ), 1200, 2 );
 		add_action( 'woocommerce_cart_updated', array( $this, 'restore_shipping_taxes' ) );
 		add_action( 'woocommerce_checkout_update_order_meta', array( $this, 'destroy_session' ) );
+		add_filter( 'wc_subscriptions_subscription_data', array( $this, 'exclude_address_verification_meta' ) );
+		add_filter( 'wc_subscriptions_renewal_order_data', array( $this, 'exclude_address_verification_meta' ) );
+		add_filter( 'wc_subscriptions_resubscribe_order_data', array( $this, 'exclude_address_verification_meta' ) );
 		add_filter( 'wcs_renewal_order_created', array( $this, 'recalc_taxes_for_renewal' ), 1, 2 );
 		add_filter( 'wootax_save_packages_for_capture', array( $this, 'should_save_packages_for_capture' ) );
 		add_filter( 'woocommerce_subscriptions_calculated_total', array( $this, 'filter_calculated_total' ) );
@@ -56,6 +59,17 @@ class SST_Subscriptions {
 		}
 
 		return $add_fees;
+	}
+
+	/**
+	 * Keep verification results and note history on the order that recorded them.
+	 *
+	 * @param array $data Order data WooCommerce Subscriptions is about to copy.
+	 * @return array Data without the original order's address verification metadata.
+	 */
+	public function exclude_address_verification_meta( $data ) {
+		unset( $data['_sst_shipping_address_verification'], $data['_sst_shipping_address_verification_notes'] );
+		return $data;
 	}
 
 	/**

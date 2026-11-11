@@ -127,7 +127,7 @@ abstract class RequestBase {
 		$body   = \wp_remote_retrieve_body( $response );
 
 		if ( $status < 200 || $status >= 300 ) {
-			return new \WP_Error( $error_code, $error_prefix . $this->get_error_message( $body ) );
+			return new \WP_Error( $error_code, $error_prefix . $this->get_error_message( $body ), array( 'status' => $status ) );
 		}
 
 		$data = \json_decode( $body, true );

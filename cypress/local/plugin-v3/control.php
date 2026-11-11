@@ -55,6 +55,67 @@ if ( 'setup' === $action ) {
   }
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
+} elseif ( 'addressVerification' === $action ) {
+  if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Address failure scenarios require fixture mode.' ); }
+  $outcome = $input['outcome'] ?? 'verified';
+  if ( ! in_array( $outcome, array( 'verified', 'corrected', 'standardized', 'rejected', 'timeout', 'unavailable', 'unauthorized', 'rateLimited' ), true ) ) {
+    throw new Exception( 'Unknown address verification fixture outcome.' );
+  }
+  $context['addressVerification'] = array( 'outcome' => $outcome, 'required' => ! empty( $input['required'] ) );
+  $context['blocks'] = ! empty( $input['blocks'] );
+  $context['dataMover'] = $context['coTax'] = $context['unconfigured'] = false;
+  if ( empty( $context['addressProductId'] ) ) {
+    $product = new WC_Product_Simple();
+    $product->set_name( 'Cypress DEV-10605 shipping address ' . $context['run'] );
+    $product->set_regular_price( '100' ); $product->set_virtual( false ); $product->set_tax_status( 'taxable' );
+    $product->set_status( 'publish' ); $product->update_meta_data( 'wootax_tic', 0 );
+    $context['addressProductId'] = $product->save();
+  }
+  // Give each scenario a distinct cache key and a fresh customer session. Only
+  // this run's customer/product are changed; saved merchant settings stay intact.
+  $address = array( 'address_1' => '10605 Cypress ' . substr( wp_generate_uuid4(), 0, 8 ) . ' Drive',
+    'address_2' => '', 'city' => in_array( $outcome, array( 'verified', 'standardized' ), true ) ? 'Riverside' : 'Riverisde',
+    'country' => 'US', 'state' => 'CA', 'postcode' => '92508' );
+  foreach ( array( 'billing_', 'shipping_' ) as $prefix ) {
+    foreach ( $address as $key => $value ) { update_user_meta( $context['customerId'], $prefix . $key, $value ); }
+  }
+  ( new WC_Session_Handler() )->delete_session( $context['customerId'] );
+  delete_user_meta( $context['customerId'], '_woocommerce_persistent_cart_' . get_current_blog_id() );
+  update_option( 'sst_cypress_v3_context', $context, false );
+  $result = array( 'productId' => $context['addressProductId'], 'address' => $address );
+} elseif ( 'addressResponse' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['addressVerification'] ) || 'corrected' !== $input['outcome'] ) {
+    throw new Exception( 'Address recovery requires the active fixture scenario.' );
+  }
+  $context['addressVerification']['outcome'] = $input['outcome'];
+  update_option( 'sst_cypress_v3_context', $context, false );
+  $result = true;
+} elseif ( 'addressVerificationReset' === $action ) {
+  unset( $context['addressVerification'] );
+  update_option( 'sst_cypress_v3_context', $context, false );
+  $result = true;
+} elseif ( 'addressOrderIds' === $action ) {
+  if ( empty( $context['addressVerification'] ) ) { throw new Exception( 'No address verification scenario.' ); }
+  $result = wc_get_orders( array( 'customer_id' => $context['customerId'], 'limit' => -1,
+    'status' => array_merge( array_keys( wc_get_order_statuses() ), array( 'wc-checkout-draft' ) ), 'return' => 'ids', 'orderby' => 'ID', 'order' => 'ASC' ) );
+} elseif ( 'addressAdminOrder' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['addressVerification'] ) ) { throw new Exception( 'No address verification fixture scenario.' ); }
+  wp_set_current_user( $context['adminId'] );
+  SST_Settings::load_settings();
+  $address = array();
+  foreach ( array( 'first_name', 'last_name', 'country', 'address_1', 'address_2', 'city', 'state', 'postcode', 'email' ) as $key ) {
+    $address[ $key ] = get_user_meta( $context['customerId'], 'billing_' . $key, true );
+  }
+  $order = wc_create_order( array( 'customer_id' => $context['customerId'], 'status' => 'pending', 'created_via' => 'admin' ) );
+  if ( is_wp_error( $order ) ) { throw new Exception( $order->get_error_message() ); }
+  $order->set_address( $address, 'billing' ); $order->set_address( $address, 'shipping' );
+  $order->add_product( wc_get_product( $context['addressProductId'] ), 1 ); $order->save();
+  // Recalculate twice to catch repeated notes as well as accidental blocking.
+  for ( $attempt = 0; $attempt < 2; $attempt++ ) {
+    if ( ! ( new SST_Order( $order ) )->calculate_taxes() ) { throw new Exception( 'Admin address tax calculation failed.' ); }
+    $order->calculate_totals( false ); $order->save();
+  }
+  $result = array( 'id' => $order->get_id() );
 } elseif ( 'rateLimitReset' === $action ) {
   if ( 'fixture' !== $context['mode'] || empty( $context['rateLimit'] ) ) { throw new Exception( 'No rate limit regression scenario.' ); }
   // Start each case with an empty quota. Tests exhaust it through real WC requests.
@@ -355,6 +416,14 @@ if ( 'setup' === $action ) {
     'notes' => array_map( function( $note ) { return $note->content; }, wc_get_order_notes( array( 'order_id' => $order->get_id(), 'limit' => 10 ) ) ),
     'packages' => maybe_unserialize( $order->get_meta( '_wootax_packages' ) ), 'certificate' => $order->get_meta( '_wootax_exempt_cert' ),
     'singlePurchaseCertificate' => json_decode( $order->get_meta( '_wootax_single_purchase_cert' ) ?: 'null', true ) );
+  if ( ! empty( $context['addressVerification'] ) ) {
+    $result['verification'] = $order->get_meta( '_sst_shipping_address_verification' );
+    $result['verificationNotes'] = array_values( array_map( function( $note ) {
+      return array( 'content' => $note->content, 'customerNote' => (bool) $note->customer_note );
+    }, array_filter( wc_get_order_notes( array( 'order_id' => $order->get_id() ) ), function( $note ) {
+      return 0 === strpos( $note->content, 'TaxCloud verified the shipping address:' ) || 0 === strpos( $note->content, 'TaxCloud could not verify the shipping address' );
+    } ) ) );
+  }
   if ( ! empty( $context['coTax'] ) ) {
     $result['fees'] = array_values( array_map( function( $fee ) {
       return array( 'name' => $fee->get_name(), 'total' => (float) $fee->get_total(), 'tax' => (float) $fee->get_total_tax() );
@@ -415,6 +484,7 @@ if ( 'setup' === $action ) {
   }
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock', 'productId' ) as $key ) { wp_trash_post( $context[ $key ] ); }
   if ( ! empty( $context['adminExemptionProductId'] ) ) { wp_trash_post( $context['adminExemptionProductId'] ); }
+  if ( ! empty( $context['addressProductId'] ) ) { wp_trash_post( $context['addressProductId'] ); }
   if ( ! empty( $context['coCategoryId'] ) ) { wp_delete_term( $context['coCategoryId'], 'product_cat' ); }
   if ( ! empty( $context['certificateAccess'] ) ) {
     ( new WP_User( $context['certificateAccess']['managerUserId'] ) )->set_role( 'customer' );

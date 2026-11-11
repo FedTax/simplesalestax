@@ -651,5 +651,6 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     require('./certificate-security')({ task, records, login, cart, checkout, visibleTax, placeOrder, getSite: () => site });
     require('./certificate-access')({ task, records, login });
     require('./co-tax')(() => site);
+    require('./address-verification')({ task, records, getSite: () => site });
   }
 });

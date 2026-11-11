@@ -426,6 +426,11 @@ class SST_Order extends SST_Abstract_Cart {
 		return apply_filters( 'wootax_order_packages', $packages, $this->order );
 	}
 
+	/** Admin, REST and renewal tax calculations record outcomes without blocking. */
+	protected function handle_address_verification( $outcome ) {
+		SST_Addresses::save_order_verification( $this->order, array( $outcome['input_hash'] => $outcome ) );
+	}
+
 	/**
 	 * Reset sales tax totals.
 	 *
@@ -715,15 +720,26 @@ class SST_Order extends SST_Abstract_Cart {
 					isset( $raw_address['address_2'] ) ? $raw_address['address_2'] : '',
 					$raw_address['city'],
 					$raw_address['state'],
-					substr( $raw_address['postcode'], 0, 5 )
+					substr( $raw_address['postcode'], 0, 5 ),
+					substr( preg_replace( '/[^0-9]/', '', $raw_address['postcode'] ), 5, 4 ) ?: null
 				);
 			}
 
 			// Logging
 			SST_Logger::order_log( __( 'Verifying destination address.', 'simple-sales-tax' ), $this->order->get_id(), $address );
 
-			return SST_Addresses::verify_address( $address );
+			$address = SST_Addresses::verify_address( $address, $outcome );
+			$this->handle_address_verification( $outcome );
+			return $address;
 		} catch ( Exception $ex ) {
+			if ( empty( $raw_address['postcode'] ) ) {
+				$this->handle_address_verification( array(
+					'input_hash' => md5( wp_json_encode( $raw_address ) ),
+					'status'     => 'skipped',
+					'reason'     => 'missing_street_or_zip',
+					'changes'    => array(),
+				) );
+			}
 			// Logging
 			SST_Logger::order_log( __( 'Destination address is invalid.', 'simple-sales-tax' ), $this->order->get_id(), $ex->getMessage() );
 			return null;

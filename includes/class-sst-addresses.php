@@ -105,13 +105,20 @@ class SST_Addresses {
 	/**
 	 * Verify an address.
 	 *
-	 * @param object $address Address to verify with TaxCloud VerifyAddress API.
+	 * @param object     $address Address to verify with TaxCloud VerifyAddress API.
+	 * @param array|null $outcome Verification status, reason and jurisdiction changes.
 	 *
 	 * @return object
 	 * @since 5.0
 	 */
-	public static function verify_address( $address ) {
-		$is_v3 = 'v3' === sst_get_api_version();
+	public static function verify_address( $address, &$outcome = null ) {
+		$outcome = array(
+			'input_hash' => md5( wp_json_encode( $address ) ),
+			'status'     => 'skipped',
+			'reason'     => 'missing_street_or_zip',
+			'changes'    => array(),
+		);
+		$is_v3   = 'v3' === sst_get_api_version();
 		if (
 			is_null( $address )
 			|| ( $is_v3 && ! self::is_address_object( $address ) )
@@ -119,7 +126,6 @@ class SST_Addresses {
 		) {
 			return $address;
 		}
-
 		// TaxCloud VerifyAddress requires a street address (Address1) and Zip5.
 		// If either is missing, skip the API call to avoid 400 Bad Request errors.
 		if ( empty( $address->getAddress1() ) || empty( $address->getZip5() ) ) {
@@ -132,59 +138,153 @@ class SST_Addresses {
 			$addresses = array();
 		}
 
-		$md5_hash = md5( wp_json_encode( $address ) );
+		// Old entries cannot distinguish a success from a cached outage. Reverify
+		// them once, and keep API versions separate in the existing transient.
+		$cache_key = 'v2:' . sst_get_api_version() . ':' . $outcome['input_hash'];
+		$cached    = $addresses[ $cache_key ] ?? null;
+		if ( is_array( $cached ) && isset( $cached['outcome'], $cached['address'] ) ) {
+			$outcome = $cached['outcome'];
+			if ( 'rejected' === $outcome['status'] ) {
+				return $address;
+			}
+			$data = $cached['address'];
+			return $is_v3 ? new \TaxCloud_V3\Model\Address( $data ) : new \TaxCloud\Address(
+				$data['Address1'], $data['Address2'], $data['City'], $data['State'], $data['Zip5'], $data['Zip4']
+			);
+		}
 
-		if ( array_key_exists( $md5_hash, $addresses ) ) {
-			$decoded = json_decode( $addresses[ $md5_hash ], true );
+		try {
+			// Check rate limit.
+			$rate_limit = new SST_Rate_Limit();
+			if ( $rate_limit->limit_reached() ) {
+				$rate_limit->log_limit_reached();
+				$outcome['reason'] = 'rate_limit_reached';
+				return $address;
+			}
+
+			$rate_limit->increment_count();
+
 			if ( $is_v3 ) {
-				$address = new \TaxCloud_V3\Model\Address( $decoded );
+				$verified = self::verify_address_v3( $address );
 			} else {
-				$address = new \TaxCloud\Address(
-					$decoded['Address1'],
-					$decoded['Address2'],
-					$decoded['City'],
-					$decoded['State'],
-					$decoded['Zip5'],
-					$decoded['Zip4']
+				$request = new \TaxCloud\Request\VerifyAddress(
+					SST_Settings::get( 'tc_id' ),
+					SST_Settings::get( 'tc_key' ),
+					$address
 				);
-			}
-		} else {
-			try {
-				// Check rate limit.
-				$rate_limit = new SST_Rate_Limit();
-				if ( $rate_limit->limit_reached() ) {
-					$rate_limit->log_limit_reached();
-					return $address;
-				}
-
-				$rate_limit->increment_count();
-
-				if ( $is_v3 ) {
-					$address = self::verify_address_v3( $address );
-				} else {
-					$request = new \TaxCloud\Request\VerifyAddress(
-						SST_Settings::get( 'tc_id' ),
-						SST_Settings::get( 'tc_key' ),
-						$address
-					);
-					$address = TaxCloud()->VerifyAddress( $request );
-				}
-
-				// Cache verified address.
-				$addresses[ $md5_hash ] = wp_json_encode( $address );
-
-				// Cache validated addresses for 2 days.
-				set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
-			} catch ( Exception $ex ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-				SST_Logger::add( 'Failed to verify address: ' . $ex->getMessage() );
-				// Cache unverified address as-is to avoid repeated failed API requests.
-				$addresses[ $md5_hash ] = wp_json_encode( $address );
-				set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
+				$verified = TaxCloud()->VerifyAddress( $request );
 			}
 
+			if ( is_wp_error( $verified ) ) {
+				$data     = $verified->get_error_data();
+				$status   = is_array( $data ) ? (int) ( $data['status'] ?? 0 ) : 0;
+				$rejected = 'sst_v3_verify_address_error' === $verified->get_error_code()
+					&& in_array( $status, array( 400, 422 ), true )
+					&& ! preg_match( '/auth|credential|api ?key|login/i', $verified->get_error_message() );
+				$outcome = array_merge( $outcome, self::verification_failure( $verified->get_error_message(), $rejected, 429 === $status ) );
+				SST_Logger::add( 'Failed to verify address: ' . $verified->get_error_message() );
+			} elseif ( ! self::is_address_object( $verified ) || ! self::is_valid( $verified ) || empty( $verified->getAddress1() ) ) {
+				$outcome['status'] = 'transient_failure';
+				$outcome['reason'] = 'taxcloud_unavailable';
+			} else {
+				$outcome['changes'] = self::get_jurisdiction_changes( $address, $verified );
+				$outcome['status']  = $outcome['changes'] ? 'corrected' : 'verified';
+				$outcome['reason']  = '';
+				$address            = $verified;
+			}
+		} catch ( Exception $ex ) {
+			SST_Logger::add( 'Failed to verify address: ' . $ex->getMessage() );
+			// The v1 client wraps transport errors in VerifyAddressException too.
+			// Only recognizable address errors are permanent rejections.
+			$message  = $ex->getMessage();
+			$rejected = $ex instanceof \TaxCloud\Exceptions\VerifyAddressException
+				&& preg_match( '/address (?:was )?not found|address has no delivery point value|invalid address|multiple addresses|(?:street|house|box) number.*(?:range|invalid)|(?:invalid|missing) (?:city|state|zip)|(?:city|state|zip).*mismatch|no (?:address )?match/i', $message )
+				&& ! preg_match( '/auth|credential|api ?key|login|timeout|timed out|unavailable|rate.?limit|too many|server error|HTTP\s*5\d\d/i', $message );
+			$outcome = array_merge( $outcome, self::verification_failure( $message, (bool) $rejected, (bool) preg_match( '/rate.?limit|too many requests/i', $message ) ) );
+		}
+
+		if ( in_array( $outcome['status'], array( 'verified', 'corrected', 'rejected' ), true ) ) {
+			$addresses[ $cache_key ] = array( 'address' => json_decode( wp_json_encode( $address ), true ), 'outcome' => $outcome );
+			set_transient( 'sst_verified_addresses', $addresses, 2 * DAY_IN_SECONDS );
 		}
 
 		return $address;
+	}
+
+	/** Build a safe, merchant-facing failure reason without exposing API errors. */
+	private static function verification_failure( $message, $rejected, $rate_limited ) {
+		return array(
+			'status' => $rejected ? 'rejected' : 'transient_failure',
+			'reason' => $rejected
+				? ( preg_match( '/city|state|zip|postal|mismatch/i', $message ) ? 'city_zip_mismatch' : 'address_not_found' )
+				: ( $rate_limited ? 'rate_limit_reached' : 'taxcloud_unavailable' ),
+		);
+	}
+
+	/** Compare jurisdiction fields, ignoring case, street formatting and ZIP+4 alone. */
+	private static function get_jurisdiction_changes( $input, $verified ) {
+		$changes = array();
+		foreach ( array( 'city' => 'getCity', 'state' => 'getState', 'zip' => 'getZip5' ) as $field => $getter ) {
+			if ( 0 !== strcasecmp( trim( (string) $input->$getter() ), trim( (string) $verified->$getter() ) ) ) {
+				$changes[ $field ] = array( 'from' => $input->$getter(), 'to' => $verified->$getter() );
+			}
+		}
+		if ( $changes && ( isset( $changes['zip'] ) || (string) $input->getZip4() !== (string) $verified->getZip4() ) ) {
+			$changes['zip'] = array( 'from' => self::verification_zip( $input ), 'to' => self::verification_zip( $verified ) );
+		}
+		return $changes;
+	}
+
+	private static function verification_zip( $address ) {
+		return $address->getZip5() . ( $address->getZip4() ? '-' . $address->getZip4() : '' );
+	}
+
+	/** Format the private order note for an address verification outcome. */
+	public static function get_verification_note( $outcome ) {
+		if ( 'verified' === $outcome['status'] ) {
+			return '';
+		}
+		if ( 'corrected' === $outcome['status'] ) {
+			$changes = array();
+			$labels  = array( 'city' => __( 'city', 'simple-sales-tax' ), 'state' => __( 'state', 'simple-sales-tax' ), 'zip' => __( 'ZIP', 'simple-sales-tax' ) );
+			foreach ( $outcome['changes'] as $field => $change ) {
+				$format    = 'zip' === $field ? '%s %s → %s' : '%s "%s" → "%s"';
+				$changes[] = sprintf( $format, $labels[ $field ], sanitize_text_field( $change['from'] ), sanitize_text_field( $change['to'] ) );
+			}
+			/* translators: List of corrected city, state and ZIP fields. */
+			return sprintf( __( 'TaxCloud verified the shipping address: %s', 'simple-sales-tax' ), implode( ', ', $changes ) );
+		}
+		$reasons = array(
+			'address_not_found'     => __( 'address not found', 'simple-sales-tax' ),
+			'city_zip_mismatch'     => __( 'city/ZIP mismatch', 'simple-sales-tax' ),
+			'missing_street_or_zip' => __( 'missing street or ZIP', 'simple-sales-tax' ),
+			'taxcloud_unavailable'  => __( 'TaxCloud unavailable', 'simple-sales-tax' ),
+			'rate_limit_reached'   => __( 'rate limit reached', 'simple-sales-tax' ),
+		);
+		/* translators: Reason the shipping address could not be verified. */
+		return sprintf( __( 'TaxCloud could not verify the shipping address (%s). Tax was calculated on the address as entered.', 'simple-sales-tax' ), $reasons[ $outcome['reason'] ] ?? $reasons['taxcloud_unavailable'] );
+	}
+
+	/** Persist outcomes and write each distinct private note once per order. */
+	public static function save_order_verification( $order, $outcomes ) {
+		if ( ! $outcomes ) {
+			return;
+		}
+		$saved    = $order->get_meta( '_sst_shipping_address_verification', true );
+		$outcomes = array_merge( is_array( $saved ) ? $saved : array(), $outcomes );
+		$order->update_meta_data( '_sst_shipping_address_verification', $outcomes );
+		$noted    = $order->get_meta( '_sst_shipping_address_verification_notes', true );
+		$noted    = is_array( $noted ) ? $noted : array();
+		foreach ( $outcomes as $outcome ) {
+			$note = self::get_verification_note( $outcome );
+			$key  = md5( wp_json_encode( $outcome ) );
+			if ( $note && ! in_array( $key, $noted, true ) && $order->get_id() ) {
+				$order->add_order_note( $note );
+				$noted[] = $key;
+			}
+		}
+		$order->update_meta_data( '_sst_shipping_address_verification_notes', $noted );
+		$order->save_meta_data();
 	}
 
 	/**
@@ -192,8 +292,7 @@ class SST_Addresses {
 	 *
 	 * @param object $address Address to verify.
 	 *
-	 * @return \TaxCloud_V3\Model\Address
-	 * @throws Exception When verification fails.
+	 * @return \TaxCloud_V3\Model\Address|WP_Error
 	 * @since 8.4.10
 	 */
 	private static function verify_address_v3( $address ) {
@@ -201,7 +300,7 @@ class SST_Addresses {
 		$response  = $utilities->verify_address( $address );
 
 		if ( is_wp_error( $response ) ) {
-			throw new Exception( $response->get_error_message() );
+			return $response;
 		}
 
 		if ( ! array_key_exists( 'line2', $response ) && method_exists( $address, 'getAddress2' ) ) {

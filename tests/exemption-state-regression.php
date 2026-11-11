@@ -248,7 +248,7 @@ foreach ( array( 'v1', 'v3' ) as $version ) {
 	$destination = 'v3' === $version
 		? new TaxCloud_V3\Model\Address( array( 'line1' => '1 Main St', 'line2' => '', 'city' => 'Test', 'state' => 'NC', 'zip' => '28043', 'countryCode' => 'US' ) )
 		: new TaxCloud\Address( '1 Main St', '', 'Test', 'NC', '28043' );
-	$certificate_transients['sst_verified_addresses'] = array( md5( wp_json_encode( $destination ) ) => wp_json_encode( $destination ) );
+	$certificate_transients['sst_verified_addresses'] = array( 'v2:' . $version . ':' . md5( wp_json_encode( $destination ) ) => array( 'address' => json_decode( wp_json_encode( $destination ), true ), 'outcome' => array( 'input_hash' => md5( wp_json_encode( $destination ) ), 'status' => 'verified', 'reason' => '', 'changes' => array() ) ) );
 	$origin = new SST_Origin_Address( 'origin-1', true, '2 Main St', '', 'Test', 'NC', '28043' );
 	$second_origin = clone $origin;
 	$second_origin->setID( 'origin-2' );

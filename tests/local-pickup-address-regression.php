@@ -37,6 +37,7 @@ require dirname( __DIR__ ) . '/includes/frontend/class-sst-checkout.php';
 require dirname( __DIR__ ) . '/includes/class-sst-order.php';
 
 class Local_Pickup_Test_Session {
+	public function set( $key, $value ) {}
 	public $chosen_shipping_methods = array();
 	public function get( $key ) { return $this->$key; }
 }

@@ -80,6 +80,12 @@ add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
     $settings['addresses'][] = wp_json_encode( array( 'ID' => 'cypress-fl-origin', 'Default' => false,
       'Address1' => '200 Cypress St', 'Address2' => '', 'City' => 'Tavares', 'State' => 'FL', 'Zip5' => '32778', 'Zip4' => '' ) );
   }
+  if ( ! empty( $context['addressVerification'] ) ) {
+    $settings = array_merge( $settings, array(
+      'show_exempt' => 'false', 'force_tax_lookup' => 'yes',
+      'require_verified_shipping_address' => $context['addressVerification']['required'] ? 'yes' : 'no',
+    ) );
+  }
   if ( ! empty( $context['certificateSecurity'] ) ) { $settings['log_requests'] = 'yes'; }
   $credentials = sst_e2e_credentials( $context );
   $suffix = ! empty( $context['dataMover'] ) ? 'DataImport' : 'Realtime';
@@ -111,6 +117,22 @@ add_filter( 'option_woocommerce_cheque_settings', function( $settings ) {
   if ( sst_e2e_context() ) { $settings['enabled'] = 'yes'; }
   return $settings;
 } );
+// Keep the address tests independent of installed online payment gateways.
+add_filter( 'option_woocommerce_stripe_settings', function( $settings ) {
+  $context = sst_e2e_context();
+  if ( ! empty( $context['addressVerification'] ) ) { $settings['enabled'] = 'no'; }
+  return $settings;
+} );
+add_filter( 'woocommerce_available_payment_gateways', function( $gateways ) {
+  $context = sst_e2e_context();
+  return ! empty( $context['addressVerification'] ) ? array_intersect_key( $gateways, array( 'cheque' => true ) ) : $gateways;
+} );
+add_filter( 'woocommerce_package_rates', function( $rates ) {
+  $context = sst_e2e_context();
+  return ! empty( $context['addressVerification'] )
+    ? array( 'sst-address-test' => new WC_Shipping_Rate( 'sst-address-test', 'Cypress address test shipping', 0, array(), 'flat_rate' ) )
+    : $rates;
+}, 100 );
 foreach ( array( 'woocommerce_enable_guest_checkout' => 'yes', 'woocommerce_enable_signup_and_login_from_checkout' => 'no' ) as $option => $value ) {
   add_filter( 'option_' . $option, function( $saved ) use ( $value ) {
     $context = sst_e2e_context();
@@ -252,6 +274,23 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
     $result = array( 'message' => 'Successfully authenticated' );
   } elseif ( '/tax/verify-address' === $path ) {
     $result = $body;
+    $outcome = $context['addressVerification']['outcome'] ?? 'verified';
+    if ( 'corrected' === $outcome ) {
+      $result['city'] = 'Riverside'; $result['zip'] = '92508-8114';
+    } elseif ( 'standardized' === $outcome ) {
+      $result['line1'] = str_replace( 'Drive', 'Dr', $body['line1'] );
+      $result['city'] = strtoupper( $body['city'] ); $result['zip'] = '92508-8114';
+    } elseif ( 'timeout' === $outcome ) {
+      $response = new WP_Error( 'http_request_failed', 'cURL error 28: Cypress address verification timeout' );
+      sst_e2e_record( $url, $args, $response );
+      return $response;
+    } elseif ( in_array( $outcome, array( 'rejected', 'unavailable', 'unauthorized', 'rateLimited' ), true ) ) {
+      $responses = array(
+        'rejected' => array( 422, 'Address not found' ), 'unavailable' => array( 503, 'Service unavailable' ),
+        'unauthorized' => array( 401, 'Unauthorized' ), 'rateLimited' => array( 429, 'Too many requests' ),
+      );
+      list( $status, $detail ) = $responses[ $outcome ]; $result = array( 'detail' => $detail );
+    }
   } elseif ( '/tax/tic/search' === $path ) {
     $result = array( 'query' => $body['query'], 'results' => array( array( 'ticId' => 0, 'description' => 'Uncategorized' ) ), 'nextCursor' => null );
     if ( ! empty( $context['coTax'] ) ) {
