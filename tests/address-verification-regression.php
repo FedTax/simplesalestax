@@ -119,6 +119,7 @@ namespace {
 	require dirname( __DIR__ ) . '/includes/vendor/autoload.php';
 	require dirname( __DIR__ ) . '/includes/class-sst-addresses.php';
 	require dirname( __DIR__ ) . '/includes/class-sst-origin-address.php';
+	require dirname( __DIR__ ) . '/includes/class-sst-shipping.php';
 	require dirname( __DIR__ ) . '/includes/abstracts/class-sst-abstract-cart.php';
 	require dirname( __DIR__ ) . '/includes/frontend/class-sst-cart-proxy.php';
 	require dirname( __DIR__ ) . '/includes/frontend/class-sst-checkout.php';

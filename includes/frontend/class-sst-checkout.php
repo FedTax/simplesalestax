@@ -458,22 +458,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	protected function get_package_shipping_rate( $key, $package ) {
-		$chosen_methods = WC()->session->get( 'chosen_shipping_methods' );
-
-		/* WC Multiple Shipping doesn't use chosen_shipping_methods -_- */
-		if ( function_exists( 'wcms_session_isset' ) && wcms_session_isset( 'shipping_methods' ) ) {
-			$chosen_methods = array();
-
-			foreach ( wcms_session_get( 'shipping_methods' ) as $package_key => $method ) {
-				$chosen_methods[ $package_key ] = $method['id'];
-			}
-		}
-
-		if ( isset( $chosen_methods[ $key ], $package['rates'][ $chosen_methods[ $key ] ] ) ) {
-			return $package['rates'][ $chosen_methods[ $key ] ];
-		}
-
-		return null;
+		return SST_Shipping::get_chosen_package_rate( $key, $package );
 	}
 
 	/**

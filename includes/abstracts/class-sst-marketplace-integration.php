@@ -101,7 +101,9 @@ abstract class SST_Marketplace_Integration {
                 }
             }
 
-            if ( $removed_items && empty( $package['contents'] ) ) {
+            // Preserve a chosen shipping charge even after its virtual lines move.
+            $shipping_only = $removed_items && empty( $package['contents'] );
+            if ( $shipping_only && ! SST_Shipping::get_chosen_package_rate( $key, $package ) ) {
                 continue;
             }
 
@@ -112,14 +114,16 @@ abstract class SST_Marketplace_Integration {
                 $seller_id = 0;
             }
 
-            $virtual_items = $virtual_by_seller[ $seller_id ] ?? array();
+            $virtual_items = $shipping_only ? array() : ( $virtual_by_seller[ $seller_id ] ?? array() );
             if ( $virtual_items || $removed_items ) {
                 $contents_cost = $package['contents_cost'] ?? array_sum( wp_list_pluck( $package['contents'] + $removed_items, 'line_total' ) );
                 $package['contents'] += $virtual_items;
                 $package['contents_cost'] = $contents_cost
                     + array_sum( wp_list_pluck( $virtual_items, 'line_total' ) )
                     - array_sum( wp_list_pluck( $removed_items, 'line_total' ) );
-                unset( $virtual_by_seller[ $seller_id ] );
+                if ( $virtual_items ) {
+                    unset( $virtual_by_seller[ $seller_id ] );
+                }
             }
 
             $packages[ $key ] = $package;
@@ -162,9 +166,8 @@ abstract class SST_Marketplace_Integration {
             }
         }
 
-        // Some marketplaces (including WCFM) identify their shipping package
-        // by name and omit a seller ID. Infer the seller only when every
-        // shippable product in the package belongs to that same seller.
+        // If a shipping package omits the seller ID, infer it from the
+        // products only when they all belong to the same seller.
         $seller_id = 0;
         foreach ( $package['contents'] ?? array() as $item ) {
             $product_id = (int) ( $item['product_id'] ?? 0 );

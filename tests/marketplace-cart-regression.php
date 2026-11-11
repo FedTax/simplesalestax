@@ -29,6 +29,7 @@ function get_current_user_id() { return 42; }
 function wp_parse_args( $args, $defaults ) { return array_merge( $defaults, $args ); }
 function wp_list_pluck( $items, $key ) { return array_column( $items, $key ); }
 function get_post_field( $field, $product_id ) { return $GLOBALS['product_authors'][ $product_id ]; }
+function wc_get_product( $product_id ) { return (object) array( 'id' => $product_id ); }
 
 function dokan_is_user_seller( $id ) { return in_array( (int) $id, array( 17, 23 ), true ); }
 function wcfm_is_vendor( $id ) { return dokan_is_user_seller( $id ); }
@@ -71,6 +72,29 @@ class SST_Settings {
 
 class SST_Logger {
 	public static function add() {}
+}
+
+class SST_Addresses {
+	public static function verify_address( $address, &$outcome ) {
+		$outcome = array( 'input_hash' => $address->getAddress1(), 'status' => 'verified' );
+		return $address;
+	}
+	public static function to_address( $address ) { return $address; }
+	public static function get_default_address() {
+		return new SST_Origin_Address( 'default', true, '1 Store St', '', 'Denver', 'CO', '80202' );
+	}
+}
+
+class WC_Shipping_Rate {
+	public $id;
+	public $cost;
+	public $method_id;
+
+	public function __construct( $id, $label, $cost, $taxes, $method_id ) {
+		$this->id        = $id;
+		$this->cost      = $cost;
+		$this->method_id = $method_id;
+	}
 }
 
 class Marketplace_Test_Session {
@@ -117,6 +141,7 @@ require dirname( __DIR__ ) . '/includes/frontend/class-sst-checkout.php';
 class Marketplace_Test_Checkout extends SST_Checkout {
 	public $taxes;
 	public $lookups;
+	public $shipping_taxes;
 	public function __construct( $cart ) {
 		$property = new ReflectionProperty( SST_Checkout::class, 'cart' );
 		$property->setAccessible( true );
@@ -124,10 +149,10 @@ class Marketplace_Test_Checkout extends SST_Checkout {
 	}
 
 	public function get_certificate_id() { return ''; }
-	protected function reset_taxes() { $this->taxes = $this->lookups = array(); }
+	protected function reset_taxes() { $this->taxes = $this->lookups = $this->shipping_taxes = array(); }
 	protected function update_taxes() {}
 	protected function set_product_tax( $id, $tax ) { $this->taxes[ $id ] = $tax; }
-	protected function split_package( $package ) { return array( sst_create_package( $package ) ); }
+	protected function set_shipping_tax( $id, $tax ) { $this->shipping_taxes[ $id ] = $tax; }
 
 	// Record what checkout sends for lookup and return a fixed tax per line.
 	protected function do_lookup() {
@@ -138,9 +163,14 @@ class Marketplace_Test_Checkout extends SST_Checkout {
 			foreach ( $package['contents'] as $item ) {
 				$items[] = array( 'type' => 'line_item', 'cart_id' => $item['key'] );
 			}
+			$taxes = array_fill( 0, count( $items ), 5.0 );
+			if ( $package['shipping'] ) {
+				$items[] = array( 'type' => 'shipping', 'cart_id' => $package['shipping']->id );
+				$taxes[] = $package['shipping']->cost * 0.1;
+			}
 			$responses[] = array(
 				'cart_items' => $items,
-				'response'   => array( array_fill( 0, count( $items ), 5.0 ) ),
+				'response'   => array( $taxes ),
 			);
 		}
 		return $responses;
@@ -172,7 +202,13 @@ function shipping_package( $items, $seller_key, $seller_id ) {
 		$seller_key     => $seller_id,
 		'contents'      => $items,
 		'contents_cost' => 50 * count( $items ),
-		'destination'   => array( 'country' => 'US', 'address' => '2 Shipping St' ),
+		'destination'   => array(
+			'country'  => 'US',
+			'address'  => '2 Shipping St',
+			'city'     => 'New York',
+			'state'    => 'NY',
+			'postcode' => '10001',
+		),
 	);
 }
 
@@ -206,22 +242,22 @@ foreach ( $callbacks as $callback ) {
 	expect_same( array( 'virtual-a' => 5.0 ), $checkout->taxes, "$integration virtual-only tax" );
 	expect_same( 1, count( $checkout->lookups ), "$integration virtual-only lookup count" );
 	expect_same( 'S-17', $checkout->lookups[0]['origin']->getID(), "$integration virtual-only origin" );
-	expect_same( '1 Billing St', $checkout->lookups[0]['destination']['address'], "$integration virtual-only destination" );
+	expect_same( '1 Billing St', $checkout->lookups[0]['destination']->getAddress1(), "$integration virtual-only destination" );
 	expect_same( null, $checkout->lookups[0]['shipping'], "$integration virtual-only shipping charge" );
 	expect_same( array( 'ID' => 42 ), $checkout->lookups[0]['user'], "$integration virtual-only customer" );
 
 	$settings['disable_virtual_split'] = 'yes';
 	$checkout->calculate_taxes();
-	expect_same( '2 Shipping St', $checkout->lookups[0]['destination']['address'], "$integration shipping destination when virtual split is disabled" );
+	expect_same( '2 Shipping St', $checkout->lookups[0]['destination']->getAddress1(), "$integration shipping destination when virtual split is disabled" );
 	$woocommerce->customer->shipping_state = '';
 	$checkout->calculate_taxes();
-	expect_same( '1 Billing St', $checkout->lookups[0]['destination']['address'], "$integration billing fallback" );
+	expect_same( '1 Billing St', $checkout->lookups[0]['destination']->getAddress1(), "$integration billing fallback" );
 	$woocommerce->customer->shipping_state = 'NY';
 	unset( $settings['disable_virtual_split'] );
 
 	$cart->items = array_intersect_key( $all_items, array( 'physical-a' => true, 'virtual-a' => true ) );
 	$woocommerce->shipping->packages = array( 4 => shipping_package( array( $physical_a ), $seller_key, '17' ) );
-	$rate = (object) array( 'id' => 'flat_rate:1', 'method_id' => 'flat_rate' );
+	$rate = new WC_Shipping_Rate( 'flat_rate:1', '', 10, array(), 'flat_rate' );
 	$woocommerce->shipping->packages[4]['rates'][ $rate->id ] = $rate;
 	$woocommerce->session->set( 'chosen_shipping_methods', array( 4 => $rate->id ) );
 	$checkout->calculate_taxes();
@@ -259,7 +295,75 @@ foreach ( $callbacks as $callback ) {
 	expect_same( 100, $checkout->lookups[0]['contents_cost'], "$integration seller A cost after reassignment" );
 	expect_same( array( 'virtual-b' ), array_keys( $checkout->lookups[1]['contents'] ), "$integration virtual-only seller B lines" );
 	expect_same( 'S-23', $checkout->lookups[1]['origin']->getID(), "$integration virtual-only seller B origin" );
-	expect_same( '1 Billing St', $checkout->lookups[1]['destination']['address'], "$integration virtual-only seller B destination" );
+	expect_same( '1 Billing St', $checkout->lookups[1]['destination']->getAddress1(), "$integration virtual-only seller B destination" );
+
+	// An upstream package with only virtual lines may still have a selected charge.
+	$cart->items = array( 'virtual-a' => $virtual_a );
+	$woocommerce->shipping->packages = array( 4 => shipping_package( array( $virtual_a ), $seller_key, '17' ) );
+	$woocommerce->shipping->packages[4]['rates'][ $rate->id ] = $rate;
+	$checkout->calculate_taxes();
+	expect_same( array( 4 => 1.0 ), $checkout->shipping_taxes, "$integration preserves the selected shipping charge" );
+	expect_same( 2, count( $checkout->lookups ), "$integration shipping-only and virtual-only lookups" );
+	expect_same( array(), $checkout->lookups[0]['contents'], "$integration shipping-only package has no product lines" );
+	expect_same( 0, $checkout->lookups[0]['contents_cost'], "$integration shipping-only product subtotal" );
+	expect_same( 'S-17', $checkout->lookups[0]['origin']->getID(), "$integration shipping-only seller origin" );
+	expect_same( '2 Shipping St', $checkout->lookups[0]['destination']->getAddress1(), "$integration shipping-only destination" );
+	expect_same( array( 'virtual-a' => 5.0 ), $checkout->taxes, "$integration virtual product tax alongside selected shipping" );
+	expect_same( '1 Billing St', $checkout->lookups[1]['destination']->getAddress1(), "$integration virtual destination alongside selected shipping" );
+	expect_same( null, $checkout->lookups[1]['shipping'], "$integration no duplicate shipping on the virtual package" );
+
+	unset( $woocommerce->shipping->packages[4][ $seller_key ] );
+	$checkout->calculate_taxes();
+	expect_same( array( 4 => 1.0 ), $checkout->shipping_taxes, "$integration shipping charge without a seller ID" );
+	expect_same( 'default', $checkout->lookups[0]['origin']->getID(), "$integration default origin for unattributed shipping" );
+
+	$woocommerce->session->set( 'chosen_shipping_methods', array() );
+	$checkout->calculate_taxes();
+	expect_same( 1, count( $checkout->lookups ), "$integration empty shipping package without a selected rate is dropped" );
+	expect_same( array(), $checkout->shipping_taxes, "$integration no unselected shipping charge" );
+
+	// Separate shipping packages can share an origin without sharing their lines.
+	$second_physical = cart_item( 'physical-a-2', 101, true );
+	$cart->items = array_column( array( $physical_a, $virtual_a, $second_physical ), null, 'key' );
+	$woocommerce->shipping->packages = array(
+		4 => shipping_package( array( $physical_a ), $seller_key, '17' ),
+		8 => shipping_package( array( $second_physical ), $seller_key, '17' ),
+	);
+	foreach ( array( 4, 8 ) as $key ) {
+		$woocommerce->shipping->packages[ $key ]['rates'][ $rate->id ] = $rate;
+	}
+	$woocommerce->session->set( 'chosen_shipping_methods', array( 4 => $rate->id, 8 => $rate->id ) );
+	$checkout->calculate_taxes();
+	expect_same( 2, count( $checkout->lookups ), "$integration separate packages with the same seller origin" );
+	expect_same( array( 'physical-a', 'virtual-a' ), array_column( $checkout->lookups[0]['contents'], 'key' ), "$integration first same-seller package lines" );
+	expect_same( array( 'physical-a-2' ), array_column( $checkout->lookups[1]['contents'], 'key' ), "$integration second same-seller package lines" );
+	expect_same( array( 4 => 1.0, 8 => 1.0 ), $checkout->shipping_taxes, "$integration separate shipping taxes for the same seller" );
+
+	// Recalculation should group products with the matching vendor shipping line.
+	$order = new class {
+		public function get_items() {
+			return array(
+				11 => array( 'product_id' => 102, 'variation_id' => 105, 'qty' => 1, 'line_total' => 50, 'line_subtotal' => 50 ),
+				12 => array( 'product_id' => 103, 'variation_id' => 0, 'qty' => 1, 'line_total' => 50, 'line_subtotal' => 50 ),
+			);
+		}
+		public function get_shipping_methods() {
+			return array( 31 => new class {
+				public function get_meta( $key ) { return 'vendor_id' === $key ? 17 : ''; }
+				public function get_id() { return 31; }
+				public function get_total() { return 10; }
+				public function get_method_id() { return 'flat_rate'; }
+			} );
+		}
+		public function get_user_id() { return 42; }
+	};
+	$order_packages = $callback[0]->filter_wootax_order_packages( array(), $order );
+	expect_same( 2, count( $order_packages ), "$integration order recalculation seller packages" );
+	expect_same( array( 11 ), array_keys( $order_packages[0]['contents'] ), "$integration order variation assigned by parent product ownership" );
+	expect_same( 31, $order_packages[0]['shipping']->id, "$integration order shipping assigned to seller A" );
+	expect_same( 'S-17', $order_packages[0]['origin']->getID(), "$integration order seller A origin" );
+	expect_same( array( 12 ), array_keys( $order_packages[1]['contents'] ), "$integration order seller B items" );
+	expect_same( 'S-23', $order_packages[1]['origin']->getID(), "$integration order seller B origin" );
 }
 
 echo "Marketplace cart regression checks passed for Dokan, WCFM, WCMp, and WC Vendors Pro.\n";
