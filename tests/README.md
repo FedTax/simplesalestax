@@ -13,7 +13,10 @@ The test runs checkout's package splitter for virtual-only and mixed carts.
 It checks seller origins, billing and shipping destinations, one occurrence
 of each virtual line, and the tax on selected shipping charges. It also covers
 packages without a seller ID, separate shipping packages with the same seller
-origin, and seller grouping when order tax is recalculated.
+origin, and seller grouping when order tax is recalculated. Order checks cover
+the destination for a seller's virtual items, including suborders without
+shipping addresses, and checkout checks verify that Composite Products
+preserves selected shipping charges on packages with no product lines.
 
 ## Shipping address verification (DEV-10605)
 

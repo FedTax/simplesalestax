@@ -208,16 +208,18 @@ abstract class SST_Marketplace_Integration {
     }
 
     /**
-     * Filters the order packages so that we can execute one tax lookup per seller.
+     * Groups order items and shipping charges by seller for tax lookup.
      *
      * @param array    $packages SST order packages.
      * @param WC_Order $order    Order instance.
      */
     public function filter_wootax_order_packages( $packages, $order ) {
-        $packages           = array();
-        $items_by_seller    = array();
-        $shipping_by_seller = array();
-        $order_items        = sst_format_order_items( $order->get_items() );
+        $packages            = array();
+        $virtual_packages    = array();
+        $virtual_destination = null;
+        $items_by_seller     = array();
+        $shipping_by_seller  = array();
+        $order_items         = sst_format_order_items( $order->get_items() );
 
         foreach ( $order_items as $item_id => $item ) {
             $seller_id = $this->get_seller_id_for_product( $item['product_id'] );
@@ -235,16 +237,33 @@ abstract class SST_Marketplace_Integration {
 
         $seller_ids = array_keys( $shipping_by_seller + $items_by_seller );
 
-        // Create one package per seller.
         foreach ( $seller_ids as $seller_id ) {
+            $seller_items   = $items_by_seller[ $seller_id ] ?? array();
             $seller_package = array(
                 'user' => array(
                     'ID' => $order->get_user_id(),
                 ),
             );
 
-            if ( isset( $items_by_seller[ $seller_id ] ) ) {
-                $seller_package['contents'] = $items_by_seller[ $seller_id ];
+            if ( $this->is_user_seller( $seller_id ) ) {
+                $seller_package['origin'] = $this->get_seller_address( $seller_id );
+            }
+
+            $shippable_items = array_filter( $seller_items, static function ( $item ) {
+                return $item['data']->needs_shipping();
+            } );
+
+            // As at checkout, a seller's virtual-only items have their own
+            // destination even if the order includes a separate shipping charge.
+            if ( $seller_items && ! $shippable_items ) {
+                if ( null === $virtual_destination ) {
+                    $virtual_destination = $this->get_virtual_order_destination( $order );
+                }
+                $virtual_package                = $seller_package;
+                $virtual_package['contents']    = $seller_items;
+                $virtual_package['destination'] = $virtual_destination;
+                $virtual_packages[]              = sst_create_package( $virtual_package );
+                $seller_items                   = array();
             }
 
             if ( isset( $shipping_by_seller[ $seller_id ] ) ) {
@@ -258,14 +277,32 @@ abstract class SST_Marketplace_Integration {
                 );
             }
 
-            if ( $this->is_user_seller( $seller_id ) ) {
-                $seller_package['origin'] = $this->get_seller_address( $seller_id );
+            if ( $seller_items || isset( $seller_package['shipping'] ) ) {
+                $seller_package['contents'] = $seller_items;
+                $packages[] = sst_create_package( $seller_package );
             }
-
-            $packages[] = sst_create_package( $seller_package );
         }
 
-        return $packages;
+        return array_merge( $packages, $virtual_packages );
+    }
+
+    /**
+     * Resolve a virtual package destination from the addresses saved at checkout.
+     *
+     * @param WC_Order $order Order or marketplace suborder.
+     * @return array
+     */
+    protected function get_virtual_order_destination( $order ) {
+        $shipping_address = sst_get_order_shipping_address( $order );
+        if ( 'yes' === SST_Settings::get( 'disable_virtual_split' )
+            && ( empty( $shipping_address['country'] ) || empty( $shipping_address['state'] ) )
+            && $order->get_parent_id()
+        ) {
+            // A virtual suborder can omit the shipping address used at checkout.
+            $shipping_address = sst_get_order_shipping_address( $order->get_parent_id() );
+        }
+
+        return sst_get_virtual_package_destination( sst_get_order_billing_address( $order ), $shipping_address );
     }
 
     /**

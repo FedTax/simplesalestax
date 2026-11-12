@@ -161,7 +161,7 @@ function sst_create_package( $package = array() ) {
  * @return array
  */
 function sst_create_virtual_cart_package( $items ) {
-	$destination = array(
+	$billing_address = array(
 		'country'   => WC()->customer->get_billing_country(),
 		'address'   => WC()->customer->get_billing_address(),
 		'address_2' => WC()->customer->get_billing_address_2(),
@@ -170,35 +170,39 @@ function sst_create_virtual_cart_package( $items ) {
 		'postcode'  => WC()->customer->get_billing_postcode(),
 	);
 
-	if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
-		$shipping_country   = WC()->customer->get_shipping_country();
-		$shipping_address   = WC()->customer->get_shipping_address();
-		$shipping_address_2 = WC()->customer->get_shipping_address_2();
-		$shipping_city      = WC()->customer->get_shipping_city();
-		$shipping_state     = WC()->customer->get_shipping_state();
-		$shipping_postcode  = WC()->customer->get_shipping_postcode();
-
-		if ( ! empty( $shipping_country ) && ! empty( $shipping_state ) ) {
-			$destination = array(
-				'country'   => $shipping_country,
-				'address'   => $shipping_address,
-				'address_2' => $shipping_address_2,
-				'city'      => $shipping_city,
-				'state'     => $shipping_state,
-				'postcode'  => $shipping_postcode,
-			);
-		}
-	}
+	$shipping_address = array(
+		'country'   => WC()->customer->get_shipping_country(),
+		'address'   => WC()->customer->get_shipping_address(),
+		'address_2' => WC()->customer->get_shipping_address_2(),
+		'city'      => WC()->customer->get_shipping_city(),
+		'state'     => WC()->customer->get_shipping_state(),
+		'postcode'  => WC()->customer->get_shipping_postcode(),
+	);
 
 	return sst_create_package(
 		array(
 			'contents'    => $items,
-			'destination' => $destination,
+			'destination' => sst_get_virtual_package_destination( $billing_address, $shipping_address ),
 			'user'        => array(
 				'ID' => get_current_user_id(),
 			),
 		)
 	);
+}
+
+/**
+ * Choose a destination for a package containing only items that do not ship.
+ *
+ * @param array $billing_address  Customer billing address.
+ * @param array $shipping_address Customer shipping address.
+ * @return array
+ */
+function sst_get_virtual_package_destination( $billing_address, $shipping_address ) {
+	if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) && ! empty( $shipping_address['country'] ) && ! empty( $shipping_address['state'] ) ) {
+		return $shipping_address;
+	}
+
+	return $billing_address;
 }
 
 /**
@@ -417,6 +421,23 @@ function sst_format_order_items( $items ) {
 	}
 
 	return $new_items;
+}
+
+/**
+ * Get the saved billing address for an order.
+ *
+ * @param WC_Order $order Order object.
+ * @return array
+ */
+function sst_get_order_billing_address( $order ) {
+	return array(
+		'country'   => $order->get_billing_country(),
+		'address'   => $order->get_billing_address_1(),
+		'address_2' => $order->get_billing_address_2(),
+		'city'      => $order->get_billing_city(),
+		'state'     => $order->get_billing_state(),
+		'postcode'  => $order->get_billing_postcode(),
+	);
 }
 
 /**

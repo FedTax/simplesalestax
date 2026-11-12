@@ -29,7 +29,8 @@ function get_current_user_id() { return 42; }
 function wp_parse_args( $args, $defaults ) { return array_merge( $defaults, $args ); }
 function wp_list_pluck( $items, $key ) { return array_column( $items, $key ); }
 function get_post_field( $field, $product_id ) { return $GLOBALS['product_authors'][ $product_id ]; }
-function wc_get_product( $product_id ) { return (object) array( 'id' => $product_id ); }
+function wc_get_product( $product_id ) { return $GLOBALS['products'][ $product_id ] ?? false; }
+function wc_get_order( $order_id ) { return $GLOBALS['orders'][ $order_id ] ?? false; }
 
 function dokan_is_user_seller( $id ) { return in_array( (int) $id, array( 17, 23 ), true ); }
 function wcfm_is_vendor( $id ) { return dokan_is_user_seller( $id ); }
@@ -72,6 +73,7 @@ class SST_Settings {
 
 class SST_Logger {
 	public static function add() {}
+	public static function order_log() {}
 }
 
 class SST_Addresses {
@@ -130,6 +132,28 @@ class Marketplace_Test_Customer {
 	public function get_shipping_postcode() { return '10001'; }
 }
 
+class Marketplace_Test_Order extends Marketplace_Test_Customer {
+	public $items = array();
+	public $shipping_methods = array();
+	public $parent_id = 0;
+	public function get_id() { return 90; }
+	public function get_user_id() { return 42; }
+	public function get_items() { return $this->items; }
+	public function get_shipping_methods() { return $this->shipping_methods; }
+	public function get_fees() { return array(); }
+	public function get_parent_id() { return $this->parent_id; }
+	public function get_billing_address_1() { return $this->get_billing_address(); }
+	public function get_shipping_country() { return $this->shipping_state ? 'US' : ''; }
+	public function get_shipping_address_1() { return $this->get_shipping_address(); }
+}
+
+class Marketplace_Test_Order_Shipping extends ArrayObject {
+	public function get_meta( $key ) { return $this[ $key ] ?? ''; }
+	public function get_id() { return $this['id']; }
+	public function get_total() { return $this['cost']; }
+	public function get_method_id() { return $this['method_id']; }
+}
+
 require dirname( __DIR__ ) . '/includes/vendor/autoload.php';
 require dirname( __DIR__ ) . '/includes/sst-functions.php';
 require dirname( __DIR__ ) . '/includes/class-sst-origin-address.php';
@@ -137,6 +161,15 @@ require dirname( __DIR__ ) . '/includes/class-sst-shipping.php';
 require dirname( __DIR__ ) . '/includes/class-sst-marketplaces.php';
 require dirname( __DIR__ ) . '/includes/abstracts/class-sst-abstract-cart.php';
 require dirname( __DIR__ ) . '/includes/frontend/class-sst-checkout.php';
+require dirname( __DIR__ ) . '/includes/class-sst-order.php';
+require dirname( __DIR__ ) . '/includes/integrations/class-sst-composite-products.php';
+$composite_callback = array_pop( $filters['wootax_cart_packages_before_split'] );
+
+class Marketplace_Test_Order_Tax extends SST_Order {
+	public function __construct( $order ) { $this->order = $order; }
+	public function get_certificate() { return null; }
+	protected function handle_address_verification( $outcome ) {}
+}
 
 class Marketplace_Test_Checkout extends SST_Checkout {
 	public $taxes;
@@ -224,12 +257,16 @@ $virtual_a  = cart_item( 'virtual-a', 102, false, 105 );
 $physical_b = cart_item( 'physical-b', 103, true );
 $virtual_b  = cart_item( 'virtual-b', 104, false );
 $all_items  = array_column( array( $physical_a, $virtual_a, $physical_b, $virtual_b ), null, 'key' );
+$products   = array_column( $all_items, 'data', 'product_id' );
+$products[105] = $virtual_a['data'];
+$orders     = array( 89 => new Marketplace_Test_Order() );
 $callbacks = $filters['wootax_cart_packages_before_split'];
 
 expect_same( 4, count( $callbacks ), 'Marketplace integrations registered' );
 foreach ( $callbacks as $callback ) {
 	$integration = get_class( $callback[0] );
 	$filters['wootax_cart_packages_before_split'] = array( $callback );
+	$filters['wootax_order_packages_before_split'] = array( array( $callback[0], 'filter_wootax_order_packages' ) );
 	$seller_key = 'SST_Dokan' === $integration ? 'seller_id' : 'vendor_id';
 	$product_vendors = array( 101 => 17, 102 => 17, 103 => 23, 104 => 23 );
 	// Exercise marketplace-specific ownership when the product author differs.
@@ -322,6 +359,21 @@ foreach ( $callbacks as $callback ) {
 	expect_same( 1, count( $checkout->lookups ), "$integration empty shipping package without a selected rate is dropped" );
 	expect_same( array(), $checkout->shipping_taxes, "$integration no unselected shipping charge" );
 
+	// Composite Products registers its filter after the marketplace filter.
+	$composite_parent = $physical_a + array( 'composite_children' => array( 'component' ) );
+	$cart->items = array( 'physical-a' => $composite_parent, 'virtual-b' => $virtual_b );
+	$woocommerce->shipping->packages = array(
+		4 => shipping_package( array( 'physical-a' => $composite_parent ), $seller_key, '17' ),
+		8 => shipping_package( array( 'virtual-b' => $virtual_b ), $seller_key, '23' ),
+	);
+	$woocommerce->shipping->packages[8]['rates'][ $rate->id ] = $rate;
+	$woocommerce->session->set( 'chosen_shipping_methods', array( 8 => $rate->id ) );
+	$filters['wootax_cart_packages_before_split'][] = $composite_callback;
+	$checkout->calculate_taxes();
+	expect_same( array( 8 => 1.0 ), $checkout->shipping_taxes, "$integration preserves seller B shipping with Composite Products active" );
+	expect_same( array( 'physical-a' => 5.0, 'virtual-b' => 5.0 ), $checkout->taxes, "$integration product tax with Composite Products active" );
+	$filters['wootax_cart_packages_before_split'] = array( $callback );
+
 	// Separate shipping packages can share an origin without sharing their lines.
 	$second_physical = cart_item( 'physical-a-2', 101, true );
 	$cart->items = array_column( array( $physical_a, $virtual_a, $second_physical ), null, 'key' );
@@ -340,30 +392,57 @@ foreach ( $callbacks as $callback ) {
 	expect_same( array( 4 => 1.0, 8 => 1.0 ), $checkout->shipping_taxes, "$integration separate shipping taxes for the same seller" );
 
 	// Recalculation should group products with the matching vendor shipping line.
-	$order = new class {
-		public function get_items() {
-			return array(
-				11 => array( 'product_id' => 102, 'variation_id' => 105, 'qty' => 1, 'line_total' => 50, 'line_subtotal' => 50 ),
-				12 => array( 'product_id' => 103, 'variation_id' => 0, 'qty' => 1, 'line_total' => 50, 'line_subtotal' => 50 ),
-			);
-		}
-		public function get_shipping_methods() {
-			return array( 31 => new class {
-				public function get_meta( $key ) { return 'vendor_id' === $key ? 17 : ''; }
-				public function get_id() { return 31; }
-				public function get_total() { return 10; }
-				public function get_method_id() { return 'flat_rate'; }
-			} );
-		}
-		public function get_user_id() { return 42; }
-	};
-	$order_packages = $callback[0]->filter_wootax_order_packages( array(), $order );
+	$order = new Marketplace_Test_Order();
+	$order->items = array(
+		11 => array( 'product_id' => 102, 'variation_id' => 105, 'qty' => 1, 'line_total' => 50, 'line_subtotal' => 50 ),
+		12 => array( 'product_id' => 104, 'variation_id' => 0, 'qty' => 1, 'line_total' => 50, 'line_subtotal' => 50 ),
+		13 => array( 'product_id' => 101, 'variation_id' => 0, 'qty' => 1, 'line_total' => 50, 'line_subtotal' => 50 ),
+	);
+	$order->shipping_methods[31] = new Marketplace_Test_Order_Shipping(
+		array( 'id' => 31, $seller_key => 17, 'cost' => 10, 'method_id' => 'flat_rate' )
+	);
+	$order_tax = new Marketplace_Test_Order_Tax( $order );
+	$order_packages = $order_tax->create_packages();
 	expect_same( 2, count( $order_packages ), "$integration order recalculation seller packages" );
-	expect_same( array( 11 ), array_keys( $order_packages[0]['contents'] ), "$integration order variation assigned by parent product ownership" );
+	expect_same( array( 11, 13 ), array_keys( $order_packages[0]['contents'] ), "$integration order variation assigned by parent product ownership" );
 	expect_same( 31, $order_packages[0]['shipping']->id, "$integration order shipping assigned to seller A" );
 	expect_same( 'S-17', $order_packages[0]['origin']->getID(), "$integration order seller A origin" );
+	expect_same( 'NY', $order_packages[0]['destination']->getState(), "$integration mixed seller order uses shipping" );
 	expect_same( array( 12 ), array_keys( $order_packages[1]['contents'] ), "$integration order seller B items" );
 	expect_same( 'S-23', $order_packages[1]['origin']->getID(), "$integration order seller B origin" );
+	expect_same( 'CO', $order_packages[1]['destination']->getState(), "$integration virtual-only seller order uses billing" );
+
+	// A virtual-only suborder may have a shipping charge, or omit its shipping address.
+	$order->items = array( 12 => $order->items[12] );
+	$order->shipping_methods = array(
+		32 => new Marketplace_Test_Order_Shipping(
+			array( 'id' => 32, $seller_key => 23, 'cost' => 10, 'method_id' => 'flat_rate' )
+		),
+	);
+	$order_packages = $order_tax->create_packages();
+	expect_same( 2, count( $order_packages ), "$integration virtual seller order splits the shipping charge" );
+	expect_same( 32, $order_packages[0]['shipping']->id, "$integration virtual seller order preserves the shipping charge" );
+	expect_same( array(), $order_packages[0]['contents'], "$integration order shipping charge has no product lines" );
+	expect_same( 'NY', $order_packages[0]['destination']->getState(), "$integration order shipping charge uses shipping destination" );
+	expect_same( null, $order_packages[1]['shipping'], "$integration virtual order products have no shipping charge" );
+	expect_same( 'CO', $order_packages[1]['destination']->getState(), "$integration virtual order products use billing" );
+
+	$order->shipping_methods = array();
+	$order->parent_id = 89;
+	$settings['disable_virtual_split'] = 'yes';
+	$order_packages = $order_tax->create_packages();
+	expect_same( 'NY', $order_packages[0]['destination']->getState(), "$integration virtual suborder uses shipping when virtual splitting is disabled" );
+	$order->shipping_state = '';
+	$order_packages = $order_tax->create_packages();
+	expect_same( 'NY', $order_packages[0]['destination']->getState(), "$integration virtual suborder uses parent shipping when its own address is missing" );
+	unset( $settings['disable_virtual_split'] );
+	$order_packages = $order_tax->create_packages();
+	expect_same( 'CO', $order_packages[0]['destination']->getState(), "$integration virtual suborder without shipping address uses billing" );
+	$settings['disable_virtual_split'] = 'yes';
+	$order->parent_id = 0;
+	$order_packages = $order_tax->create_packages();
+	expect_same( 'CO', $order_packages[0]['destination']->getState(), "$integration virtual order without any shipping address falls back to billing" );
+	unset( $settings['disable_virtual_split'] );
 }
 
 echo "Marketplace cart regression checks passed for Dokan, WCFM, WCMp, and WC Vendors Pro.\n";

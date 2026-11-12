@@ -95,13 +95,15 @@ class SST_Composite_Products {
 		}
 
 		foreach ( $packages as $package_key => $package ) {
-			if ( empty( $package['contents'] ) ) {
+			if ( empty( $package['contents'] ) && empty( $package['shipping'] )
+				&& ! SST_Shipping::get_chosen_package_rate( $package_key, $package )
+			) {
 				unset( $packages[ $package_key ] );
 				continue;
 			}
 
 			if ( array_key_exists( 'contents_cost', $package ) ) {
-				$packages[ $package_key ]['contents_cost'] = array_sum( wp_list_pluck( $package['contents'], 'line_total' ) );
+				$packages[ $package_key ]['contents_cost'] = array_sum( wp_list_pluck( $package['contents'] ?? array(), 'line_total' ) );
 			}
 		}
 
