@@ -59,14 +59,16 @@ class SST_Logger {
 class WC_Order {
 	public $meta = array();
 	public $customer_id = 42;
+	public $status = 'pending';
 	public $save_calls = 0;
 	public $total = 110;
 	public function get_meta( $key, $single = true, $context = 'view' ) { return $this->meta[ $key ] ?? ''; }
 	public function update_meta_data( $key, $value ) { $this->meta[ $key ] = $value; }
 	public function save() { ++$this->save_calls; }
 	public function get_id() { return 123; }
-	public function get_status() { return 'pending'; }
+	public function get_status() { return $this->status; }
 	public function get_customer_id() { return $this->customer_id; }
+	public function set_customer_id( $customer_id ) { $this->customer_id = $customer_id; }
 	public function get_total() { return $this->total; }
 	public function get_shipping_total() { return 0; }
 	public function get_total_tax() { return 10; }
@@ -312,6 +314,30 @@ foreach ( array( null, 'none' ) as $posted ) {
 	expect_same( null === $posted ? TEST_CERTIFICATE_ID : '', $recalculated_order->get_meta( '_wootax_exempt_cert' ), 'Reloaded orders preserve omitted selections and allow authorized clears' );
 }
 $simulate_item_save = false;
+
+// A customer chosen on a new admin order must reach the quote only when the
+// editor can update both the draft and the selected customer's certificate.
+foreach ( array(
+	array( 'auto-draft', 0, '42', array( 'manage_options', 'edit_shop_order', 'edit_user' ), 42, $replacement_id ),
+	array( 'auto-draft', 42, '0', array( 'manage_options', 'edit_shop_order', 'edit_user' ), 0, $replacement_id ),
+	array( 'auto-draft', 0, '42', array( 'manage_options', 'edit_user' ), 0, TEST_CERTIFICATE_ID ),
+	array( 'auto-draft', 0, '42', array( 'manage_woocommerce', 'edit_shop_order' ), 0, TEST_CERTIFICATE_ID ),
+	array( 'auto-draft', 0, '99', array( 'manage_options', 'edit_shop_order', 'edit_user' ), 0, TEST_CERTIFICATE_ID ),
+	array( 'auto-draft', 0, array( '42' ), array( 'manage_options', 'edit_shop_order', 'edit_user' ), 0, TEST_CERTIFICATE_ID ),
+	array( 'pending', 42, '1', array( 'manage_options', 'edit_shop_order', 'edit_user' ), 42, $replacement_id ),
+) as $case ) {
+	list( $status, $customer_id, $selected, $capabilities, $expected_customer, $expected_certificate ) = $case;
+	$acting_user_id = 2;
+	$acting_capabilities = array_merge( array( 'edit_shop_orders' ), $capabilities );
+	$test_order = new WC_Order();
+	$test_order->status = $status;
+	$test_order->customer_id = $customer_id;
+	$test_order->meta['_wootax_exempt_cert'] = TEST_CERTIFICATE_ID;
+	$_POST = $recalculate_post + array( 'sst_customer_id' => $selected, 'exemption_certificate' => $replacement_id );
+	expect_same( 'recalculation reached', response_from( array( 'SST_Ajax', 'calc_line_taxes' ) ), 'Customer selection does not prevent recalculation' );
+	expect_same( $expected_customer, $recalculated_order->get_customer_id(), 'Only an authorized draft customer change reaches recalculation' );
+	expect_same( $expected_certificate, $recalculated_order->get_meta( '_wootax_exempt_cert' ), 'Recalculation authorizes the certificate against the draft customer' );
+}
 
 expect_same( true, SST_Certificates::is_valid_certificate_id( 'ABCDEFAB-CDEF-ABCD-EFAB-CDEFABCDEFAB' ), 'GUIDs accept uppercase hex without imposing a UUID version' );
 
