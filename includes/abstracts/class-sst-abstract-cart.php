@@ -843,15 +843,13 @@ abstract class SST_Abstract_Cart {
 			return array();
 		}
 
-		// If the 'origin' key is already set, we can assume that some upstream
-		// code (e.g. a marketplace integration) already split the packages by
-		// origin address. In this case, we just make sure all required keys are
-		// set and return the package as-is.
-		if ( isset( $package['origin'] ) && $package['origin'] instanceof SST_Origin_Address ) {
-			$origin_id              = $package['origin']->getID();
-			$packages[ $origin_id ] = $this->format_package( $package );
-
-			return $packages;
+		// Preserve packages with an explicit origin and shipping charges with
+		// no product lines. Numeric keys keep packages with the same origin
+		// distinct when the caller merges the results.
+		if ( ( isset( $package['origin'] ) && $package['origin'] instanceof SST_Origin_Address )
+			|| ( empty( $package['contents'] ) && ! empty( $package['shipping'] ) )
+		) {
+			return array( $this->format_package( $package ) );
 		}
 
 		// Split package into subpackages.

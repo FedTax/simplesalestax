@@ -3,6 +3,21 @@
 Run commands from the repository root with the seeded Docker WordPress site
 running at `http://localhost:8080`.
 
+## Marketplace virtual item tax regression (DEV-10624)
+
+Run `php tests/marketplace-cart-regression.php` for Dokan, WCFM, WCMp and WC
+Vendors Pro. It is included in `npm run test:regression` and uses modeled
+marketplace data and tax responses without a running store or TaxCloud account.
+
+The test runs checkout's package splitter for virtual-only and mixed carts.
+It checks seller origins, billing and shipping destinations, one occurrence
+of each virtual line, and the tax on selected shipping charges. It also covers
+packages without a seller ID, separate shipping packages with the same seller
+origin, and seller grouping when order tax is recalculated. Order checks cover
+the destination for a seller's virtual items, including suborders without
+shipping addresses, and checkout checks verify that Composite Products
+preserves selected shipping charges on packages with no product lines.
+
 ## Shipping address verification (DEV-10605)
 
 Run `php tests/address-verification-regression.php` for controlled V1/V3

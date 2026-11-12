@@ -458,22 +458,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	protected function get_package_shipping_rate( $key, $package ) {
-		$chosen_methods = WC()->session->get( 'chosen_shipping_methods' );
-
-		/* WC Multiple Shipping doesn't use chosen_shipping_methods -_- */
-		if ( function_exists( 'wcms_session_isset' ) && wcms_session_isset( 'shipping_methods' ) ) {
-			$chosen_methods = array();
-
-			foreach ( wcms_session_get( 'shipping_methods' ) as $package_key => $method ) {
-				$chosen_methods[ $package_key ] = $method['id'];
-			}
-		}
-
-		if ( isset( $chosen_methods[ $key ], $package['rates'][ $chosen_methods[ $key ] ] ) ) {
-			return $package['rates'][ $chosen_methods[ $key ] ];
-		}
-
-		return null;
+		return SST_Shipping::get_chosen_package_rate( $key, $package );
 	}
 
 	/**
@@ -528,48 +513,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 	protected function create_virtual_package() {
 		$digital_items = $this->get_items_not_needing_shipping();
 
-		if ( ! empty( $digital_items ) ) {
-			$destination = array(
-				'country'   => WC()->customer->get_billing_country(),
-				'address'   => WC()->customer->get_billing_address(),
-				'address_2' => WC()->customer->get_billing_address_2(),
-				'city'      => WC()->customer->get_billing_city(),
-				'state'     => WC()->customer->get_billing_state(),
-				'postcode'  => WC()->customer->get_billing_postcode(),
-			);
-
-			if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
-				$shipping_country   = WC()->customer->get_shipping_country();
-				$shipping_address   = WC()->customer->get_shipping_address();
-				$shipping_address_2 = WC()->customer->get_shipping_address_2();
-				$shipping_city      = WC()->customer->get_shipping_city();
-				$shipping_state     = WC()->customer->get_shipping_state();
-				$shipping_postcode  = WC()->customer->get_shipping_postcode();
-
-				if ( ! empty( $shipping_country ) && ! empty( $shipping_state ) ) {
-					$destination = array(
-						'country'   => $shipping_country,
-						'address'   => $shipping_address,
-						'address_2' => $shipping_address_2,
-						'city'      => $shipping_city,
-						'state'     => $shipping_state,
-						'postcode'  => $shipping_postcode,
-					);
-				}
-			}
-
-			return sst_create_package(
-				array(
-					'contents'    => $digital_items,
-					'destination' => $destination,
-					'user'        => array(
-						'ID' => get_current_user_id(),
-					),
-				)
-			);
-		}
-
-		return false;
+		return $digital_items ? sst_create_virtual_cart_package( $digital_items ) : false;
 	}
 
 	/**

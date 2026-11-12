@@ -172,6 +172,13 @@ class SST_WC_Vendors extends SST_Marketplace_Integration {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 */
+	protected function get_seller_id_for_product( $product_id ) {
+		return (int) WCV_Vendors::get_vendor_from_product( $product_id );
+	}
+
+	/**
 	 * Get the origin address for a seller.
 	 *
 	 * @param int $seller_id Seller user ID.

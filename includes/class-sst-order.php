@@ -306,19 +306,10 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		if ( ! empty( $virtual_items ) ) {
-			$destination = $this->get_billing_address();
-
-			if ( 'yes' === SST_Settings::get( 'disable_virtual_split' ) ) {
-				$shipping_address = $this->get_shipping_address();
-				if ( ! empty( $shipping_address['country'] ) && ! empty( $shipping_address['state'] ) ) {
-					$destination = $shipping_address;
-				}
-			}
-
 			return sst_create_package(
 				array(
 					'contents'    => $virtual_items,
-					'destination' => $destination,
+					'destination' => sst_get_virtual_package_destination( $this->get_billing_address(), $this->get_shipping_address() ),
 					'user'        => array(
 						'ID' => $this->order->get_user_id(),
 					),
@@ -669,14 +660,7 @@ class SST_Order extends SST_Abstract_Cart {
 	 * @since 5.5
 	 */
 	protected function get_billing_address() {
-		return array(
-			'country'   => $this->order->get_billing_country(),
-			'address'   => $this->order->get_billing_address_1(),
-			'address_2' => $this->order->get_billing_address_2(),
-			'city'      => $this->order->get_billing_city(),
-			'state'     => $this->order->get_billing_state(),
-			'postcode'  => $this->order->get_billing_postcode(),
-		);
+		return sst_get_order_billing_address( $this->order );
 	}
 
 	/**
