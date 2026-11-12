@@ -41,7 +41,7 @@ jobs:
         run: npm run build:makepot
 
       - name: Run grunt
-        run: grunt
+        run: npx grunt
 
       - name: Build plugin
         run: rsync -av --mkpath --exclude-from=.distignore . ./dist
