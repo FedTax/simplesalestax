@@ -1,10 +1,21 @@
-// DEV-10586: real admin selection/recalculation and persistence; TaxCloud HTTP is simulated.
-module.exports = ({ task, records, login, getSite }) => describe('DEV-10586 admin order exemptions (local fixtures only)', () => {
+// Real admin selection/recalculation and persistence; TaxCloud HTTP is simulated.
+module.exports = ({ task, records, login, getSite }) => describe('admin order exemptions (local fixtures only)', () => {
   let order;
   let recordOffset;
   const money = ($element) => Number($element.text().replace(/[^\d.]/g, ''));
+  const observeRecalculation = () => {
+    cy.on('window:confirm', () => true);
+    cy.intercept('POST', '/wp-admin/admin-ajax.php', (req) => {
+      if (new URLSearchParams(req.body).get('action') === 'woocommerce_calc_line_taxes') {
+        req.alias = 'adminExemptionRecalculate';
+      }
+    });
+  };
   const recalculate = (certificate) => {
     cy.get('#exempt_cert').select(certificate, { force: true }).should('have.value', certificate);
+    clickRecalculate();
+  };
+  const clickRecalculate = () => {
     cy.get('button.calculate-action').click();
     cy.wait('@adminExemptionRecalculate', { timeout: 60000 }).its('response.statusCode').should('equal', 200);
     cy.get('.blockUI', { timeout: 60000 }).should('not.exist');
@@ -47,22 +58,20 @@ module.exports = ({ task, records, login, getSite }) => describe('DEV-10586 admi
       order = fixture;
       expect(order.adminId).not.to.equal(getSite().customerId);
       login('admin');
-      cy.visit(order.editUrl);
-      cy.get(`#exempt_cert option[value="${order.certificates.FL}"]`).should('exist');
-      cy.get('#order_line_items tr.item').should('have.length', 10);
-      cy.get('#order_shipping_line_items tr').should('not.exist');
-      cy.on('window:confirm', () => true);
-      cy.intercept('POST', '/wp-admin/admin-ajax.php', (req) => {
-        const fields = new URLSearchParams(req.body);
-        if (fields.get('action') === 'woocommerce_calc_line_taxes' && Number(fields.get('order_id')) === order.id) {
-          req.alias = 'adminExemptionRecalculate';
-        }
-      });
+      observeRecalculation();
       records().then((rows) => { recordOffset = rows.length; });
     });
   });
 
+  const openExistingOrder = () => {
+    cy.visit(order.editUrl);
+    cy.get(`#exempt_cert option[value="${order.certificates.FL}"]`).should('exist');
+    cy.get('#order_line_items tr.item').should('have.length', 10);
+    cy.get('#order_shipping_line_items tr').should('not.exist');
+  };
+
   it('retains the customer and FL certificate through repeated admin recalculation and reload', () => {
+    openExistingOrder();
     recalculate('');
     verify(288.40, '');
     cy.then(() => recalculate(order.certificates.FL));
@@ -75,6 +84,7 @@ module.exports = ({ task, records, login, getSite }) => describe('DEV-10586 admi
   });
 
   it('rejects a NY-only certificate on an FL order without changing the customer', () => {
+    openExistingOrder();
     cy.then(() => recalculate(order.certificates.NY));
     verify(288.40, '');
     cy.reload();
@@ -82,7 +92,62 @@ module.exports = ({ task, records, login, getSite }) => describe('DEV-10586 admi
   });
 
   it('charges tax when the administrator leaves the certificate empty', () => {
+    openExistingOrder();
     recalculate('');
     verify(288.40, '');
+  });
+
+  it('DEV-10619 applies the selected customer’s certificate before a new admin order is saved', () => {
+    const { customerId, productId, username } = getSite();
+    const certificate = order.certificates.MN;
+    cy.visit(order.newOrderUrl);
+    cy.get('#select2-customer_user-container').click();
+    cy.get('.select2-container--open .select2-search__field').type(username);
+    cy.contains('.select2-results__option', username).click();
+    cy.get('#customer_user').should('have.value', String(customerId));
+    cy.get('#_billing_postcode').should('have.value', '55401');
+    cy.get('#_shipping_postcode').should('have.value', '55401');
+    cy.get(`select#exempt_cert option[value="${certificate}"]`).should('exist');
+
+    cy.get('button.add-line-item').click();
+    cy.get('button.add-order-item').click();
+    cy.get('.select2-container--open .select2-search__field').type(String(productId));
+    cy.contains('.select2-results__option', `Cypress V3 ${Cypress.env('pluginV3Run')}`).click();
+    cy.get('.wc-backbone-modal-add-products #btn-ok').click();
+    cy.get('#order_line_items tr.item').should('have.length', 1);
+
+    const visibleTax = (tax) => cy.get('#woocommerce-order-items .wc-order-totals').contains('tr', 'Sales Tax:')
+      .find('.amount').should(($amount) => expect(money($amount)).to.equal(tax));
+    clickRecalculate();
+    visibleTax(10);
+    records().then((rows) => { recordOffset = rows.length; });
+    cy.get('#select2-exempt_cert-container').click();
+    cy.contains('.select2-results__option', /^MN •/).click();
+    cy.get('#exempt_cert').should('have.value', certificate);
+    clickRecalculate();
+    visibleTax(0);
+    cy.get('@adminExemptionRecalculate').then(({ request }) => {
+      const fields = new URLSearchParams(request.body);
+      const id = Number(fields.get('order_id'));
+      expect(fields.get('exemption_certificate')).to.equal(certificate);
+      records().then((rows) => {
+        const quote = rows.slice(recordOffset).filter((row) => row.method === 'POST' && /\/carts$/.test(row.path)).at(-1);
+        expect(quote, 'TaxCloud lookup for the new order').to.exist;
+        expect(quote.status).to.equal(200);
+        expect(quote.request.items[0]).to.deep.include({ customerId: `customer-${customerId}`, exemption: { exemptionId: certificate } });
+        expect(quote.response.items[0].lineItems[0].tax.amount).to.equal(0);
+      });
+      task('order', { id }).then((saved) => {
+        expect(saved).to.include({ status: 'auto-draft', customerId, tax: 0, total: 100, certificate });
+        expect(saved.packages[0]).to.include({ customer_id: customerId, certificate_id: certificate });
+      });
+      cy.get('#publish, button.save_order').first().click();
+      cy.get('#exempt_cert').should('have.value', certificate);
+      visibleTax(0);
+      task('order', { id }).then((saved) => {
+        expect(saved).to.include({ status: 'pending', customerId, tax: 0, total: 100, certificate });
+      });
+    });
+    cy.screenshot('DEV-10619-new-admin-order-zero-tax', { capture: 'fullPage' });
   });
 });

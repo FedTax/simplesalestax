@@ -244,7 +244,7 @@ if ( 'setup' === $action ) {
     $context['adminExemptionProductId'] = $product->save();
     $context['adminExemptionCertificates'] = array();
     $remote = get_option( 'sst_cypress_v3_remote', array( 'certificates' => array(), 'carts' => array(), 'orders' => array() ) );
-    foreach ( array( 'FL', 'NY' ) as $state ) {
+    foreach ( array( 'FL', 'NY', 'MN' ) as $state ) {
       $id = wp_generate_uuid4();
       $context['adminExemptionCertificates'][ $state ] = $id;
       $remote['certificates'][ $id ] = array(
@@ -277,6 +277,7 @@ if ( 'setup' === $action ) {
   $context['adminExemptionOrderIds'][] = $order->get_id();
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = array( 'id' => $order->get_id(), 'editUrl' => $order->get_edit_order_url(),
+    'newOrderUrl' => \Automattic\WooCommerce\Utilities\OrderUtil::get_order_admin_new_url(),
     'certificates' => $context['adminExemptionCertificates'], 'adminId' => $context['adminId'] );
 } elseif ( 'certificateSecurity' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Certificate security scenarios require fixture mode.' ); }

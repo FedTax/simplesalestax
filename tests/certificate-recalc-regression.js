@@ -30,11 +30,13 @@ for (const file of files) {
 	});
 	for (const id of ['11111111-2222-3333-4444-555555555555', '', 'single-purchase', 'certificate&order_id=999&items=bad+data#fragment', 'O:8:"stdClass":0:{}']) {
 		const settings = { data: 'action=woocommerce_calc_line_taxes&order_id=123&items=original' };
-		viewMethods.filterRecalcRequest.call({ model: { get: () => id } }, null, null, settings);
+		const model = { get: (key) => ({ selectedCertificate: id, isEditable: true, customerId: '42' })[key] };
+		viewMethods.filterRecalcRequest.call({ model }, null, null, settings);
 		const posted = new URLSearchParams(settings.data);
 		assert.deepEqual(posted.getAll('order_id'), ['123'], `${file}: selection cannot override the target order`);
 		assert.equal(posted.get('items'), 'original', `${file}: selection cannot override items`);
 		assert.equal(posted.get('exemption_certificate'), id, `${file}: selection remains one encoded value`);
+		assert.deepEqual(posted.getAll('sst_customer_id'), ['42'], `${file}: recalculation includes the selected customer`);
 	}
 	for (const data of ['action=other&order_id=123', { action: 'woocommerce_calc_line_taxes' }]) {
 		const settings = { data };

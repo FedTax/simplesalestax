@@ -330,9 +330,27 @@ class SST_Ajax {
 		}
 
 		$customer_id = (int) $order->get_customer_id();
-		$update_certificate = isset( $_POST['exemption_certificate'] ) && ( $customer_id
+		$can_manage_certificates = $customer_id
 			? SST_Certificates::current_user_can_manage_certificates( $customer_id )
-			: ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) ) );
+			: ( current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' ) );
+		$recalculation_customer_id = $customer_id;
+
+		// WooCommerce's Recalculate request omits the customer selected on a new order.
+		if ( 'auto-draft' === $order->get_status() && isset( $_POST['sst_customer_id'] ) ) {
+			$selected_customer_id = filter_var( wp_unslash( $_POST['sst_customer_id'] ), FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 0 ) ) );
+			if ( false === $selected_customer_id || $selected_customer_id !== $customer_id ) {
+				$can_manage_certificates = $can_manage_certificates
+					&& false !== $selected_customer_id
+					&& current_user_can( 'edit_shop_order', $order_id )
+					&& ( 0 === $selected_customer_id || SST_Certificates::current_user_can_manage_certificates( $selected_customer_id ) );
+
+				if ( $can_manage_certificates ) {
+					$recalculation_customer_id = $selected_customer_id;
+				}
+			}
+		}
+
+		$update_certificate = isset( $_POST['exemption_certificate'] ) && $can_manage_certificates;
 
 		if ( $update_certificate ) {
 			$certificate_id = wp_unslash( $_POST['exemption_certificate'] );
@@ -354,6 +372,9 @@ class SST_Ajax {
 		wc_save_order_items( $order_id, $items );
 		// Item saving recalculates totals on another instance of the order.
 		$order = wc_get_order( $order_id );
+		if ( $recalculation_customer_id !== $customer_id ) {
+			$order->set_customer_id( $recalculation_customer_id );
+		}
 
 		$posted_address = compact(
 			'country',
