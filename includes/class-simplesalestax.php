@@ -207,6 +207,10 @@ final class SimpleSalesTax {
 			require_once $integrations_dir . '/class-sst-composite-products.php';
 		}
 
+		// Product Bundles order data can outlive the extension.
+		require_once $integrations_dir . '/class-sst-product-bundles.php';
+		new SST_Product_Bundles( function_exists( 'wc_pb_get_bundled_cart_items' ) );
+
 		// Deposits for WooCommerce.
 		if ( is_plugin_active( 'deposits-for-woocommerce/deposits-for-woocommerce.php' ) ) {
 			require_once $integrations_dir . '/class-sst-deposits-for-wc.php';

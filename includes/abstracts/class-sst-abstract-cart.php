@@ -962,7 +962,7 @@ abstract class SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	protected function get_origin_for_product( $item, $destination ) {
-		$origins = SST_Product::get_origin_addresses( $item['product_id'] );
+		$origins = SST_Product::get_origin_addresses( $item['sst_origin_product_id'] ?? $item['product_id'] );
 		$origin  = null;
 
 		if ( ! empty( $origins ) ) {
