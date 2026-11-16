@@ -111,9 +111,10 @@ module.exports = ({ task, records, login, getSite }) => describe('admin order ex
 
     cy.get('button.add-line-item').click();
     cy.get('button.add-order-item').click();
+    cy.get('.wc-backbone-modal .wc-product-search').last().next('.select2-container').click();
     cy.get('.select2-container--open .select2-search__field').type(String(productId));
     cy.contains('.select2-results__option', `Cypress V3 ${Cypress.env('pluginV3Run')}`).click();
-    cy.get('.wc-backbone-modal-add-products #btn-ok').click();
+    cy.get('.wc-backbone-modal #btn-ok').click();
     cy.get('#order_line_items tr.item').should('have.length', 1);
 
     const visibleTax = (tax) => cy.get('#woocommerce-order-items .wc-order-totals').contains('tr', 'Sales Tax:')

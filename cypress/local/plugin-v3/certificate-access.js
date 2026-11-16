@@ -144,8 +144,13 @@ module.exports = ({ task, records, login }) => {
       // The same order form must still allow an authorized administrator to clear it.
       login('admin');
       cy.then(() => cy.visit(order.editUrl));
+      cy.get('body').then(($body) => {
+        if ($body.find('#post-lock-dialog .post-locked-message a.button-primary').length) {
+          cy.get('#post-lock-dialog .post-locked-message a.button-primary').click();
+        }
+      });
       cy.get('#exempt_cert').select('', { force: true });
-      cy.get('#save-order, button.save_order').first().click();
+      cy.get('#save-order, button.save_order').first().click({ force: true });
       cy.get('#order_status').should('have.value', 'wc-pending');
       task('certificateOrderSaveState').its('certificateId').should('equal', '');
     });
