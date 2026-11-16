@@ -150,6 +150,7 @@ namespace {
 		public static function is_local_delivery( $method ) { return 'local_delivery' === $method; }
 	}
 	class WC_Order {
+		public function get_items( $type ) { return array(); }
 		public function save_meta_data() {}
 		public $meta = array();
 		public $notes = array();
