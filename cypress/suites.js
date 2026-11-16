@@ -11,6 +11,10 @@ module.exports = (on, config) => {
 
   Object.assign(config, {video: false, retries: 0, supportFile: false, taskTimeout: 90000});
   if (suite === 'plugin') {
+    const productBundles = String(config.env.productBundles) === 'true';
+    if (productBundles && config.env.mode === 'live') {
+      throw new Error('The Product Bundles Cypress spec uses TaxCloud fixtures.');
+    }
     const hostname = new URL(config.baseUrl).hostname;
     if (process.env.SST_E2E_WORDPRESS_PATH
       ? !['localhost', '127.0.0.1'].includes(hostname) && !hostname.endsWith('.local')
@@ -18,7 +22,7 @@ module.exports = (on, config) => {
       throw new Error('Plugin E2E tests require localhost, or an explicitly configured LocalWP .local site.');
     }
     Object.assign(config, {
-      specPattern: 'cypress/local/plugin-v3/**/*.cy.js',
+      specPattern: productBundles ? 'cypress/local/plugin-v3/product-bundles.cy.js' : 'cypress/local/plugin-v3/plugin.cy.js',
       experimentalInteractiveRunEvents: true,
       viewportWidth: 1440,
       viewportHeight: 1000,
