@@ -64,11 +64,19 @@ if ( $inactive ) {
 	bundle_assert( false, $purchase( true, new Bundle_Test_Product( true, null, 10 ) ), 'Fallback simple bundle cannot be purchased' );
 	bundle_assert( true, $purchase( true, new Bundle_Test_Product( true, null, 20 ) ), 'Ordinary product remains purchasable' );
 	$restore = $hooks['woocommerce_cart_item_is_purchasable'];
-	bundle_assert( false, $restore( true, 'old-child', array( 'bundled_by' => 'bundle', 'bundled_item_id' => 1 ) ), 'Saved bundle child cannot become a standalone purchase' );
+	$yith_child = array( 'bundled_by' => 'yith-parent', 'bundled_item_id' => 1 );
+	bundle_assert( true, $restore( true, 'yith-child', $yith_child ), 'Saved YITH bundle child remains purchasable' );
+	bundle_assert( false, $restore( false, 'yith-child', $yith_child ), 'An existing rejection is preserved' );
+	$stamp = array( 1 => array( 'product_id' => 20, 'quantity' => 1 ) );
+	$woo_child = array( 'bundled_by' => 'bundle', 'bundled_item_id' => 1, 'stamp' => $stamp );
+	bundle_assert( false, $restore( true, 'old-child', $woo_child ), 'Saved Woo bundle child cannot become a standalone purchase' );
+	bundle_assert( true, $restore( true, 'unrelated-stamp', array( 'stamp' => array( 2 => $stamp[1] ) ) + $yith_child ), 'Unrelated configuration does not identify a Woo bundle child' );
 	bundle_assert( true, $restore( true, 'ordinary', array() ), 'Saved ordinary item remains purchasable' );
 	$reorder = $hooks['woocommerce_order_again_cart_item_data'];
-	$child = new Bundle_Test_Order_Item( array( '_bundled_by' => 'bundle', '_bundled_item_id' => 1 ) );
+	$child = new Bundle_Test_Order_Item( array( '_bundled_by' => 'bundle', '_bundled_item_id' => '1', '_stamp' => $stamp ) );
 	bundle_assert( false, $restore( true, 'reorder', $reorder( array(), $child ) ), 'Reordering cannot convert a bundled component to a standalone purchase' );
+	$other_child = new Bundle_Test_Order_Item( array( '_bundled_by' => 'yith-parent', '_bundled_item_id' => '1' ) );
+	bundle_assert( array( 'other_data' => true ), $reorder( array( 'other_data' => true ), $other_child ), 'Reordering preserves other plugins\' cart data' );
 } else {
 	$cart_items = array(
 		'parent'   => bundle_item( 10, 10, true ) + array( 'bundled_items' => array( 'packed', 'free', 'digital', 'own-box' ) ),
