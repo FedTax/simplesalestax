@@ -31,23 +31,33 @@ class SST_Product_Bundles {
 	}
 
 	/**
-	 * Remove saved bundle components when their parent can no longer be bought.
+	 * Remove saved Woo Product Bundles components when the extension is inactive.
 	 */
 	public function prevent_orphan_purchase( $purchasable, $key, $item ) {
-		return $purchasable && ( empty( $item['bundled_by'] ) || empty( $item['bundled_item_id'] ) );
+		return $this->is_woo_bundle_component( $item ) ? false : $purchasable;
 	}
 
 	/**
 	 * Keep the same protection when WooCommerce reconstructs a cart from an order.
 	 */
 	public function keep_bundle_link_for_reorder( $cart_item, $order_item ) {
-		$parent_key = $order_item->get_meta( '_bundled_by', true );
-		$bundled_item_id = $order_item->get_meta( '_bundled_item_id', true );
-		if ( $parent_key && $bundled_item_id ) {
-			$cart_item['bundled_by']      = $parent_key;
-			$cart_item['bundled_item_id'] = $bundled_item_id;
-		}
-		return $cart_item;
+		$bundle_data = array(
+			'bundled_by'      => $order_item->get_meta( '_bundled_by', true ),
+			'bundled_item_id' => $order_item->get_meta( '_bundled_item_id', true ),
+			'stamp'           => $order_item->get_meta( '_stamp', true ),
+		);
+
+		return $this->is_woo_bundle_component( $bundle_data ) ? array_replace( $cart_item, $bundle_data ) : $cart_item;
+	}
+
+	/** Other bundle extensions share the parent and item keys. Woo stores the component configuration in stamp. */
+	private function is_woo_bundle_component( $item ) {
+		$id    = $item['bundled_item_id'] ?? null;
+		$stamp = $item['stamp'] ?? null;
+
+		return ! empty( $item['bundled_by'] ) && ! empty( $id )
+			&& ( is_int( $id ) || is_string( $id ) )
+			&& is_array( $stamp ) && isset( $stamp[ $id ] ) && is_array( $stamp[ $id ] );
 	}
 
 	/**
