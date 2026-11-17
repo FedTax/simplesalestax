@@ -515,9 +515,20 @@ function sst_render_tax_meta_box( $order ) {
 		);
 	}
 
+	$capture_candidate = sst_integration_mode() === 'data_mover'
+		&& $order->get_id()
+		&& current_user_can( 'manage_woocommerce' )
+		&& current_user_can( 'edit_shop_order', $order->get_id() )
+		&& $order->is_data_import_capture_candidate();
 	sst_load_template(
 		'includes/views/html-meta-box.php',
-		array( 'status' => $status, 'order_id' => $order->get_id(), 'can_manage_certificates' => $can_manage )
+		array(
+			'status'                  => $status,
+			'order_id'                => $order->get_id(),
+			'can_manage_certificates' => $can_manage,
+			'capture_candidate'       => $capture_candidate,
+			'capture_enabled'         => $capture_candidate && $order->can_capture_data_import_order(),
+		)
 	);
 	if ( $can_manage ) {
 		sst_load_template( 'includes/views/html-add-certificate-modal.php' );

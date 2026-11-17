@@ -31,6 +31,7 @@ class SST_Ajax {
 		'sst_dismiss_taxcloud_notice' => false,
 		'sst_review_notice_action'    => false,
 		'sst_get_order_log'           => false,
+		'sst_capture_order'            => false,
 		'sst_update_data_mover'				=> false,
 		'sst_search_tics'             => false,
 	);
@@ -57,6 +58,53 @@ class SST_Ajax {
 				add_action( "wp_ajax_nopriv_$hook", array( __CLASS__, $function ), $priority );
 			}
 		}
+	}
+
+	/** Handle a manual Data Import capture from the order editor. */
+	public static function capture_order() {
+		$id = $_POST['order_id'] ?? '';
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) || ! is_string( $id )
+			|| ! ctype_digit( $id ) || (string) (int) $id !== $id || '0' === $id
+		) {
+			wp_send_json_error( array( 'message' => __( 'Invalid order ID.', 'simple-sales-tax' ) ), 400 );
+		}
+		$id = (int) $id;
+		if ( ! check_ajax_referer( 'sst_capture_order_' . $id, 'nonce', false )
+			|| ! current_user_can( 'manage_woocommerce' ) || ! current_user_can( 'edit_shop_order', $id )
+		) {
+			wp_send_json_error( array( 'message' => __( 'You cannot capture this order. Reload the order page and check your permissions.', 'simple-sales-tax' ) ), 403 );
+		}
+
+		$wc_order = wc_get_order( $id );
+		if ( ! $wc_order instanceof WC_Order || 'shop_order' !== $wc_order->get_type() ) {
+			wp_send_json_error( array( 'message' => __( 'This WooCommerce order could not be found.', 'simple-sales-tax' ) ), 404 );
+		}
+
+		$order = new SST_Order( $wc_order );
+		if ( $order->is_data_import_capture_candidate() ) {
+			$result = $order->capture_data_import_manually();
+		} else {
+			$result = new WP_Error( 'sst_capture_unavailable', __( 'This order is no longer eligible for Data Import capture.', 'simple-sales-tax' ) );
+		}
+
+		$success = ! is_wp_error( $result );
+		$message = $success ? __( 'Order captured in TaxCloud.', 'simple-sales-tax' ) : $result->get_error_message();
+		$response = array(
+			'outcome'  => $success ? 'captured' : $result->get_error_code(),
+			'message'  => $message,
+			'status'   => $order->get_taxcloud_status( 'view' ),
+			'eligible' => $order->can_capture_data_import_order(),
+		);
+
+		if ( $success ) {
+			$order->add_order_note( __( 'Manual capture in TaxCloud succeeded.', 'simple-sales-tax' ), false, true );
+			wp_send_json_success( $response );
+		}
+		if ( ! in_array( $result->get_error_code(), array( 'sst_capture_unavailable', 'sst_capture_busy' ), true ) ) {
+			/* translators: %s: Capture failure message. */
+			$order->add_order_note( sprintf( __( 'Manual capture in TaxCloud failed: %s', 'simple-sales-tax' ), $message ), false, true );
+		}
+		wp_send_json_error( $response, 409 );
 	}
 
 	/**

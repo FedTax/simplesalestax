@@ -772,6 +772,22 @@ class SST_Order extends SST_Abstract_Cart {
 		// Logging
 		SST_Logger::order_log( __( 'Capturing order.', 'simple-sales-tax' ), $order->get_id() );
 
+		if ( 'data_mover' === sst_integration_mode() ) {
+			$result = $this->capture_data_import( false );
+			if ( is_wp_error( $result ) ) {
+				if ( 'sst_capture_unavailable' !== $result->get_error_code() ) {
+					$this->handle_error( sprintf( 'TaxCloud capture #%d: %s', $order->get_id(), $result->get_error_message() ) );
+				}
+				return false;
+			}
+			return true;
+		}
+
+		if ( '' !== $this->get_meta( 'data_import_upload' ) ) {
+			// An interrupted Data Import upload may already exist at TaxCloud.
+			return false;
+		}
+
 		// Capture Order In TaxCloud is disabled.
 		if ( 'no' === SST_Settings::get( 'capture_orders_in_taxcloud' ) ) {
 			// Logging
@@ -802,8 +818,7 @@ class SST_Order extends SST_Abstract_Cart {
 		$packages        = $this->get_packages();
 
 		if (
-			'data_mover' !== sst_integration_mode()
-			&& 'pending' === $taxcloud_status
+			'pending' === $taxcloud_status
 			&& ! $this->has_capturable_packages( $packages )
 		) {
 			SST_Logger::order_log( __( 'No capturable packages found. Rebuilding packages before capture.', 'simple-sales-tax' ), $order->get_id() );
@@ -843,14 +858,6 @@ class SST_Order extends SST_Abstract_Cart {
 			}
 		}
 		
-		// Data Mover Mode.
-		if ( 'data_mover' === sst_integration_mode() ) {
-			// Logging
-			SST_Logger::order_log( __( 'Data Mover Mode enabled. Creating order in TaxCloud.', 'simple-sales-tax' ), $order->get_id() );
-			$created_order = $this->create_order_in_taxcloud( $packages, $order );
-			return $created_order;
-		}
-
 		// Logging
 		SST_Logger::order_log( __( 'Capturing order packages:', 'simple-sales-tax' ), $order->get_id(), $packages );
 
@@ -1399,74 +1406,305 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
-	 * Create order in TaxCloud using direct V3 Orders API.
+	 * Check eligibility using the original metadata, before Data Import package
+	 * compression can relabel a previous Real Time package as v3.
 	 *
-	 * @param array    $packages Packages.
-	 * @param WC_Order $order    Order.
-	 *
-	 * @return bool True on success, false on failure.
-	 * @since 8.4.1
+	 * @return bool
 	 */
-	protected function create_order_in_taxcloud( $packages, $order ) {
-		// No packages found.
-		if ( empty( $packages ) ) {
-			$this->handle_error(
-				sprintf(
-					/* translators: WooCommerce order ID */
-					__( 'Failed to create order %d in TaxCloud: no TaxCloud lookup packages were found.', 'simple-sales-tax' ),
-					$order->get_id()
-				)
-			);
-
+	public function is_data_import_capture_candidate() {
+		if (
+			'data_mover' !== sst_integration_mode()
+			|| ! $this->order instanceof WC_Order
+			|| 'shop_order' !== $this->order->get_type()
+			|| ! $this->order->get_id()
+			|| ! $this->order->has_status( array( 'processing', 'completed' ) )
+			|| 'pending' !== $this->get_taxcloud_status()
+			|| $this->order->get_refunds()
+		) {
 			return false;
 		}
 
-		// Order object.
-		$txc_order = new TaxCloud_V3\Orders();
-
-		// Send order for all packages.
-		foreach ( $packages as $key => $package ) {
-			$now               = gmdate( 'c' );
-			$order_id          = $this->get_package_order_id( $key, $package );
-			$created_date      = $order->get_date_created();
-			$completed_date    = $order->get_date_completed();
-			$transaction_date  = $created_date ? gmdate( 'c', $created_date->getTimestamp() ) : $now;
-			$tax_liability_date = $completed_date ? gmdate( 'c', $completed_date->getTimestamp() ) : $now;
-
-			// Create order in TaxCloud.
-			$payload = [
-				'completedDate' => $tax_liability_date,
-				'customerId' => 'customer-' . $package['customer_id'],
-				'deliveredBySeller' => ! empty( $package['delivered_by_seller'] ),
-				'destination' => $package['destination'],
-				'lineItems' => $package['cart_items'],
-				'orderId' => $order_id,
-				'origin' => $package['origin'],
-				'transactionDate' => $transaction_date,
-				'currencyCode' => $order->get_currency(),
-			];
-
-			SST_Logger::order_log( __( 'Sending Create Order request to TaxCloud v3.', 'simple-sales-tax' ), $order->get_id(), wp_json_encode( $payload ) );
-
-			$order_response = $txc_order->create_order($payload);
-
-			// Check error.
-			if( !is_wp_error( $order_response ) ) {
-				// Update order meta
-				$this->update_meta( 'status', 'captured' );
-
-				// Logging
-				SST_Logger::order_log( __( 'Order status updated to captured.', 'simple-sales-tax' ), $order->get_id() );
-
-				$order->save();
-			} else {
-				// Logging
-				SST_Logger::order_log( __( 'Failed to create order in TaxCloud.', 'simple-sales-tax' ), $order->get_id(), $order_response->get_error_message() );
+		foreach ( (array) $this->get_meta( 'packages' ) as $package ) {
+			if ( ! empty( $package['cart_id'] ) || ! empty( $package['response'] )
+				|| 'v1' === ( $package['api_version'] ?? '' )
+				|| ( $package['request'] ?? null ) instanceof TaxCloud\Request\Lookup
+			) {
 				return false;
 			}
 		}
 
 		return true;
+	}
+
+	/**
+	 * @return bool Whether this order can be uploaded under the current settings.
+	 */
+	public function can_capture_data_import_order() {
+		return $this->is_data_import_capture_candidate() && $this->is_integration_active();
+	}
+
+	/**
+	 * Capture the saved order on explicit request from the admin order panel.
+	 *
+	 * @return true|WP_Error
+	 */
+	public function capture_data_import_manually() {
+		return $this->capture_data_import( true );
+	}
+
+	/**
+	 * Serialize Data Import uploads across manual and automatic requests.
+	 *
+	 * @param bool $manual Whether to bypass the automatic capture setting.
+	 * @return true|WP_Error
+	 */
+	private function capture_data_import( $manual ) {
+		global $wpdb;
+
+		if ( ! $manual && 'no' === SST_Settings::get( 'capture_orders_in_taxcloud' ) ) {
+			return new WP_Error( 'sst_capture_unavailable', __( 'Automatic TaxCloud capture is turned off.', 'simple-sales-tax' ) );
+		}
+
+		$order_id  = $this->order->get_id();
+		$lock_name = 'sst_capture_' . md5( DB_NAME . ':' . $wpdb->prefix . ':' . $order_id );
+		if ( '1' !== (string) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', $lock_name ) ) ) {
+			return new WP_Error( 'sst_capture_busy', __( 'TaxCloud capture could not start. Wait a moment and try again.', 'simple-sales-tax' ) );
+		}
+
+		try {
+			// Construct a fresh WC order to avoid an instance cached before the lock.
+			$this->order = new WC_Order( $order_id );
+			$this->order->read_meta_data( true );
+
+			if ( ! $this->is_data_import_capture_candidate() ) {
+				return new WP_Error( 'sst_capture_unavailable', __( 'This order is no longer eligible for Data Import capture.', 'simple-sales-tax' ) );
+			}
+			if ( ! $this->is_integration_active() ) {
+				return new WP_Error( 'sst_capture_unavailable', __( 'Enable the TaxCloud integration and configure its API credentials to capture this order.', 'simple-sales-tax' ) );
+			}
+			if ( ! apply_filters( 'sst_should_capture_order', true, $this->order, $this ) ) {
+				return new WP_Error( 'sst_capture_unavailable', __( 'TaxCloud capture was skipped by a store customization.', 'simple-sales-tax' ) );
+			}
+
+			return $this->upload_data_import_order();
+		} catch ( Exception $ex ) {
+			return new WP_Error( 'sst_capture_failed', __( 'TaxCloud capture could not finish. Check the order and try again.', 'simple-sales-tax' ) );
+		} finally {
+			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
+		}
+	}
+
+	/**
+	 * Prepare missing packages from persisted order data without recalculating
+	 * WooCommerce taxes or calling the Cart API.
+	 *
+	 * @return array
+	 */
+	private function build_data_import_packages() {
+		$packages = array();
+		foreach ( $this->create_packages() as $package ) {
+			if ( ! $this->is_origin_valid( $package ) || ! $this->is_destination_valid( $package ) ) {
+				return array();
+			}
+			$package['request'] = $this->get_lookup_for_package( $package );
+			$packages[] = $this->compress_package_data( $package );
+		}
+		return $packages;
+	}
+
+	/**
+	 * Detect changes to order data that feeds the upload. Ignore notes and
+	 * metadata written by capture itself.
+	 */
+	private function data_import_order_fingerprint() {
+		$data = array_intersect_key(
+			$this->order->get_data(),
+			array_flip( array( 'customer_id', 'billing', 'shipping', 'currency', 'date_created', 'date_completed', 'total', 'total_tax' ) )
+		);
+		foreach ( $this->order->get_items( array( 'line_item', 'shipping', 'fee' ) ) as $item ) {
+			$item_data = $item->get_data();
+			unset( $item_data['meta_data'] );
+			$data['items'][ $item->get_id() ] = $item_data;
+		}
+		return hash( 'sha256', wp_json_encode( $data ) );
+	}
+
+	/**
+	 * Prepare and validate the entire upload before creating any remote orders.
+	 *
+	 * @return array|WP_Error
+	 */
+	private function prepare_data_import_upload( $api ) {
+		$invalid = new WP_Error( 'sst_capture_packages', __( 'The order has incomplete TaxCloud upload data. Check its products, shipping, and addresses.', 'simple-sales-tax' ) );
+		$packages = $this->get_packages();
+		if ( ! $packages ) {
+			$packages = $this->build_data_import_packages();
+		}
+		if ( ! $packages ) {
+			return $invalid;
+		}
+
+		// Count product occurrences rather than comparing WooCommerce item IDs
+		// to cart keys. Check shipping and fees too, so a dropped package fails.
+		$expected = array();
+		foreach ( $this->order->get_items( array( 'line_item', 'shipping', 'fee' ) ) as $item ) {
+			$type = $item->get_type();
+			if ( 'line_item' === $type && ! $item->get_product() ) {
+				return $invalid;
+			}
+			$key = 'line_item' === $type ? $type . ':' . ( $item->get_variation_id() ?: $item->get_product_id() ) : $type;
+			$expected[ $key ] = ( $expected[ $key ] ?? 0 ) + 1;
+		}
+
+		$actual   = array();
+		$payloads = array();
+		$now      = time();
+		$created  = $this->order->get_date_created();
+		$complete = $this->order->get_date_completed();
+		foreach ( $packages as $key => &$package ) {
+			foreach ( array( 'origin', 'destination' ) as $address ) {
+				if ( empty( $package[ $address ]['line1'] ) || empty( $package[ $address ]['city'] )
+					|| empty( $package[ $address ]['state'] ) || empty( $package[ $address ]['zip'] )
+				) {
+					return $invalid;
+				}
+			}
+
+			$id = (string) $this->get_package_order_id( $key, $package );
+			if ( '' === $id || strlen( $id ) > 50 || isset( $payloads[ $id ] ) || empty( $package['cart_items'] ) ) {
+				return $invalid;
+			}
+			foreach ( $package['cart_items'] as $item ) {
+				$type = $item['type'] ?? '';
+				$line_key = 'line_item' === $type ? $type . ':' . ( $item['itemId'] ?? '' ) : $type;
+				$actual[ $line_key ] = ( $actual[ $line_key ] ?? 0 ) + 1;
+			}
+			$package['order_id'] = $id;
+			$payloads[ $id ] = array(
+				'orderId'           => $id,
+				'customerId'        => 'customer-' . $package['customer_id'],
+				'currencyCode'      => $this->order->get_currency(),
+				'transactionDate'   => gmdate( 'c', $created ? $created->getTimestamp() : $now ),
+				'completedDate'     => gmdate( 'c', $complete ? $complete->getTimestamp() : $now ),
+				'origin'            => $package['origin'],
+				'destination'       => $package['destination'],
+				'deliveredBySeller' => ! empty( $package['delivered_by_seller'] ),
+				'lineItems'         => $package['cart_items'],
+			);
+			if ( is_wp_error( $api->prepare_item_for_request( $payloads[ $id ] ) ) ) {
+				return $invalid;
+			}
+		}
+		if ( $expected != $actual ) {
+			return $invalid;
+		}
+
+		return array( 'packages' => $packages, 'payloads' => $payloads, 'confirmed' => array() );
+	}
+
+	/**
+	 * Resume the same upload after a rejection, outage, or lost POST response.
+	 *
+	 * @return true|WP_Error
+	 */
+	private function upload_data_import_order() {
+		$api         = new TaxCloud_V3\Orders();
+		$connection  = (string) SST_Settings::get( 'tc_key' );
+		$identity    = hash( 'sha256', $connection );
+		$fingerprint = $this->data_import_order_fingerprint();
+		$saved       = $this->get_meta( 'data_import_upload' );
+		$upload      = json_decode( $saved, true );
+
+		if ( '' !== $saved ) {
+			if ( ! is_array( $upload['packages'] ?? null ) || empty( $upload['payloads'] ) || ! is_array( $upload['confirmed'] ?? null )
+				|| $identity !== ( $upload['connection'] ?? null ) || $fingerprint !== ( $upload['fingerprint'] ?? null ) ) {
+				return new WP_Error( 'sst_capture_changed', __( 'The order or TaxCloud connection changed during capture. Review the original upload in TaxCloud before continuing.', 'simple-sales-tax' ) );
+			}
+		} else {
+			$upload = $this->prepare_data_import_upload( $api );
+			if ( is_wp_error( $upload ) ) {
+				return $upload;
+			}
+			$upload['connection']  = $identity;
+			$upload['fingerprint'] = $fingerprint;
+		}
+
+		foreach ( $upload['payloads'] as $id => $payload ) {
+			if ( isset( $upload['confirmed'][ $id ] ) ) {
+				continue;
+			}
+			$remote = $api->get_order( (string) $id );
+			if ( is_wp_error( $remote ) ) {
+				$data = $remote->get_error_data();
+				if ( 404 !== (int) ( $data['status'] ?? 0 ) ) {
+					return new WP_Error( 'sst_capture_lookup', __( 'TaxCloud could not verify whether this order already exists. Try again.', 'simple-sales-tax' ) );
+				}
+
+				if ( '' === $saved ) {
+					// Persist the exact request before the first POST. A failed
+					// response can mean the remote order was already created.
+					$saved = wp_json_encode( $upload );
+					if ( false === $saved ) {
+						return new WP_Error( 'sst_capture_packages', __( 'The order upload could not be saved. Check the order and try again.', 'simple-sales-tax' ) );
+					}
+					$this->update_meta( 'data_import_upload', $saved );
+					$this->order->save_meta_data();
+				}
+
+				$remote = $api->create_order( $payload );
+				if ( is_wp_error( $remote ) ) {
+					$data = $remote->get_error_data();
+					SST_Logger::order_log( 'TaxCloud Data Import upload failed.', $this->order->get_id(), array( 'status' => (int) ( $data['status'] ?? 0 ) ) );
+					return new WP_Error( 'sst_capture_failed', __( 'TaxCloud did not confirm capture. Check the order and try again.', 'simple-sales-tax' ) );
+				}
+			}
+
+			if ( ! $this->matches_data_import_upload( $remote, $payload, $connection ) ) {
+				return new WP_Error( 'sst_capture_mismatch', __( 'TaxCloud returned an order that could not be matched to this upload. Review the order in TaxCloud before retrying.', 'simple-sales-tax' ) );
+			}
+			$upload['confirmed'][ $id ] = true;
+			$saved = wp_json_encode( $upload );
+			$this->update_meta( 'data_import_upload', $saved );
+			$this->order->save_meta_data();
+		}
+
+		$this->set_packages( $upload['packages'] );
+		$this->update_meta( 'status', 'captured' );
+		$this->order->save_meta_data();
+
+		// Keep the recovery data until the final status and refund packages
+		// have been persisted. A crash during this step can then be retried.
+		$this->order->delete_meta_data( self::$prefix . 'data_import_upload' );
+		$this->order->save_meta_data();
+		return true;
+	}
+
+	/**
+	 * Check the remote identity and line quantities. TaxCloud may recalculate tax.
+	 */
+	private function matches_data_import_upload( $remote, $payload, $connection ) {
+		if ( ( $remote['connectionId'] ?? null ) !== $connection
+			|| ( $remote['orderId'] ?? null ) !== $payload['orderId']
+			|| ( $remote['customerId'] ?? null ) !== $payload['customerId']
+			|| ( $remote['currency']['currencyCode'] ?? null ) !== $payload['currencyCode']
+			|| ! is_array( $remote['lineItems'] ?? null )
+		) {
+			return false;
+		}
+
+		$lines = static function ( $items ) {
+			$result = array();
+			foreach ( $items as $item ) {
+				if ( ! isset( $item['index'], $item['itemId'], $item['quantity'] ) || ! is_numeric( $item['quantity'] ) ) {
+					return null;
+				}
+				$result[] = array( (int) $item['index'], (string) $item['itemId'], (float) $item['quantity'] );
+			}
+			sort( $result );
+			return $result;
+		};
+
+		return $lines( $remote['lineItems'] ) === $lines( $payload['lineItems'] );
 	}
 
 	/**
