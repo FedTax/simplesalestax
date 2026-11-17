@@ -47,7 +47,7 @@ if ( 'setup' === $action ) {
   $result = array_intersect_key( $context, array_flip( array( 'username', 'password', 'productId', 'customerId', 'mode', 'localwp' ) ) );
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock' ) as $key ) { $result[ $key ] = get_permalink( $context[ $key ] ); }
 } elseif ( 'configure' === $action ) {
-  foreach ( array( 'dataMover', 'blocks', 'unconfigured', 'showExempt', 'checkoutExemption', 'rateLimit' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
+  foreach ( array( 'dataMover', 'blocks', 'unconfigured', 'showExempt', 'checkoutExemption', 'rateLimit', 'manualCaptureOnly', 'classicCaptureEditor' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
   if ( array_key_exists( 'failure', $input ) ) {
     if ( ! in_array( $input['failure'], array( false, true, 'capture', 'refund' ), true ) ) { throw new Exception( 'Unknown fixture failure.' ); }
     if ( 'live' === $context['mode'] && false !== $input['failure'] ) { throw new Exception( 'Failure injection is fixture only.' ); }
@@ -55,6 +55,25 @@ if ( 'setup' === $action ) {
   }
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
+} elseif ( 'manualCaptureOrder' === $action ) {
+  if ( empty( $context['dataMover'] ) || empty( $context['manualCaptureOnly'] ) ) { throw new Exception( 'Enable the manual capture test profile first.' ); }
+  wp_set_current_user( $context['adminId'] );
+  $order = wc_create_order( array( 'customer_id' => $context['customerId'], 'created_via' => 'admin' ) );
+  if ( is_wp_error( $order ) ) { throw new Exception( $order->get_error_message() ); }
+  $address = array( 'first_name' => 'Cypress', 'last_name' => 'Buyer', 'country' => 'US',
+    'address_1' => '323 Washington Ave N', 'city' => 'Minneapolis', 'state' => 'MN',
+    'postcode' => '55401', 'email' => $context['username'] . '@example.test' );
+  $order->set_address( $address, 'billing' );
+  if ( empty( $input['empty'] ) ) {
+    $order->add_product( wc_get_product( $context['productId'] ), 1 );
+  }
+  $order->calculate_totals( false );
+  $order->set_status( ! empty( $input['completed'] ) ? 'completed' : 'processing' );
+  if ( ! empty( $input['realtimePackages'] ) ) {
+    ( new SST_Order( $order ) )->set_packages( array( array( 'cart_id' => 'cypress-realtime-cart', 'api_version' => 'v3' ) ) );
+  }
+  $order->save();
+  $result = array( 'id' => $order->get_id(), 'url' => $order->get_edit_order_url() );
 } elseif ( 'addressVerification' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Address failure scenarios require fixture mode.' ); }
   $outcome = $input['outcome'] ?? 'verified';

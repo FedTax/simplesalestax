@@ -78,6 +78,20 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     setOrderStatus(id, 'completed');
     task('order', { id }).then((order) => expect(order.taxcloudStatus).to.equal('captured'));
   };
+  const clickCapture = (success) => {
+    cy.intercept('POST', '/wp-admin/admin-ajax.php', (req) => {
+      if (String(req.body).includes('action=sst_capture_order')) req.alias = 'manualCapture';
+    });
+    cy.contains('button', 'Capture in TaxCloud').should('be.enabled').click();
+    return cy.wait('@manualCapture', { timeout: 60000 }).then((request) => {
+      expect(request.response.body.success, request.response.body.data.message).to.equal(success);
+      return request;
+    });
+  };
+  const postCapture = (orderId, nonce) => cy.window().then((win) => win.fetch('/wp-admin/admin-ajax.php', {
+    method: 'POST',
+    body: new URLSearchParams({ action: 'sst_capture_order', order_id: orderId, nonce }),
+  }).then(async (response) => ({ status: response.status, body: await response.json() })));
   const captureCalls = (rows) => rows.filter((row) => row.method === 'POST' && /\/(?:carts\/orders|connections\/:connection\/orders)$/.test(row.path));
   const refundCalls = (rows) => rows.filter((row) => row.method === 'POST' && /\/orders\/refunds\//.test(row.path));
   const verifyConnection = (profile, dataImport) => {
@@ -120,8 +134,114 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     if (this.currentTest.err) {
       cy.task('pluginV3Failure', { title: this.currentTest.fullTitle(), error: this.currentTest.err.stack || this.currentTest.err.message }, { log: false });
     }
-    task('configure', { dataMover: false, blocks: false, failure: false, unconfigured: false });
+    task('configure', { dataMover: false, blocks: false, failure: false, unconfigured: false, manualCaptureOnly: false, classicCaptureEditor: false });
   });
+
+  for (const classicCaptureEditor of fixture ? [false, true] : [false]) {
+    it(`DEV-6610 captures an older order from the ${classicCaptureEditor ? 'classic' : 'default'} editor with automatic capture off`, () => {
+      task('configure', { dataMover: true, manualCaptureOnly: true, classicCaptureEditor });
+      if (!fixture) verifyConnection('dataImport', true);
+      login('admin');
+      task('manualCaptureOrder', { completed: classicCaptureEditor }).then(({ id, url }) => {
+        task('order', { id }).its('packages').should('be.empty');
+        cy.visit(url);
+        if (classicCaptureEditor) cy.location('pathname').should('include', '/post.php');
+        cy.get('#order_status').select('wc-on-hold', { force: true });
+        cy.get('.sst-capture-order').should('be.disabled');
+        cy.get('#order_status').select(classicCaptureEditor ? 'wc-completed' : 'wc-processing', { force: true });
+        if (fixture && !classicCaptureEditor) {
+          task('configure', { failure: 'capture' });
+          clickCapture(false);
+          cy.get('.sst-taxcloud-status').should('have.text', 'Pending');
+          cy.get('.sst-capture-result').should('contain.text', 'TaxCloud did not confirm capture.');
+          cy.get('.sst-capture-order').should('be.enabled');
+          task('configure', { failure: false });
+        }
+        clickCapture(true).then(({ request }) => {
+          const nonce = new URLSearchParams(request.body).get('nonce');
+          postCapture(id, nonce).then(({ status, body }) => {
+            expect(status, body.data.message).to.equal(409);
+            expect(body.data.outcome).to.equal('sst_capture_unavailable');
+          });
+        });
+        cy.get('.sst-taxcloud-status').should('have.text', 'Captured');
+        cy.get('.sst-capture-result').should('contain.text', 'Order captured in TaxCloud.');
+        cy.get('.sst-capture-order').should('not.exist');
+        task('order', { id }).then((order) => {
+          expect(order.taxcloudStatus).to.equal('captured');
+          expect(order.status).to.equal(classicCaptureEditor ? 'completed' : 'processing');
+          expect(order.total).to.equal(100);
+          expect(order.notes).to.include('Manual capture in TaxCloud succeeded.');
+        });
+        call('POST', /\/connections\/:connection\/orders$/).then((row) => {
+          expect(row.connectionProfile).to.equal('dataImport');
+          task('clientReads', { orderId: row.request.orderId }).its('order.orderId').should('eq', row.request.orderId);
+        });
+        records().then((rows) => {
+          const attempts = captureCalls(rows.slice(recordOffset));
+          expect(attempts.map((row) => row.status)).to.deep.equal(fixture && !classicCaptureEditor ? [503, 201] : [201]);
+          expect(new Set(attempts.map((row) => row.request.orderId)).size).to.equal(1);
+        });
+      });
+    });
+  }
+
+  if (fixture) {
+    it('DEV-6610 retries failed automatic capture from the order panel without a status change', () => {
+      task('configure', { dataMover: true, manualCaptureOnly: true });
+      login('admin');
+      task('manualCaptureOrder').then(({ id }) => {
+        task('configure', { manualCaptureOnly: false, failure: 'capture' });
+        setOrderStatus(id, 'completed');
+        cy.get('.sst-taxcloud-status').should('have.text', 'Pending');
+        task('configure', { failure: false });
+        clickCapture(true);
+        cy.get('#order_status').should('have.value', 'wc-completed');
+        cy.get('.sst-taxcloud-status').should('have.text', 'Captured');
+        cy.get('.sst-capture-order').should('not.exist');
+        task('order', { id }).its('taxcloudStatus').should('eq', 'captured');
+        records().then((rows) => {
+          const attempts = captureCalls(rows.slice(recordOffset));
+          expect(attempts.map((row) => row.status)).to.deep.equal([503, 201]);
+          expect(attempts[1].request.orderId).to.equal(attempts[0].request.orderId);
+        });
+      });
+    });
+
+    it('DEV-6610 rejects invalid requests and ineligible orders and leaves an incomplete order retryable', () => {
+      task('configure', { dataMover: true, manualCaptureOnly: true });
+      login('admin');
+      task('manualCaptureOrder', { empty: true }).then(({ id, url }) => {
+        cy.visit(url);
+        cy.get('.sst-capture-order').invoke('attr', 'data-nonce').then((nonce) => {
+          postCapture('invalid', nonce).its('status').should('eq', 400);
+          postCapture(id, 'invalid').its('status').should('eq', 403);
+          postCapture(id + 1, nonce).its('status').should('eq', 403);
+          clickCapture(false);
+          cy.get('.sst-capture-result').should('contain.text', 'incomplete TaxCloud upload data');
+          cy.get('.sst-capture-order').should('be.enabled');
+          task('configure', { unconfigured: true });
+          cy.reload();
+          cy.get('.sst-capture-order').should('be.disabled');
+          cy.get('#sst-capture-help').should('contain.text', 'configure its API credentials');
+          postCapture(id, nonce).its('status').should('eq', 409);
+          task('configure', { dataMover: false, unconfigured: false });
+          cy.reload();
+          cy.get('.sst-capture-order').should('not.exist');
+          postCapture(id, nonce).its('status').should('eq', 409);
+        });
+      });
+      task('configure', { dataMover: true });
+      task('manualCaptureOrder', { realtimePackages: true }).then(({ url }) => {
+        cy.visit(url);
+        cy.get('.sst-capture-order').should('not.exist');
+      });
+      records().then((rows) => expect(captureCalls(rows.slice(recordOffset))).to.be.empty);
+    });
+  }
+
+  // Run only the manual capture browser scenarios when verifying this feature.
+  if (Cypress.env('manualCaptureSmoke')) return;
 
   it('Verify Settings exchanges credentials, pings V3 and loads management settings', () => {
     verifyConnection('realtime', false);
@@ -473,8 +593,16 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
             expect(attempts[0].status).to.equal(503);
           });
           task('configure', { failure: false });
-          setOrderStatus(id, 'processing');
-          completeOrder(id);
+          if (dataMover) {
+            cy.get('.sst-capture-order').should('be.enabled');
+            clickCapture(true);
+            cy.get('.sst-taxcloud-status').should('have.text', 'Captured');
+            cy.get('.sst-capture-order').should('not.exist');
+          } else {
+            cy.get('.sst-capture-order').should('not.exist');
+            setOrderStatus(id, 'processing');
+            completeOrder(id);
+          }
           records().then((rows) => {
             const attempts = captureCalls(rows.slice(recordOffset));
             expect(attempts.map((row) => row.status)).to.deep.equal([503, 201]);

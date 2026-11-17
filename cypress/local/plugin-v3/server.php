@@ -68,7 +68,7 @@ add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
     'taxcloud_rate_limit_requests' => 5, 'taxcloud_rate_limit_window' => 60,
     'taxcloud_rate_limit_scope' => 'customer', 'taxcloud_rate_limit_skip_admin' => 'no',
     'show_rate_limit_notice' => 'no', 'force_tax_lookup' => ! empty( $context['rateLimit'] ) ? 'yes' : 'no',
-    'capture_orders_in_taxcloud' => 'yes', 'capture_trigger' => 'completed',
+    'capture_orders_in_taxcloud' => empty( $context['manualCaptureOnly'] ) ? 'yes' : 'no', 'capture_trigger' => 'completed',
     'show_zero_tax' => 'true', 'disable_virtual_split' => 'no',
     'data_mover' => ! empty( $context['dataMover'] ),
     'addresses' => array( wp_json_encode( array( 'ID' => 'cypress-origin', 'Default' => true,
@@ -189,6 +189,14 @@ add_filter( 'sst_package_order_id', function( $id, $order, $key ) {
   }
   return $base . '_' . $key;
 }, 100, 3 );
+
+// Exercise both editors without changing the store's saved storage setting.
+foreach ( array( 'woocommerce_custom_orders_table_enabled', 'woocommerce_custom_orders_table_data_sync_enabled' ) as $option ) {
+  add_filter( 'pre_option_' . $option, function( $default ) {
+    $context = sst_e2e_context();
+    return ! empty( $context['classicCaptureEditor'] ) ? 'no' : $default;
+  } );
+}
 
 function sst_e2e_record( $url, $args, $response ) {
   $context = sst_e2e_context();
@@ -360,15 +368,20 @@ add_filter( 'pre_http_request', function( $preempt, $args, $url ) {
     $id = rawurldecode( $match[1] ); $status = 201;
     if ( ! isset( $state['orders'][ $id ] ) ) { $status = 404; $result = array( 'detail' => 'Order not found' ); }
     else { $result = array( array( 'idempotencyKey' => $body['idempotencyKey'] ?? '', 'items' => $body['items'] ?? array() ) ); }
-  } elseif ( preg_match( '#/orders(?:/([^/]+))?$#', $path, $match ) ) {
-    if ( 'POST' === $method ) { $status = 201; $result = $body; $state['orders'][ $body['orderId'] ] = $body; }
+  } elseif ( preg_match( '#/connections/([^/]+)/orders(?:/([^/]+))?$#', $path, $match ) ) {
+    if ( 'POST' === $method ) {
+      $status = 201;
+      $result = array_merge( $body, array( 'connectionId' => rawurldecode( $match[1] ) ) );
+      $state['orders'][ $body['orderId'] ] = $result;
+    }
     else {
-      $id = rawurldecode( $match[1] );
+      $id = rawurldecode( $match[2] );
       if ( 'PATCH' === $method && ! empty( $state['orders'][ $id ]['completedDate'] ) ) {
         $status = 400; $result = array( 'detail' => 'order is already completed, completed date cannot be updated' );
       } else {
         if ( 'PATCH' === $method && isset( $state['orders'][ $id ] ) ) { $state['orders'][ $id ] = array_merge( $state['orders'][ $id ], $body ); }
         $result = $state['orders'][ $id ] ?? null;
+        if ( null === $result ) { $status = 404; $result = array( 'detail' => 'Order not found' ); }
       }
     }
   } else { return new WP_Error( 'sst_e2e_unhandled_request', 'Unhandled TaxCloud fixture route: ' . $method . ' ' . $path ); }
