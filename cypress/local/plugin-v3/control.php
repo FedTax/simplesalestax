@@ -55,6 +55,73 @@ if ( 'setup' === $action ) {
   }
   update_option( 'sst_cypress_v3_context', $context, false );
   $result = true;
+} elseif ( 'productBundlesSetup' === $action ) {
+  if ( 'fixture' !== $context['mode'] || ! class_exists( 'WC_Product_Bundle' ) ) {
+    throw new Exception( 'Install and activate WooCommerce Product Bundles on the local fixture site.' );
+  }
+  if ( ! empty( $context['productBundles'] ) ) { throw new Exception( 'Product Bundles fixtures already exist.' ); }
+  $context['showExempt'] = false;
+  $context['productBundles'] = array();
+  $component = new WC_Product_Simple();
+  $component->set_name( 'Cypress bundle component' );
+  $component->set_regular_price( '40' );
+  $component->set_catalog_visibility( 'hidden' );
+  $component->update_meta_data( 'wootax_tic', '20010' );
+  $context['productBundles']['component'] = $component->save();
+  update_option( 'sst_cypress_v3_context', $context, false );
+  foreach ( array( 'fixed' => '80', 'mixed' => '10' ) as $type => $price ) {
+    $priced = 'mixed' === $type;
+    $bundle = new WC_Product_Bundle();
+    $bundle->set_name( 'Cypress ' . $type . ' bundle' );
+    $bundle->set_regular_price( $price );
+    $bundle->set_catalog_visibility( 'hidden' );
+    $bundle->update_meta_data( 'wootax_tic', '40010' );
+    $bundle->set_bundled_data_items( array( array(
+      'product_id' => $component->get_id(),
+      'meta_data'  => array( 'quantity_min' => 2, 'quantity_max' => 2,
+        'priced_individually' => $priced ? 'yes' : 'no', 'discount' => $priced ? 25 : 0,
+        'shipped_individually' => 'no' ),
+    ) ) );
+    $context['productBundles'][ $type ] = $bundle->save();
+    update_option( 'sst_cypress_v3_context', $context, false );
+  }
+  $result = $context['productBundles'] + array(
+    'fixedUrl' => get_permalink( $context['productBundles']['fixed'] ),
+    'mixedUrl' => get_permalink( $context['productBundles']['mixed'] ),
+  );
+} elseif ( 'productBundlesMode' === $action ) {
+  if ( 'fixture' !== $context['mode'] || empty( $context['productBundles'] ) ) { throw new Exception( 'No Product Bundles fixture exists.' ); }
+  $context['productBundlesInactive'] = empty( $input['active'] );
+  $context['blocks'] = ! empty( $input['blocks'] );
+  update_option( 'sst_cypress_v3_context', $context, false );
+  $result = true;
+} elseif ( 'productBundlesState' === $action ) {
+  $result = class_exists( 'WC_Product_Bundle' );
+} elseif ( 'productBundlesCapture' === $action || 'productBundlesRefund' === $action ) {
+  $order = wc_get_order( $input['id'] );
+  if ( 'fixture' !== $context['mode'] || empty( $context['productBundles'] ) || ! $order instanceof WC_Order
+    || (int) $order->get_customer_id() !== (int) $context['customerId'] ) {
+    throw new Exception( 'Product Bundles order must belong to this fixture run.' );
+  }
+  if ( 'productBundlesCapture' === $action ) {
+    $order->update_status( 'completed' );
+    $result = $order->get_status();
+  } else {
+    // Refund the selected original line through WooCommerce's normal refund hook.
+    $line = $order->get_item( $input['lineId'], false );
+    if ( ! $line || $line->get_quantity() < 1 || $line->get_total() <= 0 ) { throw new Exception( 'Expected a priced order line.' ); }
+    $price = round( $line->get_total() / $line->get_quantity(), wc_get_price_decimals() );
+    $taxes = array_map( function( $amount ) use ( $line ) {
+      return round( $amount / $line->get_quantity(), wc_get_price_decimals() );
+    }, $line->get_taxes()['total'] );
+    $refund = wc_create_refund( array(
+      'order_id' => $order->get_id(), 'amount' => $price + array_sum( $taxes ),
+      'line_items' => array( $line->get_id() => array( 'qty' => 1, 'refund_total' => $price, 'refund_tax' => $taxes ) ),
+      'refund_payment' => false,
+    ) );
+    if ( is_wp_error( $refund ) ) { throw new Exception( $refund->get_error_message() ); }
+    $result = $refund->get_id();
+  }
 } elseif ( 'addressVerification' === $action ) {
   if ( 'fixture' !== $context['mode'] ) { throw new Exception( 'Address failure scenarios require fixture mode.' ); }
   $outcome = $input['outcome'] ?? 'verified';
@@ -430,6 +497,12 @@ if ( 'setup' === $action ) {
       return array( 'name' => $fee->get_name(), 'total' => (float) $fee->get_total(), 'tax' => (float) $fee->get_total_tax() );
     }, $order->get_fees() ) );
   }
+  if ( ! empty( $context['productBundles'] ) ) {
+    $result['lines'] = array_values( array_map( function( $line ) {
+      return array( 'id' => $line->get_id(), 'productId' => $line->get_product_id(), 'quantity' => $line->get_quantity(),
+        'total' => (float) $line->get_total(), 'bundleChild' => (bool) $line->get_meta( '_bundled_by' ) );
+    }, $order->get_items() ) );
+  }
 } elseif ( 'retryRefund' === $action ) {
   // No UI exists for resending an already-created WooCommerce refund. Exercise
   // the plugin's retry boundary with the same refund ID/idempotency key.
@@ -484,6 +557,7 @@ if ( 'setup' === $action ) {
     }
   }
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock', 'productId' ) as $key ) { wp_trash_post( $context[ $key ] ); }
+  foreach ( $context['productBundles'] ?? array() as $id ) { wp_trash_post( $id ); }
   if ( ! empty( $context['adminExemptionProductId'] ) ) { wp_trash_post( $context['adminExemptionProductId'] ); }
   if ( ! empty( $context['addressProductId'] ) ) { wp_trash_post( $context['addressProductId'] ); }
   if ( ! empty( $context['coCategoryId'] ) ) { wp_delete_term( $context['coCategoryId'], 'product_cat' ); }

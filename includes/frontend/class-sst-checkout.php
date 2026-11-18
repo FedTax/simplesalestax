@@ -68,9 +68,23 @@ class SST_Checkout extends SST_Abstract_Cart {
 		}
 
 		add_action( 'woocommerce_checkout_create_order_shipping_item', array( $this, 'add_shipping_meta' ), 10, 3 );
+		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'save_cart_item_key' ), 10, 2 );
 
 		parent::__construct();
 
+	}
+
+	/**
+	 * Keep the lookup line reference, including when the same product appears
+	 * in both a bundle and a standalone cart line.
+	 *
+	 * @param WC_Order_Item_Product $item          New order line.
+	 * @param string                $cart_item_key Original WooCommerce cart line key.
+	 */
+	public function save_cart_item_key( $item, $cart_item_key ) {
+		if ( $this->is_integration_active() ) {
+			$item->add_meta_data( '_sst_cart_item_key', $cart_item_key, true );
+		}
 	}
 
 	/**

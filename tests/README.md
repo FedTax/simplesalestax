@@ -62,6 +62,26 @@ Close the Cypress app before starting another plugin run.
 A successful headless run ends with **All specs passed!** and exit code **0**.
 Setup failures or skipped workflows do not count as successful verification.
 
+## Product Bundles compatibility (DEV-9565)
+
+On a local test site with the official WooCommerce Product Bundles extension
+installed and active, run the dedicated spec:
+
+```sh
+npm run test:e2e -- --env productBundles=true
+```
+
+For LocalWP, also supply the site path, MySQL socket and base URL from the
+[LocalWP setup](#localwp-setup-without-docker). The spec uses the TaxCloud V3
+fixture. It checks fixed-price bundles in classic checkout, discounted packed
+components in Block Checkout, and the refund of a specific bundled line after
+the extension stops loading. It also checks that a saved bundle is removed from
+the cart while a standalone copy of the product can still check out and capture.
+
+The extension is omitted only in requests for this test run. The site's saved
+plugin activation is preserved. The default suite can run without the paid
+extension.
+
 ## Checkout rate limit regression (DEV-10623)
 
 `npm run test:e2e` includes six fixture-only Cypress cases: guest and logged-in
