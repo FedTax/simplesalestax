@@ -230,6 +230,9 @@ namespace {
 		public function get_refunds() { return self::$refunds; }
 		public function get_data() { return array( 'total' => 5 * self::$fees ); }
 		public function get_items( $types ) {
+			if ( 'line_item' === $types ) {
+				return array();
+			}
 			return array_map( function( $id ) { return new Routing_Fee_Item( $id ); }, range( 1, self::$fees ) );
 		}
 		public function delete_meta_data( $key ) { unset( $this->meta[ $key ] ); }

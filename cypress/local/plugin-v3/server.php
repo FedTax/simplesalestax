@@ -8,15 +8,20 @@ function sst_e2e_context() {
   return ! empty( $context['run'] ) && hash_equals( $context['run'], (string) $run ) ? $context : null;
 }
 
-// Keep LocalWP test requests on WooCommerce's native checkout with cheque payments.
+// Load the plugins needed for the current test request.
 add_filter( 'option_active_plugins', function( $plugins ) {
   $context = sst_e2e_context();
-  return $context && ! empty( $context['localwp'] )
-    ? array_values( array_diff( $plugins, array(
+  $excluded = array();
+  if ( ! empty( $context['localwp'] ) ) {
+    $excluded = array(
       'woocommerce-gateway-stripe/woocommerce-gateway-stripe.php',
       'checkoutwc-lite/checkout-for-woocommerce.php',
-    ) ) )
-    : $plugins;
+    );
+  }
+  if ( ! empty( $context['productBundlesInactive'] ) ) {
+    $excluded[] = 'woocommerce-product-bundles/woocommerce-product-bundles.php';
+  }
+  return $excluded ? array_values( array_diff( $plugins, $excluded ) ) : $plugins;
 } );
 
 // Admin view transitions can reject when Cypress navigates to the login page.
@@ -125,10 +130,15 @@ add_filter( 'option_woocommerce_stripe_settings', function( $settings ) {
 } );
 add_filter( 'woocommerce_available_payment_gateways', function( $gateways ) {
   $context = sst_e2e_context();
-  return ! empty( $context['addressVerification'] ) ? array_intersect_key( $gateways, array( 'cheque' => true ) ) : $gateways;
+  return ! empty( $context['addressVerification'] ) || ! empty( $context['productBundles'] )
+    ? array_intersect_key( $gateways, array( 'cheque' => true ) )
+    : $gateways;
 } );
 add_filter( 'woocommerce_package_rates', function( $rates ) {
   $context = sst_e2e_context();
+  if ( ! empty( $context['productBundles'] ) ) {
+    return array( 'sst-bundle-test' => new WC_Shipping_Rate( 'sst-bundle-test', 'Cypress bundle shipping', 5, array(), 'flat_rate' ) );
+  }
   return ! empty( $context['addressVerification'] )
     ? array( 'sst-address-test' => new WC_Shipping_Rate( 'sst-address-test', 'Cypress address test shipping', 0, array(), 'flat_rate' ) )
     : $rates;

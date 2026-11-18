@@ -197,7 +197,7 @@ class SST_Order extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	protected function transform_items( $cart_items ) {
-		return sst_format_order_items( $cart_items );
+		return apply_filters( 'sst_order_package_items', sst_format_order_items( $cart_items ), $cart_items );
 	}
 
 	/**
@@ -262,7 +262,7 @@ class SST_Order extends SST_Abstract_Cart {
 			 */
 			$shippable_items = array();
 			foreach ( $items as $item_id => $item ) {
-				if ( isset( $item['data'] ) && $item['data']->needs_shipping() ) {
+				if ( isset( $item['data'] ) && ( $item['sst_needs_shipping'] ?? $item['data']->needs_shipping() ) ) {
 					$shippable_items[ $item_id ] = $item;
 				}
 			}
@@ -299,7 +299,7 @@ class SST_Order extends SST_Abstract_Cart {
 		$virtual_items = array();
 
 		foreach ( $items as $key => $item ) {
-			if ( isset( $item['data'] ) && ! $item['data']->needs_shipping() ) {
+			if ( isset( $item['data'] ) && ! ( $item['sst_needs_shipping'] ?? $item['data']->needs_shipping() ) ) {
 				$virtual_items[ $key ] = $item;
 				unset( $items[ $key ] );
 			}
@@ -1051,15 +1051,23 @@ class SST_Order extends SST_Abstract_Cart {
 			);
 		}
 
-		if ( empty( $items ) ) {
-			// Refund all items if items not explicitly passed.
-			$items = $order->get_items(
-				array( 'fee', 'shipping', 'line_item' )
-			);
-		}
+		$refund_id         = is_object( $refund_or_items ) && method_exists( $refund_or_items, 'get_id' ) ? $refund_or_items->get_id() : 0;
+		$refund_full_order = empty( $items );
 
-		$refund_amounts = $this->get_refund_amounts( $items );
-		$refund_id      = is_object( $refund_or_items ) && method_exists( $refund_or_items, 'get_id' ) ? $refund_or_items->get_id() : 0;
+		if ( $refund_full_order && is_object( $refund_or_items ) && method_exists( $refund_or_items, 'get_amount' ) ) {
+			// An amount alone cannot tell us which prices or TICs were refunded.
+			// Use all captured lines only when this refund reverses the entire original order.
+			if ( $refund_or_items->get_amount() < $order->get_total() || $order->get_remaining_refund_amount() > 0 ) {
+				$message = sprintf(
+					/* translators: %d: WooCommerce order ID */
+					__( 'Could not sync the amount-only refund for order %d to TaxCloud. Refund specific order lines or record the return directly in TaxCloud.', 'simple-sales-tax' ),
+					$order->get_id()
+				);
+				$this->handle_error( $message );
+				$order->add_order_note( $message );
+				return false;
+			}
+		}
 
 		// Process refunds while items remain.
 		$packages    = $this->get_packages();
@@ -1080,6 +1088,9 @@ class SST_Order extends SST_Abstract_Cart {
 			return false;
 		}
 
+		$line_ids       = $refund_full_order ? array() : $this->get_captured_line_ids( $packages );
+		$refund_amounts = $this->get_refund_amounts( $items, $line_ids );
+
 		foreach ( $packages as $package_key => $package ) {
 			$cart_items      = $package['cart_items'];
 			$shipping_method = $this->process_method_id(
@@ -1088,10 +1099,13 @@ class SST_Order extends SST_Abstract_Cart {
 			$refund_items    = array();
 
 			foreach ( $cart_items as $item_index => $cart_item ) {
-				$item_id = ( 'v3' === $api_version ) ? $cart_item['itemId'] : $cart_item['id'];
+				$item_id    = ( 'v3' === $api_version ) ? $cart_item['itemId'] : $cart_item['id'];
+				$line_id    = $line_ids[ $package_key ][ $item_index ] ?? null;
 				$refund_key = $item_id;
 
-				if ( 'shipping' === $cart_item['type'] ) {
+				if ( null !== $line_id ) {
+					$refund_key = 'line:' . $line_id;
+				} elseif ( 'shipping' === $cart_item['type'] ) {
 					$refund_key = $shipping_method;
 
 					if ( 'v3' !== $api_version ) {
@@ -1099,23 +1113,13 @@ class SST_Order extends SST_Abstract_Cart {
 					}
 				}
 
-				if ( ! isset( $refund_amounts[ $refund_key ] ) ) {
+				if ( (float) $cart_item['price'] <= 0 || ( ! $refund_full_order && empty( $refund_amounts[ $refund_key ] ) ) ) {
 					continue;
 				}
 
-				$refund_amount = $refund_amounts[ $refund_key ];
-
-				if ( $refund_amount <= 0 ) {
-					continue;
-				}
-
-				if ( 'v3' === $api_version && empty( $cart_item['price'] ) ) {
-					continue;
-				}
-
-				$refund_qty = min(
+				$refund_qty = $refund_full_order ? $cart_item['qty'] : min(
 					$cart_item['qty'],
-					$refund_amount / $cart_item['price']
+					$refund_amounts[ $refund_key ] / $cart_item['price']
 				);
 
 				if ( 'v3' === $api_version ) {
@@ -1134,9 +1138,8 @@ class SST_Order extends SST_Abstract_Cart {
 					);
 				}
 				
-				$refund_amount -= $refund_qty * $cart_item['price'];
-				if ( 'v3' === $api_version ) {
-					$refund_amounts[ $refund_key ] = max( 0, $refund_amount );
+				if ( ! $refund_full_order ) {
+					$refund_amounts[ $refund_key ] = max( 0, $refund_amounts[ $refund_key ] - $refund_qty * $cart_item['price'] );
 				}
 			}
 
@@ -1250,21 +1253,70 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
+	 * Resolve captured product lines back to their WooCommerce order item IDs.
+	 * Checkout packages carry a cart key; order recalculations use the order item ID.
+	 * Older Product Bundles orders can also supply the original cart key.
+	 */
+	protected function get_captured_line_ids( $packages ) {
+		$order_items = $this->order->get_items( 'line_item' );
+		$cart_keys   = array();
+		$line_ids    = array();
+
+		foreach ( $order_items as $id => $item ) {
+			foreach ( array( '_sst_cart_item_key', '_bundle_cart_key' ) as $meta_key ) {
+				$key = $item->get_meta( $meta_key, true );
+				if ( '' !== $key ) {
+					$cart_keys[ $key ] = $id;
+				}
+			}
+		}
+
+		foreach ( $packages as $package_key => $package ) {
+			foreach ( $package['cart_items'] as $index => $line ) {
+				if ( 'line_item' !== $line['type'] || ! isset( $line['cart_id'] ) ) {
+					continue;
+				}
+
+				$key = $line['cart_id'];
+				$id  = $cart_keys[ $key ] ?? $key;
+				if ( isset( $order_items[ $id ] ) ) {
+					$item = $order_items[ $id ];
+					if ( (string) ( $item->get_variation_id() ?: $item->get_product_id() ) === (string) ( $line['itemId'] ?? $line['id'] ) ) {
+						$line_ids[ $package_key ][ $index ] = $id;
+					}
+				}
+			}
+		}
+
+		return $line_ids;
+	}
+
+	/**
 	 * Get refund amounts for each refund item.
 	 *
 	 * @since 7.0.5
      *
-	 * @param array $items Refund items.
+	 * @param array $items    Refund items.
+	 * @param array $line_ids Captured WooCommerce order line IDs by package and index.
 	 *
 	 * @return array Associative array where keys are item IDs and values
 	 *               are amounts to refund.
 	 */
-	protected function get_refund_amounts( $items ) {
+	protected function get_refund_amounts( $items, $line_ids = array() ) {
 		$refund_amounts = array();
+		$captured_ids   = array();
+		foreach ( $line_ids as $package_line_ids ) {
+			$captured_ids += array_fill_keys( $package_line_ids, true );
+		}
 
-		foreach ( $items as $item ) {
+		foreach ( $items as $id => $item ) {
 			switch ( $item->get_type() ) {
 				case 'line_item':
+					$original_id = $item->get_meta( '_refunded_item_id', true ) ?: $id;
+					if ( isset( $captured_ids[ $original_id ] ) ) {
+						$item_id = 'line:' . $original_id;
+						break;
+					}
 					$item_id = $item->get_variation_id()
 						? $item->get_variation_id()
 						: $item->get_product_id();
@@ -1284,7 +1336,7 @@ class SST_Order extends SST_Abstract_Cart {
 			}
 
 			// Refund line item amounts are negative - use abs to get magnitude
-			$refund_amounts[ $item_id ] = abs( $item->get_total() );
+			$refund_amounts[ $item_id ] = ( $refund_amounts[ $item_id ] ?? 0 ) + abs( $item->get_total() );
 		}
 
 		return $refund_amounts;
