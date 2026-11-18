@@ -29,6 +29,22 @@ namespace {
 	define( 'SST_DEFAULT_FEE_TIC', 10010 );
 	define( 'SST_SINGLE_PURCHASE_CERT_ID', 'single-purchase' );
 	define( 'SST_SHIPPING_ITEM', 'SHIPPING' );
+	define( 'DB_NAME', 'modeled_order_store' );
+
+	$wpdb = new class {
+		public $prefix = 'test_';
+		private $locked = false;
+		public function prepare( $query, $value ) { return $query; }
+		public function get_var( $query ) {
+			if ( false !== strpos( $query, 'GET_LOCK' ) ) {
+				if ( $this->locked ) { return 0; }
+				$this->locked = true;
+				return 1;
+			}
+			$this->locked = false;
+			return 1;
+		}
+	};
 
 	class Routing_Http {
 		public static $v1 = array();
@@ -39,6 +55,12 @@ namespace {
 		public static $transients = array();
 		public static $user_meta = array();
 		public static $assertions = 0;
+		public static $import = false;
+		public static $remote = array();
+		public static $import_fault = '';
+		public static $during_upload;
+		public static $capture_allowed = true;
+		public static $denied_cap = '';
 
 		public static function reset( $version = null ) {
 			self::$v1 = self::$v3 = self::$transients = array();
@@ -46,6 +68,20 @@ namespace {
 			SST_Rate_Limit::$count = 0;
 			self::$fail = false;
 			self::$body = array();
+			self::$import = false;
+			self::$remote = array();
+			self::$import_fault = '';
+			self::$during_upload = null;
+			self::$capture_allowed = true;
+			self::$denied_cap = '';
+			WC_Order::$persisted_meta = array();
+			WC_Order::$fees = 1;
+			WC_Order::$status = 'completed';
+			WC_Order::$refunds = array();
+			WC_Order::$date_completed = null;
+			WC_Order::$city = 'Raleigh';
+			WC_Order::$fee_price = 5;
+			Routing_Order::$package_builds = 0;
 			self::$options = array( 'tc_id' => 'test-login', 'tc_key' => 'test-connection', 'data_mover' => false );
 			if ( null !== $version ) { self::$options['api_version'] = $version; }
 			SST_Settings::load_settings();
@@ -54,6 +90,29 @@ namespace {
 
 		public static function request( $method, $url, $args ) {
 			self::$v3[] = array( $method, $url, $args );
+			$path = parse_url( $url, PHP_URL_PATH );
+			if ( self::$import && preg_match( '#/orders(?:/([^/]+))?$#', $path, $match ) ) {
+				$status = 200;
+				if ( 'GET' === $method ) {
+					$body = self::$remote[ $match[1] ] ?? array();
+					$status = $body ? 200 : 404;
+					if ( 'lookup' === self::$import_fault ) { $status = 503; }
+				} else {
+					if ( self::$during_upload ) { ( self::$during_upload )(); }
+					$body = json_decode( $args['body'], true );
+					$body['connectionId'] = SST_Settings::get( 'tc_key' );
+					if ( in_array( self::$import_fault, array( 'reject', 'validation' ), true )
+						|| ( 'partial' === self::$import_fault && '42_1' === $body['orderId'] ) ) {
+						$status = 'validation' === self::$import_fault ? 422 : 503;
+					} else {
+						self::$remote[ $body['orderId'] ] = $body;
+						$status = 201;
+						if ( 'lost' === self::$import_fault ) { return new WP_Error( 'timeout', 'Timed out after creating order' ); }
+						if ( 'malformed' === self::$import_fault ) { $body = array(); }
+					}
+				}
+				return array( 'response' => array( 'code' => $status ), 'body' => json_encode( $body ) );
+			}
 			return array(
 				'response' => array( 'code' => self::$fail ? 503 : 200 ),
 				'body' => json_encode( self::$fail ? array( 'detail' => 'TaxCloud rejected the request.' ) : self::$body ),
@@ -85,7 +144,7 @@ namespace {
 	function add_action() {}
 	function do_action() {}
 	function add_filter() {}
-	function apply_filters( $hook, $value ) { return $value; }
+	function apply_filters( $hook, $value ) { return 'sst_should_capture_order' === $hook ? Routing_Http::$capture_allowed : $value; }
 	function did_action() { return 0; }
 	function get_option( $key, $default = null ) { return 'woocommerce_wootax_settings' === $key ? Routing_Http::$options : $default; }
 	function update_option( $key, $value ) { Routing_Http::$options = $value; }
@@ -96,7 +155,9 @@ namespace {
 	function wp_get_current_user() { return new WP_User( 42 ); }
 	function delete_transient( $key ) { unset( Routing_Http::$transients[ $key ] ); }
 	function wc_get_price_decimals() { return 2; }
-	function current_user_can() { return true; }
+	function current_user_can( $capability ) { return Routing_Http::$denied_cap !== $capability; }
+	function check_ajax_referer( $action, $field, $stop ) { return $action === ( $_POST[ $field ] ?? null ); }
+	function wp_send_json_error( $body, $status ) { throw new Routing_Ajax_Response( $body['message'], $status ); }
 	function sanitize_title( $value ) { return strtolower( $value ); }
 	function wc_get_order( $id ) { return $GLOBALS['routing_order']; }
 	function wp_unslash( $value ) { return $value; }
@@ -118,12 +179,15 @@ namespace {
 	function wp_remote_retrieve_response_code( $response ) { return $response['response']['code']; }
 
 	class WP_Error {
-		public function get_error_data() { return null; }
-		public function get_error_code() { return ''; }
+		public function get_error_data() { return $this->data; }
+		public function get_error_code() { return $this->code; }
 		private $message;
-		public function __construct( $code, $message ) { $this->message = $message; }
+		private $data;
+		private $code;
+		public function __construct( $code, $message, $data = null ) { $this->message = $message; $this->code = $code; $this->data = $data; }
 		public function get_error_message() { return $this->message; }
 	}
+	class Routing_Ajax_Response extends RuntimeException {}
 	class WP_User {
 		public $ID;
 		public $user_email = '';
@@ -150,20 +214,54 @@ namespace {
 		public static function is_local_delivery( $method ) { return 'local_delivery' === $method; }
 	}
 	class WC_Order {
-		public function get_items( $type ) { return array(); }
-		public function save_meta_data() {}
+		public static $persisted_meta = array();
+		public static $fees = 1;
+		public static $status = 'completed';
+		public static $refunds = array();
+		public static $date_completed;
+		public static $city = 'Raleigh';
+		public static $fee_price = 5;
+		public function __construct( $id = 42 ) {
+			if ( Routing_Http::$import ) { $this->meta = self::$persisted_meta; }
+		}
+		public function read_meta_data( $force_read = false ) {
+			if ( Routing_Http::$import ) { $this->meta = self::$persisted_meta; }
+		}
+		public function save_meta_data() {
+			if ( Routing_Http::$import ) { self::$persisted_meta = $this->meta; }
+		}
 		public $meta = array();
 		public $notes = array();
 		public function get_id() { return 42; }
+		public function get_type() { return 'shop_order'; }
+		public function has_status( $statuses ) { return in_array( self::$status, $statuses, true ); }
+		public function get_refunds() { return self::$refunds; }
+		public function get_data() {
+			return array( 'total' => self::$fee_price * self::$fees, 'date_completed' => self::$date_completed, 'billing' => array( 'city' => self::$city ) );
+		}
+		public function get_items( $types ) {
+			if ( 'line_item' === $types ) {
+				return array();
+			}
+			return array_map( function( $id ) { return new Routing_Fee_Item( $id ); }, range( 1, self::$fees ) );
+		}
+		public function delete_meta_data( $key ) { unset( $this->meta[ $key ] ); }
 		public function get_meta( $key ) { return $this->meta[ $key ] ?? ''; }
 		public function update_meta_data( $key, $value ) { $this->meta[ $key ] = $value; }
-		public function get_date_completed() { return null; }
+		public function get_date_completed() { return self::$date_completed; }
 		public function get_date_created() { return null; }
 		public function get_currency() { return 'USD'; }
 		public function get_total_refunded() { return 0; }
 		public function get_remaining_refund_amount() { return 10; }
 		public function add_order_note( $message ) { $this->notes[] = $message; }
 		public function save() {}
+	}
+	class Routing_Fee_Item {
+		private $id;
+		public function __construct( $id ) { $this->id = $id; }
+		public function get_id() { return $this->id; }
+		public function get_type() { return 'fee'; }
+		public function get_data() { return array( 'total' => WC_Order::$fee_price, 'total_tax' => 0.5 ); }
 	}
 	class Routing_Refund {
 		public function get_id() { return 100; }
@@ -190,12 +288,23 @@ namespace {
 	$plugin_root = getenv( 'SST_ROUTING_PLUGIN_ROOT' ) ?: dirname( __DIR__ );
 	foreach ( array( 'class-sst-settings.php', 'sst-functions.php', 'class-sst-certificates.php',
 		'class-sst-origin-address.php', 'class-sst-addresses.php', 'class-sst-tic.php',
-		'abstracts/class-sst-abstract-cart.php', 'class-sst-order.php', 'class-sst-order-controller.php' ) as $file ) {
+		'abstracts/class-sst-abstract-cart.php', 'class-sst-order.php', 'class-sst-order-controller.php', 'class-sst-ajax.php' ) as $file ) {
 		require $plugin_root . '/includes/' . $file;
 	}
 
 	class Routing_Order extends SST_Order {
+		public static $package_builds = 0;
 		public $errors = array();
+		public function create_packages() {
+			++self::$package_builds;
+			$address = new TaxCloud\Address( '1 Main St', '', WC_Order::$city, 'NC', '27601' );
+			return array_fill( 0, WC_Order::$fees, array(
+				'contents' => array(),
+				'fees' => array( (object) array( 'id' => 'handling', 'amount' => WC_Order::$fee_price, 'tax' => 0.5 ) ),
+				'shipping' => null, 'map' => array(), 'user' => array( 'ID' => 42 ),
+				'origin' => $address, 'destination' => $address, 'certificate' => null,
+			) );
+		}
 		public function v3_request( &$package ) { return $this->get_v3_lookup_for_package( $package, 0 ); }
 		public function import_package( $package ) {
 			$package['request'] = $this->get_lookup_for_package( $package );
@@ -475,14 +584,17 @@ namespace {
 	foreach ( array( 'v1', 'v3' ) as $version ) {
 		Routing_Http::reset( $version );
 		SST_Settings::set( 'data_mover', true );
-		Routing_Http::$body = array( 'orderId' => '42_0' );
+		Routing_Http::$import = true;
 		$address = new TaxCloud\Address( '1 Main St', '', 'Raleigh', 'NC', '27601' );
 		$order = new Routing_Order( new WC_Order() );
 		$package = $order->import_package( array( 'contents' => array(), 'fees' => array( (object) array( 'id' => 'handling', 'amount' => 5, 'tax' => 0.5 ) ),
 			'shipping' => null, 'map' => array(), 'user' => array( 'ID' => 42 ), 'origin' => $address, 'destination' => $address, 'certificate' => null ) );
 		expect_same( 'v3', $package['api_version'], 'Data Import packages belong to V3 in both settings' );
 		$order->set_packages( array( $package ) );
+		$order->save_meta_data();
 		expect_same( true, $order->do_capture(), 'Existing V3 Data Import succeeds with either selection' );
+		expect_same( 'GET', Routing_Http::$v3[0][0], 'Check for an existing import before posting' );
+		array_shift( Routing_Http::$v3 );
 		assert_route( 'v3', '', '/tax/connections/test-connection/orders', 'Existing Data Import remains V3' );
 		$payload = json_decode( Routing_Http::$v3[0][2]['body'], true );
 		expect_same( 0.5, $payload['lineItems'][0]['tax']['amount'], 'Data Import preserves the WooCommerce fee tax' );
@@ -491,6 +603,185 @@ namespace {
 		expect_same( true, $order->do_refund( new Routing_Fee_Refund() ), 'Existing Data Import refund succeeds in both settings' );
 		assert_route( 'v3', '', '/tax/connections/test-connection/orders/refunds/42_0', 'Existing Data Import refunds remain V3' );
 	}
+
+	foreach ( array( 'lookup', 'lost', 'malformed', 'partial' ) as $fault ) {
+		Routing_Http::reset( 'v3' );
+		SST_Settings::set( 'data_mover', true );
+		SST_Settings::set( 'capture_orders_in_taxcloud', 'no' );
+		Routing_Http::$import = true;
+		Routing_Http::$import_fault = $fault;
+		WC_Order::$fees = 'partial' === $fault ? 2 : 1;
+		$order = new Routing_Order( new WC_Order() );
+		$order->set_packages( array_fill( 0, WC_Order::$fees, $package ) );
+		$order->save_meta_data();
+
+		expect_same( false, $order->do_capture(), 'Automatic capture respects the capture setting' );
+		Routing_Http::$capture_allowed = false;
+		expect_same( 'sst_capture_unavailable', $order->capture_data_import_manually()->get_error_code(), 'Filter can veto a manual import' );
+		expect_same( array(), Routing_Http::$v3, 'Skipped captures never reach TaxCloud' );
+		Routing_Http::$capture_allowed = true;
+		Routing_Http::$during_upload = function() {
+			SST_Settings::set( 'capture_orders_in_taxcloud', 'yes' );
+			$other = new Routing_Order( new WC_Order() );
+			expect_same( false, $other->do_capture(), 'Overlapping automatic capture cannot start' );
+			SST_Settings::set( 'capture_orders_in_taxcloud', 'no' );
+		};
+
+		expect_same( true, is_wp_error( $order->capture_data_import_manually() ), 'Failed response is reported for ' . $fault );
+		expect_same( 'pending', $order->get_taxcloud_status(), 'Failure leaves TaxCloud status pending' );
+		$posts = array_values( array_filter( Routing_Http::$v3, function( $request ) { return 'POST' === $request[0]; } ) );
+		expect_same( 'lookup' === $fault ? 0 : WC_Order::$fees, count( $posts ), 'Upload posts before retry' );
+		Routing_Http::$v3 = array();
+		Routing_Http::$import_fault = '';
+		if ( 'lookup' !== $fault ) {
+			SST_Settings::set( 'tc_key', 'other-connection' );
+			expect_same( 'sst_capture_changed', $order->capture_data_import_manually()->get_error_code(), 'Changed connection cannot resume a frozen upload' );
+			SST_Settings::set( 'tc_key', 'test-connection' );
+			++WC_Order::$fees;
+			expect_same( 'sst_capture_changed', $order->capture_data_import_manually()->get_error_code(), 'Changed order cannot resume a frozen upload' );
+			--WC_Order::$fees;
+			$posts = array_filter( Routing_Http::$v3, function( $request ) { return 'POST' === $request[0]; } );
+			expect_same( array(), $posts, 'Changed uploaded order sends no POST' );
+		}
+		expect_same( true, $order->capture_data_import_manually(), 'Unchanged order can retry ' . $fault );
+		expect_same( 'captured', $order->get_taxcloud_status(), 'Only a complete upload marks the order captured' );
+		$posts = array_values( array_filter( Routing_Http::$v3, function( $request ) { return 'POST' === $request[0]; } ) );
+		expect_same( in_array( $fault, array( 'lookup', 'partial' ), true ) ? 1 : 0, count( $posts ), 'Retry only posts the package missing from TaxCloud' );
+		if ( 'partial' === $fault ) {
+			expect_same( '42_1', json_decode( $posts[0][2]['body'], true )['orderId'], 'Retry preserves the original second package ID' );
+		}
+		expect_same( WC_Order::$fees, count( Routing_Http::$remote ), 'One order per package after retries' );
+	}
+
+	// Rejected Processing uploads can be completed or corrected before retry.
+	// Only a complete GET/404 check permits discarding the original snapshot.
+	foreach ( array( 'reject', 'validation' ) as $fault ) {
+		foreach ( array( false, true ) as $automatic ) {
+			Routing_Http::reset( 'v3' );
+			SST_Settings::set( 'data_mover', true );
+			Routing_Http::$import = true;
+			Routing_Http::$import_fault = $fault;
+			WC_Order::$status = 'processing';
+			WC_Order::$fees = 2;
+			$order = new Routing_Order( new WC_Order() );
+			$order->set_packages( array_fill( 0, 2, $package ) );
+			$order->save_meta_data();
+			$capture = function() use ( $automatic, $order ) {
+				return $automatic ? $order->do_capture() : $order->capture_data_import_manually();
+			};
+			$result = $capture();
+			expect_same( true, $automatic ? false === $result : is_wp_error( $result ), 'Initial upload is rejected' );
+			expect_same( array(), Routing_Http::$remote, 'Rejected upload created no packages' );
+			$original = WC_Order::$persisted_meta['_wootax_data_import_upload'];
+
+			WC_Order::$status = 'completed';
+			WC_Order::$date_completed = new DateTimeImmutable( '2026-11-17T12:00:00+00:00' );
+			WC_Order::$city = 'Durham';
+			WC_Order::$fee_price = 12;
+			Routing_Http::$import_fault = 'lookup';
+			$result = $capture();
+			expect_same( true, $automatic ? false === $result : 'sst_capture_lookup' === $result->get_error_code(), 'Unavailable GET cannot clear the frozen upload' );
+			expect_same( $original, WC_Order::$persisted_meta['_wootax_data_import_upload'], 'Lookup outage preserves the original snapshot' );
+			expect_same( 0, Routing_Order::$package_builds, 'No rebuild without proof that all remote IDs are missing' );
+
+			Routing_Http::$v3 = array();
+			Routing_Http::$import_fault = '';
+			expect_same( true, $capture(), 'Completing and correcting a rejected order permits retry' );
+			expect_same( 1, Routing_Order::$package_builds, 'Retry rebuilds from persisted WooCommerce data' );
+			expect_same( 'GET', Routing_Http::$v3[0][0], 'First original package ID is checked before rebuilding' );
+			expect_same( 'GET', Routing_Http::$v3[1][0], 'Second original package ID is checked before any POST' );
+			expect_same( 'captured', $order->get_taxcloud_status(), 'Corrected order is captured' );
+			foreach ( Routing_Http::$remote as $remote ) {
+				expect_same( 'Durham', $remote['destination']['city'], 'Corrected address replaces stale checkout packages' );
+				expect_same( 12, $remote['lineItems'][0]['price'], 'Corrected item price is uploaded' );
+				expect_same( '2026-11-17T12:00:00+00:00', $remote['completedDate'], 'Completion date is refreshed after rejection' );
+			}
+			expect_same( false, isset( WC_Order::$persisted_meta['_wootax_data_import_upload'] ), 'Successful retry clears recovery metadata' );
+		}
+	}
+
+	// Even an unconfirmed later remote package prevents rebuilding the upload.
+	Routing_Http::reset( 'v3' );
+	SST_Settings::set( 'data_mover', true );
+	Routing_Http::$import = true;
+	Routing_Http::$import_fault = 'reject';
+	WC_Order::$fees = 2;
+	$order = new Routing_Order( new WC_Order() );
+	$order->set_packages( array_fill( 0, 2, $package ) );
+	$order->save_meta_data();
+	expect_same( true, is_wp_error( $order->capture_data_import_manually() ), 'Two-package upload starts with an unconfirmed failure' );
+	$saved_upload = WC_Order::$persisted_meta['_wootax_data_import_upload'];
+	$upload = json_decode( $saved_upload, true );
+	// Model a second remote package whose success was never confirmed locally.
+	$remote = $upload['payloads']['42_1'];
+	$remote['connectionId'] = 'test-connection';
+	$remote['currency'] = array( 'currencyCode' => 'USD' );
+	Routing_Http::$remote['42_1'] = $remote;
+	Routing_Http::$import_fault = '';
+	Routing_Http::$v3 = array();
+	WC_Order::$city = 'Durham';
+	expect_same( 'sst_capture_changed', $order->capture_data_import_manually()->get_error_code(), 'A later remote package blocks rebuilding even when the first is missing' );
+	expect_same( 2, count( Routing_Http::$v3 ), 'Every original package must be checked before discarding the snapshot' );
+	expect_same( $saved_upload, WC_Order::$persisted_meta['_wootax_data_import_upload'], 'Remote partial upload retains its original snapshot' );
+	expect_same( 0, Routing_Order::$package_builds, 'Partial remote success never rebuilds the order' );
+
+	// Real Time checkout evidence excludes the manual button, but automatic
+	// capture must still upload the saved WC order if the store changes modes.
+	foreach ( array( 'cart_id', 'response', 'api_version', 'request' ) as $evidence ) {
+		Routing_Http::reset( 'v3' );
+		SST_Settings::set( 'data_mover', true );
+		Routing_Http::$import = true;
+		$order = new Routing_Order( new WC_Order() );
+		$realtime = $package;
+		$realtime[ $evidence ] = array(
+			'cart_id' => 'previous-realtime-cart', 'response' => array( 'previous-realtime-cart' => array( 1 ) ),
+			'api_version' => 'v1', 'request' => new TaxCloud\Request\Lookup( 'test', 'test', 42, null, array(), $address, $address ),
+		)[ $evidence ];
+		$order->set_packages( array( $realtime ) );
+		$order->save_meta_data();
+		expect_same( false, $order->is_data_import_capture_candidate(), 'Real Time evidence keeps the manual button hidden' );
+		expect_same( 'sst_capture_unavailable', $order->capture_data_import_manually()->get_error_code(), 'Direct manual request is rejected' );
+		expect_same( true, $order->do_capture(), 'Automatic capture continues after the store changes to Data Import' );
+		expect_same( 1, Routing_Order::$package_builds, 'Real Time packages are rebuilt as order upload packages' );
+		expect_same( array(), Routing_Http::$v1, 'Data Import uses no V1 capture' );
+		expect_same( 2, count( Routing_Http::$v3 ), 'One existence check and one order upload' );
+		expect_same( '/tax/connections/test-connection/orders', parse_url( Routing_Http::$v3[1][1], PHP_URL_PATH ), 'Automatic capture uses Orders API' );
+		expect_same( 'captured', $order->get_taxcloud_status(), 'Mode-switched order is captured' );
+	}
+
+	Routing_Http::reset( 'v3' );
+	SST_Settings::set( 'data_mover', true );
+	Routing_Http::$import = true;
+	$order = new Routing_Order( new WC_Order() );
+	foreach ( array( 'pending', 'on-hold', 'cancelled', 'failed', 'refunded' ) as $status ) {
+		WC_Order::$status = $status;
+		expect_same( false, $order->is_data_import_capture_candidate(), 'WooCommerce ' . $status . ' order is ineligible' );
+	}
+	WC_Order::$status = 'processing';
+	expect_same( true, $order->is_data_import_capture_candidate(), 'Processing order can be captured' );
+	WC_Order::$refunds = array( new Routing_Refund() );
+	expect_same( false, $order->is_data_import_capture_candidate(), 'An existing WooCommerce refund blocks capture' );
+	WC_Order::$refunds = array();
+	$order->update_meta( 'status', 'partially_refunded' );
+	expect_same( false, $order->is_data_import_capture_candidate(), 'A partially refunded TaxCloud order cannot be captured' );
+	$order->update_meta( 'status', 'pending' );
+	SST_Settings::set( 'disable_integration', 'yes' );
+	expect_same( false, $order->can_capture_data_import_order(), 'Disabled integration blocks manual capture' );
+
+	$_SERVER['REQUEST_METHOD'] = 'POST';
+	$_POST = array( 'order_id' => '42', 'nonce' => 'sst_capture_order_42' );
+	foreach ( array( 'manage_woocommerce', 'edit_shop_order' ) as $denied ) {
+		Routing_Http::$denied_cap = $denied;
+		try {
+			SST_Ajax::capture_order();
+			throw new RuntimeException( 'Permission check must end the request' );
+		} catch ( Routing_Ajax_Response $result ) {
+			expect_same( 403, $result->getCode(), 'Missing ' . $denied . ' denies a request with a valid nonce' );
+		}
+	}
+	$_POST = array();
+	expect_same( array(), Routing_Http::$v3, 'Ineligible requests do not reach TaxCloud' );
+	Routing_Http::reset( 'v3' );
 
 	// Register the real SDK single-purchase object through the plugin's V3 mapper,
 	// then reload order metadata and force another quote. It must not register twice.

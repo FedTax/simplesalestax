@@ -16,7 +16,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 		);
 		?>
 	</h3>
-	<?php echo esc_html( $args['status'] ); ?>
+	<span class="sst-taxcloud-status"><?php echo esc_html( $args['status'] ); ?></span>
+	<?php if ( ! empty( $args['capture_candidate'] ) ) : ?>
+		<p class="sst-manual-capture">
+			<button type="button" class="button sst-capture-order"
+				data-order-id="<?php echo esc_attr( $args['order_id'] ); ?>"
+				data-nonce="<?php echo esc_attr( wp_create_nonce( 'sst_capture_order_' . $args['order_id'] ) ); ?>"
+				data-busy-label="<?php esc_attr_e( 'Capturing…', 'simple-sales-tax' ); ?>"
+				aria-describedby="sst-capture-help"
+				<?php disabled( empty( $args['capture_enabled'] ) ); ?>>
+				<?php esc_html_e( 'Capture in TaxCloud', 'simple-sales-tax' ); ?>
+			</button>
+			<span class="description" id="sst-capture-help" style="display:block">
+				<?php if ( $args['capture_enabled'] ) : ?>
+					<?php esc_html_e( 'Save order changes before capturing.', 'simple-sales-tax' ); ?>
+				<?php else : ?>
+					<?php esc_html_e( 'Enable the TaxCloud integration and configure its API credentials to capture this order.', 'simple-sales-tax' ); ?>
+				<?php endif; ?>
+			</span>
+		</p>
+		<p class="sst-capture-result" role="status" hidden></p>
+	<?php endif; ?>
 </div>
 
 <?php if ( ! empty( $args['can_manage_certificates'] ) ) : ?>

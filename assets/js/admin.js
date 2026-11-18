@@ -51,6 +51,63 @@
         });
     });
 
+    var $capture = $('.sst-capture-order');
+    if ($capture.length && !$capture.prop('disabled')) {
+      var orderFields = '#woocommerce-order-data :input[name], #postcustom :input[name]';
+      var savedFields = $(orderFields).serialize();
+      var capturePending = false;
+      var captureAllowed = true;
+      var updateCaptureButton = function () {
+        var unsaved = $(orderFields).serialize() !== savedFields ||
+          $('#woocommerce-order-items .edit:visible, #woocommerce-order-items .blockUI').length > 0;
+        $capture.prop('disabled', capturePending || !captureAllowed || unsaved);
+      };
+
+      $(document).on('input change', orderFields, updateCaptureButton);
+      $('#woocommerce-order-items').on('click', 'button, a', function () {
+        window.setTimeout(updateCaptureButton, 0);
+      });
+      $(document).ajaxComplete(updateCaptureButton);
+
+      $capture.on('click', function () {
+        updateCaptureButton();
+        if ($capture.prop('disabled')) {
+          return;
+        }
+        var $panel = $capture.closest('#sales_tax_meta');
+        var label = $capture.text().trim();
+        var $result = $panel.find('.sst-capture-result');
+        capturePending = true;
+        updateCaptureButton();
+        $capture.text($capture.data('busy-label')).attr('aria-busy', 'true');
+        $result.prop('hidden', true);
+
+        function showCaptureResult(response) {
+          var result = response && response.data ? response.data : {};
+          $result.text(result.message || data.strings.went_wrong).prop('hidden', false);
+          if (typeof result.status === 'string') {
+            $panel.find('.sst-taxcloud-status').text(result.status);
+          }
+          if (result.eligible === false) {
+            captureAllowed = false;
+            $panel.find('.sst-manual-capture').remove();
+          }
+        }
+
+        $.post(ajaxurl, {
+          action: 'sst_capture_order',
+          order_id: $capture.data('order-id'),
+          nonce: $capture.data('nonce'),
+        }).done(showCaptureResult).fail(function (xhr) {
+          showCaptureResult(xhr.responseJSON);
+        }).always(function () {
+          capturePending = false;
+          $capture.text(label).removeAttr('aria-busy');
+          updateCaptureButton();
+        });
+      });
+    }
+
     // View Order Debug Log
     jQuery(document).on('click', '.sst-debug-order', function (e) {
       e.preventDefault();
