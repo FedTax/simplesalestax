@@ -775,6 +775,7 @@ class SST_Order extends SST_Abstract_Cart {
 		if ( 'data_mover' === sst_integration_mode() ) {
 			$result = $this->capture_data_import( false );
 			if ( is_wp_error( $result ) ) {
+				SST_Logger::order_log( $result->get_error_message(), $order->get_id() );
 				if ( 'sst_capture_unavailable' !== $result->get_error_code() ) {
 					$this->handle_error( sprintf( 'TaxCloud capture #%d: %s', $order->get_id(), $result->get_error_message() ) );
 				}
@@ -1461,9 +1462,10 @@ class SST_Order extends SST_Abstract_Cart {
 	 * Check eligibility using the original metadata, before Data Import package
 	 * compression can relabel a previous Real Time package as v3.
 	 *
+	 * @param bool $allow_realtime_packages Preserve automatic capture after a mode switch.
 	 * @return bool
 	 */
-	public function is_data_import_capture_candidate() {
+	public function is_data_import_capture_candidate( $allow_realtime_packages = false ) {
 		if (
 			'data_mover' !== sst_integration_mode()
 			|| ! $this->order instanceof WC_Order
@@ -1476,16 +1478,21 @@ class SST_Order extends SST_Abstract_Cart {
 			return false;
 		}
 
+		return $allow_realtime_packages || ! $this->has_realtime_packages();
+	}
+
+	/** Inspect original package data before mode-dependent compression. */
+	private function has_realtime_packages() {
 		foreach ( (array) $this->get_meta( 'packages' ) as $package ) {
 			if ( ! empty( $package['cart_id'] ) || ! empty( $package['response'] )
 				|| 'v1' === ( $package['api_version'] ?? '' )
 				|| ( $package['request'] ?? null ) instanceof TaxCloud\Request\Lookup
 			) {
-				return false;
+				return true;
 			}
 		}
 
-		return true;
+		return false;
 	}
 
 	/**
@@ -1528,7 +1535,7 @@ class SST_Order extends SST_Abstract_Cart {
 			$this->order = new WC_Order( $order_id );
 			$this->order->read_meta_data( true );
 
-			if ( ! $this->is_data_import_capture_candidate() ) {
+			if ( ! $this->is_data_import_capture_candidate( ! $manual ) ) {
 				return new WP_Error( 'sst_capture_unavailable', __( 'This order is no longer eligible for Data Import capture.', 'simple-sales-tax' ) );
 			}
 			if ( ! $this->is_integration_active() ) {
@@ -1588,7 +1595,7 @@ class SST_Order extends SST_Abstract_Cart {
 	 */
 	private function prepare_data_import_upload( $api ) {
 		$invalid = new WP_Error( 'sst_capture_packages', __( 'The order has incomplete TaxCloud upload data. Check its products, shipping, and addresses.', 'simple-sales-tax' ) );
-		$packages = $this->get_packages();
+		$packages = $this->has_realtime_packages() ? array() : $this->get_packages();
 		if ( ! $packages ) {
 			$packages = $this->build_data_import_packages();
 		}
@@ -1669,10 +1676,18 @@ class SST_Order extends SST_Abstract_Cart {
 
 		if ( '' !== $saved ) {
 			if ( ! is_array( $upload['packages'] ?? null ) || empty( $upload['payloads'] ) || ! is_array( $upload['confirmed'] ?? null )
-				|| $identity !== ( $upload['connection'] ?? null ) || $fingerprint !== ( $upload['fingerprint'] ?? null ) ) {
+				|| $identity !== ( $upload['connection'] ?? null ) ) {
 				return new WP_Error( 'sst_capture_changed', __( 'The order or TaxCloud connection changed during capture. Review the original upload in TaxCloud before continuing.', 'simple-sales-tax' ) );
 			}
-		} else {
+			if ( $fingerprint !== ( $upload['fingerprint'] ?? null ) ) {
+				$result = $this->reset_missing_data_import_upload( $api, $upload );
+				if ( is_wp_error( $result ) ) {
+					return $result;
+				}
+				$saved = '';
+			}
+		}
+		if ( '' === $saved ) {
 			$upload = $this->prepare_data_import_upload( $api );
 			if ( is_wp_error( $upload ) ) {
 				return $upload;
@@ -1726,6 +1741,36 @@ class SST_Order extends SST_Abstract_Cart {
 
 		// Keep the recovery data until the final status and refund packages
 		// have been persisted. A crash during this step can then be retried.
+		$this->order->delete_meta_data( self::$prefix . 'data_import_upload' );
+		$this->order->save_meta_data();
+		return true;
+	}
+
+	/**
+	 * Rebuild corrected orders only after every original remote ID is missing.
+	 * A rejection body alone cannot prove that a failed POST created nothing.
+	 *
+	 * @return true|WP_Error
+	 */
+	private function reset_missing_data_import_upload( $api, $upload ) {
+		$changed = new WP_Error( 'sst_capture_changed', __( 'The order changed after an upload reached TaxCloud. Review the original upload in TaxCloud before continuing.', 'simple-sales-tax' ) );
+		if ( $upload['confirmed'] ) {
+			return $changed;
+		}
+		foreach ( array_keys( $upload['payloads'] ) as $id ) {
+			$remote = $api->get_order( (string) $id );
+			if ( ! is_wp_error( $remote ) ) {
+				return $changed;
+			}
+			$data = $remote->get_error_data();
+			if ( 404 !== (int) ( $data['status'] ?? 0 ) ) {
+				return new WP_Error( 'sst_capture_lookup', __( 'TaxCloud could not verify whether this order already exists. Try again.', 'simple-sales-tax' ) );
+			}
+		}
+
+		// Old checkout packages may contain the rejected address or item values.
+		// Clear them too so preparation uses the corrected persisted WC order.
+		$this->set_packages( array() );
 		$this->order->delete_meta_data( self::$prefix . 'data_import_upload' );
 		$this->order->save_meta_data();
 		return true;

@@ -187,6 +187,61 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
   }
 
   if (fixture) {
+    for (const classicCaptureEditor of [false, true]) {
+      it(`DEV-6610 rebuilds a rejected Processing upload after completion and address correction in the ${classicCaptureEditor ? 'classic' : 'default'} editor`, () => {
+        task('configure', { dataMover: true, manualCaptureOnly: true, classicCaptureEditor });
+        login('admin');
+        task('manualCaptureOrder').then(({ id, url }) => {
+          cy.visit(url);
+          task('configure', { failure: 'capture' });
+          clickCapture(false);
+          cy.get('.sst-taxcloud-status').should('have.text', 'Pending');
+          task('configure', { failure: false });
+          cy.get('#order_status').select('wc-completed', { force: true });
+          cy.get('a.edit_address').first().click();
+          cy.get('#_billing_city').clear().type('Saint Paul');
+          cy.get('#_billing_postcode').clear().type('55101');
+          cy.get('#save-order, button.save_order').first().click();
+          cy.get('.sst-capture-order').should('be.enabled');
+          clickCapture(true);
+          cy.get('.sst-taxcloud-status').should('have.text', 'Captured');
+          records().then((rows) => {
+            const changes = rows.slice(recordOffset);
+            const attempts = captureCalls(changes);
+            expect(attempts.map((row) => row.status)).to.deep.equal([503, 201]);
+            expect(attempts[1].request.orderId).to.equal(attempts[0].request.orderId);
+            expect(attempts[1].request.destination.city).to.equal('Saint Paul');
+            expect(attempts[1].request.destination.zip).to.equal('55101');
+            expect(changes.filter((row) => row.method === 'GET' && row.status === 404)).to.have.length(3);
+          });
+          task('order', { id }).then((order) => {
+            expect(order.status).to.equal('completed');
+            expect(order.taxcloudStatus).to.equal('captured');
+            expect(order.total).to.equal(100);
+          });
+        });
+      });
+    }
+
+    it('DEV-6610 automatically captures a pending Real Time order after switching to Data Import', () => {
+      task('configure', { dataMover: true, manualCaptureOnly: true });
+      login('admin');
+      task('manualCaptureOrder', { realtimePackages: true }).then(({ id, url }) => {
+        cy.visit(url);
+        cy.get('.sst-capture-order').should('not.exist');
+        task('configure', { manualCaptureOnly: false });
+        setOrderStatus(id, 'completed');
+        cy.get('.sst-taxcloud-status').should('have.text', 'Captured');
+        task('order', { id }).its('taxcloudStatus').should('eq', 'captured');
+        records().then((rows) => {
+          const attempts = captureCalls(rows.slice(recordOffset));
+          expect(attempts).to.have.length(1);
+          expect(attempts[0].path).to.match(/\/connections\/:connection\/orders$/);
+          expect(attempts[0].request.lineItems[0].tax).to.deep.equal({ amount: 0, rate: 0 });
+        });
+      });
+    });
+
     it('DEV-6610 retries failed automatic capture from the order panel without a status change', () => {
       task('configure', { dataMover: true, manualCaptureOnly: true });
       login('admin');
