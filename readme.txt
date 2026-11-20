@@ -3,7 +3,7 @@ Contributors: fedtaxceo
 Tags: taxcloud, woocommerce, tax, sales tax, sales tax filing
 Requires at least: 4.5.0
 Tested up to: 7.0
-Stable tag: 8.4.22
+Stable tag: 8.4.23
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -114,7 +114,7 @@ Yes, TaxCloud allows you to specify multiple shipping origin addresses. This is 
 
 == Changelog ==
 
-= Unreleased =
+= 8.4.23 =
 * Security: Customers can manage only their own exemption certificates. Managing another customer's certificates requires manage_options or manage_woocommerce and permission to edit that customer. Custom roles with only edit_users or edit_shop_orders no longer have this access.
 * Security: Billing email addresses are no longer used to find exemption certificates, and old certificate caches are invalidated. Certificates stored only under a billing email that differs from the account email must be added again for the correct customer by authorized staff.
 * Fix: Recalculating an order preserves its exemption certificate when the certificate controls are unavailable or no selection is submitted.
