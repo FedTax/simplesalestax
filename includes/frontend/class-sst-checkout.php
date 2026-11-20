@@ -1100,8 +1100,9 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$order->set_certificate_id( $certificate_id );
 		$order->set_packages( $packages );
 
-		// Fix tax totals for orders created via store API
-		if ( 'store-api' === $order->get_created_via() ) {
+		// Rebuild Store API lines only when TaxCloud calculates taxes. In Data
+		// Import, the order may already have taxes that are absent from the cart rates.
+		if ( 'data_mover' !== sst_integration_mode() && 'store-api' === $order->get_created_via() ) {
 			$order->remove_order_items( 'line_item' );
 			$order->remove_order_items( 'shipping' );
 			$order->remove_order_items( 'fee' );
