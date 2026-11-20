@@ -2,6 +2,22 @@ Changelog for Simple Sales Tax
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+- [8.4.23] - 2026-11-20 =
+
+Added:
+- [DEV-6610] Add manual capture for Data Import orders (#489)
+- [DEV-9565] Support WooCommerce Product Bundles in TaxCloud (#488)
+
+Fixed:
+- [DEV-10619] Apply customer exemptions when recalculating new WooCommerce admin orders (#486)
+- [DEV-10624] Fix marketplace tax package handling for mixed seller carts (#485)
+- [DEV-10605] Stop silently taxing unverified shipping addresses (#479)
+- [DEV-10623] Rate limit error handling (#484)
+- [DEV-10622] Restrict cross-customer exemption certificate access (#482)
+- [DEV-10621] Harden exemption certificate IDs and order metadata handling (#481)
+- [DEV-10620] Prevent unvalidated checkout exemptions from bypassing tax (#480)
+
+
 - [8.4.22] - 2026-11-04 =
 
 Fixed:
