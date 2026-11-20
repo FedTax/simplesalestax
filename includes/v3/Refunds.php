@@ -1,7 +1,6 @@
 <?php
 namespace TaxCloud_V3;
 
-use SST_Settings;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -15,15 +14,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since   8.4.1
  */
 class Refunds extends RequestBase {
-
-	/**
-	 * Initialize the class.
-	 *
-	 * @since 8.4.1
-	 */
-	function __construct() {
-		$this->connection_id = SST_Settings::get( 'tc_key' );
-	}
 
 	/**
 	 * Get API URL for refunds.
@@ -61,15 +51,16 @@ class Refunds extends RequestBase {
 			return $refund;
 		}
 
-		$token = $this->get_auth_token();
-		if ( is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers();
+		if ( is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$response = wp_remote_post( $this->get_api_url( $order_id ), array(
-			'headers' => $this->get_request_headers( $token ),
-			'body'    => wp_json_encode( $refund ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'body'        => wp_json_encode( $refund ),
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_refunds_error', 'Failed to refund order: ' );

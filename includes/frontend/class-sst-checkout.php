@@ -181,8 +181,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 			'US' === ( $args['country'] ?? '' )
 			&& 'yes' !== SST_Settings::get( 'disable_integration', 'no' )
 			&& 'data_mover' !== sst_integration_mode()
-			&& SST_Settings::get( 'tc_id' )
-			&& SST_Settings::get( 'tc_key' )
+			&& SST_Settings::has_api_credentials()
 			&& WC()->session
 			&& $this->should_calculate_tax_totals()
 		) {

@@ -67,7 +67,9 @@ function get_user_meta( $id, $key ) {
 	return $fields[ $key ] ?? '';
 }
 
+require_once __DIR__ . '/fixtures/credential-settings.php';
 class SST_Settings {
+	use SST_Test_Credential_Settings;
 	public static function get( $key, $default = null ) { return $GLOBALS['settings'][ $key ] ?? $default; }
 }
 

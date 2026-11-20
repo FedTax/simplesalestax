@@ -28,7 +28,9 @@ class WP_Error {
 	public function get_error_codes() { return array_keys( $this->errors ); }
 }
 
+require_once __DIR__ . '/fixtures/credential-settings.php';
 class SST_Settings {
+	use SST_Test_Credential_Settings;
 	public static $version = 'v1';
 	public static function get( $key, $default = null ) {
 		if ( 'api_version' === $key ) { return self::$version; }

@@ -1,7 +1,6 @@
 <?php
 namespace TaxCloud_V3;
 
-use SST_Settings;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -15,15 +14,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since   8.4.2
  */
 class Exemptions extends RequestBase {
-
-	/**
-	 * Initialize the class.
-	 *
-	 * @since 8.4.2
-	 */
-	function __construct() {
-		$this->connection_id = SST_Settings::get( 'tc_key' ); 
-	}
 
 	/**
 	 * Get API URL for exemptions.
@@ -64,15 +54,16 @@ class Exemptions extends RequestBase {
 			}
 		}
 
-		$token = $this->get_auth_token();
-		if ( \is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers();
+		if ( \is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$response = \wp_remote_post( $this->get_api_url(), array(
-			'headers' => $this->get_request_headers( $token ),
-			'body'    => \wp_json_encode( $args ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'body'        => \wp_json_encode( $args ),
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_exemptions_error', 'Failed to create certificate: ' );
@@ -87,10 +78,10 @@ class Exemptions extends RequestBase {
 	 * @since 8.4.2
 	 */
 	public function get_certificates( $args = array() ) {
-		$token = $this->get_auth_token();
+		$headers = $this->get_request_headers();
 		
-		if ( is_wp_error( $token ) ) {
-			return $token;
+		if ( is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$url = $this->get_fetch_api_url();
@@ -111,8 +102,9 @@ class Exemptions extends RequestBase {
 		}
 
 		$response = wp_remote_get( $url, array(
-			'headers' => $this->get_request_headers( $token ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_exemptions_error', 'Failed to retrieve certificates: ' );
@@ -187,17 +179,18 @@ class Exemptions extends RequestBase {
 			return new \WP_Error( 'sst_v3_exemptions_invalid_request', 'A certificate ID is required.' );
 		}
 
-		$token = $this->get_auth_token();
+		$headers = $this->get_request_headers();
 		
-		if ( is_wp_error( $token ) ) {
-			return $token;
+		if ( is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$url = $this->get_api_url() . '/' . rawurlencode( (string) $certificate_id );
 
 		$response = wp_remote_get( $url, array(
-			'headers' => $this->get_request_headers( $token ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_exemptions_error', 'Failed to retrieve certificate: ' );
@@ -215,29 +208,30 @@ class Exemptions extends RequestBase {
 			return new \WP_Error( 'sst_v3_exemptions_invalid_request', 'A certificate ID is required.' );
 		}
 
-		$token = $this->get_auth_token();
+		$headers = $this->get_request_headers();
 		
-		if ( is_wp_error( $token ) ) {
-			return $token;
+		if ( is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$url = $this->get_api_url() . '/' . rawurlencode( (string) $certificate_id );
 
 		$response = wp_remote_request( $url, array(
-			'method'  => 'DELETE',
-			'headers' => $this->get_request_headers( $token ),
-			'timeout' => 30,
+			'method'      => 'DELETE',
+			'headers'     => $headers,
+			'redirection' => 0,
+			'timeout'     => 30,
 		) );
 
 		if ( is_wp_error( $response ) ) {
-			return $response;
+			return $this->sanitize_transport_error( $response );
 		}
 
 		$code = wp_remote_retrieve_response_code( $response );
 		$body = wp_remote_retrieve_body( $response );
 
 		if ( $code < 200 || $code >= 300 ) {
-			return new \WP_Error( 'sst_v3_exemptions_error', 'Failed to delete certificate: ' . $body );
+			return new \WP_Error( 'sst_v3_exemptions_error', 'Failed to delete certificate: ' . $this->get_error_message( $body ) );
 		}
 
 		return true;

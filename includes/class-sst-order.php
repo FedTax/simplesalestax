@@ -1155,7 +1155,8 @@ class SST_Order extends SST_Abstract_Cart {
 
 				if ( 'v3' === $api_version ) {
 					// Refund class
-					$txc_refund = new TaxCloud_V3\Refunds();
+					$legacy_import = $data_mover && 'v3' !== SST_Settings::get( 'api_version' );
+					$txc_refund = new TaxCloud_V3\Refunds( null, $legacy_import ? '' : null );
 
 					// Refund order
 					$refund_args = array( 'items' => $refund_items );
@@ -1667,8 +1668,8 @@ class SST_Order extends SST_Abstract_Cart {
 	 * @return true|WP_Error
 	 */
 	private function upload_data_import_order() {
-		$api         = new TaxCloud_V3\Orders();
-		$connection  = (string) SST_Settings::get( 'tc_key' );
+		$api         = new TaxCloud_V3\Orders( null, 'v3' === SST_Settings::get( 'api_version' ) ? null : '' );
+		$connection  = $api->get_connection_id();
 		$identity    = hash( 'sha256', $connection );
 		$fingerprint = $this->data_import_order_fingerprint();
 		$saved       = $this->get_meta( 'data_import_upload' );

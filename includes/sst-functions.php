@@ -668,8 +668,7 @@ function sst_is_user_tax_exempt() {
 function sst_should_show_tax_exemption_form() {
 	$configured = (
 		'yes' !== SST_Settings::get( 'disable_integration', 'no' )
-		&& ! empty( SST_Settings::get( 'tc_id' ) )
-		&& ! empty( SST_Settings::get( 'tc_key' ) )
+		&& SST_Settings::has_api_credentials()
 	);
 	$restricted = 'yes' === SST_Settings::get( 'restrict_exempt' );
 	$enabled    = 'true' === SST_Settings::get( 'show_exempt' );

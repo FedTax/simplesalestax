@@ -57,7 +57,9 @@ namespace {
 		public function get_error_message() { return reset( $this->errors ) ?: ''; }
 	}
 
+	require_once __DIR__ . '/fixtures/credential-settings.php';
 	class SST_Settings {
+		use SST_Test_Credential_Settings;
 		public static function get( $key, $default = null ) { global $test_settings; return $test_settings[ $key ] ?? $default; }
 	}
 	class SST_Logger {

@@ -63,7 +63,11 @@ namespace {
 		public function get_error_message() { return reset( $this->errors ) ?: ''; }
 		public function get_error_codes() { return array_keys( $this->errors ); }
 	}
-	class SST_Settings { public static function get( $key, $default = null ) { global $settings; return $settings[ $key ] ?? $default; } }
+	require_once __DIR__ . '/fixtures/credential-settings.php';
+	class SST_Settings {
+		use SST_Test_Credential_Settings;
+		public static function get( $key, $default = null ) { global $settings; return $settings[ $key ] ?? $default; }
+	}
 	class SST_Logger { public static function add() {} public static function debug() {} public static function error() {} }
 	class SST_Product { public static function get_tic() { return 0; } }
 	class WC_Cache_Helper { public static function get_transient_version() { return '1'; } }

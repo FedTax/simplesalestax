@@ -25,6 +25,22 @@ return function ( SST_V3_Test_Suite $suite ) {
 			SST_V3_Test::same( 2, count( SST_V3_Test_Http::requests() ) );
 		} );
 
+		$suite->test( $name . ': uses only the native API key for a V3-only store', function () use ( $method, $path, $invoke ) {
+			SST_Settings::set( 'tc_id', '' );
+			SST_Settings::set( 'tc_v3_api_key', 'developer-key' );
+			$expected = 'DELETE' === $method ? true : array( 'testResult' => 'success' );
+			$response = 'DELETE' === $method ? SST_V3_Test_Http::raw( '', 204 ) : SST_V3_Test_Http::json( $expected );
+			SST_V3_Test_Http::expect( $method, SST_V3_Test_Http::api_base() . $path, $response, function ( $args ) {
+				SST_V3_Test::same( 'developer-key', $args['headers']['X-API-KEY'] );
+				SST_V3_Test::true( ! isset( $args['headers']['Authorization'] ) );
+				SST_V3_Test::same( 0, $args['redirection'] );
+				SST_V3_Test::true( false === strpos( $args['body'] ?? '', 'developer-key' ) );
+			} );
+			SST_V3_Test::same( $expected, $invoke() );
+			SST_V3_Test::same( 1, count( SST_V3_Test_Http::requests() ) );
+			SST_V3_Test::same( array(), SST_V3_Test_Http::transients() );
+		} );
+
 		foreach ( array( 'tc_id', 'tc_key' ) as $credential ) {
 			$suite->test( $name . ': missing ' . $credential . ' fails without HTTP', function () use ( $invoke, $credential ) {
 				SST_Settings::set( $credential, '' );
@@ -75,6 +91,23 @@ return function ( SST_V3_Test_Suite $suite ) {
 			}
 		}
 	}
+
+	$suite->test( 'Native auth uses a rotated key and redacts rejected credentials without falling back', function () {
+		SST_V3_Test_Http::cache_token();
+		SST_Settings::set( 'tc_v3_api_key', 'first-key' );
+		$url = SST_V3_Test_Http::api_base() . '/tax/connections/test-connection/ping';
+		SST_V3_Test_Http::expect( 'GET', $url, SST_V3_Test_Http::json( array( 'message' => 'OK' ) ), function ( $args ) {
+			SST_V3_Test::same( 'first-key', $args['headers']['X-API-KEY'] );
+		} );
+		SST_V3_Test::same( array( 'message' => 'OK' ), ( new TaxCloud_V3\Utilities() )->ping() );
+		SST_Settings::set( 'tc_v3_api_key', 'rotated-key' );
+		SST_V3_Test_Http::expect( 'GET', $url, SST_V3_Test_Http::json( array( 'detail' => 'Rejected rotated-key' ), 401 ), function ( $args ) {
+			SST_V3_Test::same( 'rotated-key', $args['headers']['X-API-KEY'] );
+		} );
+		$error = SST_V3_Test::error( ( new TaxCloud_V3\Utilities() )->ping(), 'sst_v3_ping_error' );
+		SST_V3_Test::same( 'TaxCloud authentication failed: Rejected [redacted]', $error->get_error_message() );
+		SST_V3_Test::same( 2, count( SST_V3_Test_Http::requests() ) );
+	} );
 
 	$suite->test( 'Auth: token is reused across V3 client instances and stored for 12 hours', function () {
 		SST_V3_Test_Http::expect( 'POST', SST_V3_Test_Http::auth_url(), SST_V3_Test_Http::json( array( 'access_token' => 'shared-token', 'connection_id' => 'integration-123456' ) ) );

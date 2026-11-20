@@ -195,8 +195,7 @@ class SST_Blocks {
 
 		if (
 			'yes' !== SST_Settings::get( 'disable_integration', 'no' )
-			&& ! empty( SST_Settings::get( 'tc_id' ) )
-			&& ! empty( SST_Settings::get( 'tc_key' ) )
+			&& SST_Settings::has_api_credentials()
 			&& 'yes' === SST_Settings::get( 'show_rate_limit_notice', 'no' )
 		) {
 			$rate_limit = new SST_Rate_Limit();

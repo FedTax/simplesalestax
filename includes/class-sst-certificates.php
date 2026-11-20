@@ -115,6 +115,9 @@ class SST_Certificates {
 				continue;
 			}
 			$tax_id = get_user_meta( $user_id, self::get_tax_id_meta_key( $certificate->getCertificateID() ), true );
+			if ( empty( $tax_id ) && SST_Settings::get( 'tc_v3_api_key' ) ) {
+				$tax_id = get_user_meta( $user_id, self::get_legacy_tax_id_meta_key( $certificate->getCertificateID() ), true );
+			}
 			if ( is_array( $tax_id ) && isset( $tax_id['IDNumber'] ) && '' !== (string) $tax_id['IDNumber'] ) {
 				$data['Detail']['PurchaserTaxID'] = array_merge( $data['Detail']['PurchaserTaxID'], $tax_id );
 				$certificates[ $key ] = TaxCloud\ExemptionCertificate::fromArray( $data );
@@ -131,6 +134,13 @@ class SST_Certificates {
 	 * @return string User meta key.
 	 */
 	private static function get_tax_id_meta_key( $certificate_id ) {
+		if ( SST_Settings::get( 'tc_v3_api_key' ) ) {
+			return '_sst_certificate_tax_id_' . md5( 'connection:' . SST_Settings::get( 'tc_key' ) . ':' . $certificate_id );
+		}
+		return self::get_legacy_tax_id_meta_key( $certificate_id );
+	}
+
+	private static function get_legacy_tax_id_meta_key( $certificate_id ) {
 		return '_sst_certificate_tax_id_' . md5( SST_Settings::get( 'tc_id' ) . ':' . SST_Settings::get( 'tc_key' ) . ':' . $certificate_id );
 	}
 
@@ -595,7 +605,7 @@ class SST_Certificates {
 			$final_certs = array();
 
 			// Saved certificates already use V3 first on develop, including V1 sites.
-			$v3_exemptions = new \TaxCloud_V3\Exemptions();
+			$v3_exemptions = new \TaxCloud_V3\Exemptions( null, 'v1' === $api_version ? '' : null );
 			$v3_items      = $v3_exemptions->get_certificates_for_customer_ids( $lookup_ids );
 
 			if ( ! empty( $v3_items ) && is_array( $v3_items ) ) {
@@ -1002,6 +1012,9 @@ class SST_Certificates {
 
 		// Invalidate cached certificates.
 		delete_user_meta( $user_id, self::get_tax_id_meta_key( $certificate_id ) );
+		if ( SST_Settings::get( 'tc_v3_api_key' ) ) {
+			delete_user_meta( $user_id, self::get_legacy_tax_id_meta_key( $certificate_id ) );
+		}
 		SST_Certificates::delete_certificates( $user_id );
 	}
 

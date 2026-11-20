@@ -134,12 +134,12 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     if (this.currentTest.err) {
       cy.task('pluginV3Failure', { title: this.currentTest.fullTitle(), error: this.currentTest.err.stack || this.currentTest.err.message }, { log: false });
     }
-    task('configure', { dataMover: false, blocks: false, failure: false, unconfigured: false, manualCaptureOnly: false, classicCaptureEditor: false });
+    task('configure', { dataMover: false, blocks: false, failure: false, unconfigured: false, manualCaptureOnly: false, classicCaptureEditor: false, nativeV3: false });
   });
 
   for (const classicCaptureEditor of fixture ? [false, true] : [false]) {
     it(`DEV-6610 captures an older order from the ${classicCaptureEditor ? 'classic' : 'default'} editor with automatic capture off`, () => {
-      task('configure', { dataMover: true, manualCaptureOnly: true, classicCaptureEditor });
+      task('configure', { dataMover: true, manualCaptureOnly: true, classicCaptureEditor, nativeV3: fixture && classicCaptureEditor });
       if (!fixture) verifyConnection('dataImport', true);
       login('admin');
       task('manualCaptureOrder', { completed: classicCaptureEditor }).then(({ id, url }) => {
@@ -516,7 +516,7 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
         }));
       }
     };
-    task('configure', { blocks: true });
+    task('configure', { blocks: true, nativeV3: fixture });
     login(); cart();
     cy.visit(site.cartBlock);
     cy.get('.wc-block-cart').should('be.visible');
@@ -537,6 +537,13 @@ describe('WooCommerce TaxCloud V3 integration (local only)', () => {
     cy.get('#exemption-certificate-input').select('new', { force: true });
     cy.get('#purchaser_exemption_reason').select('Resale', { force: true });
     cy.get('#purchaser_exemption_reason_value').should('be.visible');
+    if (fixture) {
+      records().then((rows) => {
+        const requests = rows.slice(recordOffset);
+        expect(requests.some((row) => /\/auth\/token$/.test(row.path))).to.equal(false);
+        expect(requests.every((row) => row.credentialsMatched)).to.equal(true);
+      });
+    }
     task('configure', { blocks: false });
   });
 

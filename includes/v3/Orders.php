@@ -1,7 +1,6 @@
 <?php
 namespace TaxCloud_V3;
 
-use SST_Settings;
 use TaxCloud_V3\Model\Address;
 use TaxCloud_V3\Model\CartItem;
 use TaxCloud_V3\Model\Currency;
@@ -19,15 +18,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since   8.4.1
  */
 class Orders extends RequestBase {
-
-	/**
-	 * Initialize the class.
-	 *
-	 * @since 8.4.1
-	 */
-	function __construct() {
-		$this->connection_id = SST_Settings::get( 'tc_key' );
-	}
 
 	/**
 	 * Get API URL for orders.
@@ -63,9 +53,9 @@ class Orders extends RequestBase {
 			return $order;
 		}
 
-		$token = $this->get_auth_token();
-		if ( is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers();
+		if ( is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$url = $this->get_api_url();
@@ -74,9 +64,10 @@ class Orders extends RequestBase {
 		}
 
 		$response = wp_remote_post( $url, array(
-			'headers' => $this->get_request_headers( $token ),
-			'body'    => wp_json_encode( $order ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'body'        => wp_json_encode( $order ),
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_orders_error', 'Failed to create order: ' );
@@ -177,10 +168,10 @@ class Orders extends RequestBase {
 			return new \WP_Error( 'sst_v3_orders_error', 'An order ID is required.' );
 		}
 
-		$token = $this->get_auth_token();
+		$headers = $this->get_request_headers();
 
-		if ( is_wp_error( $token ) ) {
-			return $token;
+		if ( is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$url = $this->get_api_url( $order_id );
@@ -189,8 +180,9 @@ class Orders extends RequestBase {
 		}
 
 		$response = wp_remote_get( $url, array(
-			'headers' => $this->get_request_headers( $token ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_orders_error', 'Failed to retrieve order: ' );
@@ -210,9 +202,9 @@ class Orders extends RequestBase {
 			return new \WP_Error( 'sst_v3_orders_error', 'An order ID is required.' );
 		}
 
-		$token = $this->get_auth_token();
-		if ( is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers();
+		if ( is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$payload = array();
@@ -221,10 +213,11 @@ class Orders extends RequestBase {
 		}
 
 		$response = wp_remote_request( $this->get_api_url( $order_id ), array(
-			'method'  => 'PATCH',
-			'headers' => $this->get_request_headers( $token ),
-			'body'    => wp_json_encode( (object) $payload ),
-			'timeout' => 30,
+			'method'      => 'PATCH',
+			'headers'     => $headers,
+			'redirection' => 0,
+			'body'        => wp_json_encode( (object) $payload ),
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_orders_error', 'Failed to update order: ' );

@@ -67,7 +67,7 @@ abstract class SST_Abstract_Cart {
 		$this->api_id  = SST_Settings::get( 'tc_id' );
 		$this->api_key = SST_Settings::get( 'tc_key' );
 
-		return ! empty( $this->api_id ) && ! empty( $this->api_key );
+		return SST_Settings::has_api_credentials();
 	}
 
 	/**
@@ -99,7 +99,7 @@ abstract class SST_Abstract_Cart {
 
 		// No API Login ID or API Key? Bail.
 		if ( ! $this->has_api_credentials() ) {
-			SST_Logger::add( __( 'API Login ID or API Key is empty. Skipping lookup.', 'simple-sales-tax' ) );
+			SST_Logger::add( __( 'TaxCloud API credentials are missing. Skipping lookup.', 'simple-sales-tax' ) );
 			return false;
 		}
 

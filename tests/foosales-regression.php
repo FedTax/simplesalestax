@@ -38,7 +38,9 @@ function sst_integration_mode() { global $mode; return $mode; }
 function get_option( $key, $default = false ) { global $options; return $options[ $key ] ?? $default; }
 function sst_order_calculate_taxes() { global $calculations; ++$calculations; }
 
+require_once __DIR__ . '/fixtures/credential-settings.php';
 class SST_Settings {
+	use SST_Test_Credential_Settings;
 	public static function get( $key, $default = null ) { global $settings; return $settings[ $key ] ?? $default; }
 }
 class SST_Logger {

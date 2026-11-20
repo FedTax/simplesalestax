@@ -48,6 +48,9 @@ if ( 'setup' === $action ) {
   foreach ( array( 'cartClassic', 'checkoutClassic', 'cartBlock', 'checkoutBlock' ) as $key ) { $result[ $key ] = get_permalink( $context[ $key ] ); }
 } elseif ( 'configure' === $action ) {
   foreach ( array( 'dataMover', 'blocks', 'unconfigured', 'showExempt', 'checkoutExemption', 'rateLimit', 'manualCaptureOnly', 'classicCaptureEditor' ) as $key ) { if ( isset( $input[ $key ] ) ) { $context[ $key ] = (bool) $input[ $key ]; } }
+  if ( 'fixture' === $context['mode'] && isset( $input['nativeV3'] ) ) {
+    $context['nativeV3'] = (bool) $input['nativeV3'];
+  }
   if ( array_key_exists( 'failure', $input ) ) {
     if ( ! in_array( $input['failure'], array( false, true, 'capture', 'refund' ), true ) ) { throw new Exception( 'Unknown fixture failure.' ); }
     if ( 'live' === $context['mode'] && false !== $input['failure'] ) { throw new Exception( 'Failure injection is fixture only.' ); }

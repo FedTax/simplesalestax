@@ -25,18 +25,18 @@ describe('Settings page', () => {
   });
 
   it('has a working Download Log button', () => {
-    cy.intercept('*download_debug_report=1*').as('downloadRequest');
-    cy.findByRole('link', {name: 'Download'}).click();
-    cy.wait('@downloadRequest', {timeout: 20000}).then((intercepted) => {
-      expect(intercepted.response.statusCode).to.eq(200);
-      expect(intercepted.response.headers['content-disposition']).to.match(/filename=sst_debug_report_(.*).txt$/);
+    cy.findByRole('link', {name: 'Download'}).should('be.visible').invoke('attr', 'href').then((href) => {
+      cy.request(href).then((response) => {
+        expect(response.status).to.eq(200);
+        expect(response.headers['content-disposition']).to.match(/filename=sst_debug_report_(.*).txt$/);
+      });
     });
   });
 
   it('saves and restores the selected TaxCloud API version', () => {
     const saveSettings = () => {
       cy.findByRole('button', {name: 'Save changes'}).click();
-      cy.findByText(/saved/i, {timeout: 15000}).should('exist');
+      cy.findByText('Your settings have been saved.', {timeout: 15000}).should('exist');
     };
 
     // Select2 hides the native select from the accessibility tree.
@@ -55,6 +55,47 @@ describe('Settings page', () => {
         cy.reload();
         apiVersion().should('have.value', originalVersion);
       });
+  });
+
+  it('relabels the existing connection field and previews native V3 origins', () => {
+    const version = '#woocommerce_wootax_api_version';
+    const connection = '#woocommerce_wootax_tc_key';
+    const apiKey = '#woocommerce_wootax_tc_v3_api_key';
+    cy.get(version).select('v1', {force: true});
+    cy.get('#woocommerce_wootax_tc_id').should('be.visible');
+    cy.get(apiKey).should('not.be.visible');
+
+    cy.get(connection).invoke('val').then((previousConnection) => {
+      cy.get(version).select('v3', {force: true});
+      cy.get(connection).should('have.value', previousConnection);
+    });
+    cy.get('label[for="woocommerce_wootax_tc_key"]').find('.sst-v3-connection').should('be.visible');
+    cy.get('#woocommerce_wootax_tc_id').should('not.be.visible');
+    cy.get(apiKey).should('be.visible').and('have.attr', 'type', 'password');
+    cy.get(apiKey).should('have.value', '').type('browser-fixture-key', {log: false});
+
+    cy.intercept('POST', '/wp-admin/admin-ajax.php', (req) => {
+      const data = new URLSearchParams(req.body);
+      if (data.get('action') !== 'sst_verify_taxcloud') return;
+      expect(data.get('wootax_api_version')).to.equal('v3');
+      expect(data.has('wootax_tc_id')).to.equal(false);
+      req.alias = 'verifyV3';
+      req.reply({success: true, data: {origins: [
+        {id: 'new-origin-1', label: 'First TaxCloud origin'},
+        {id: 'new-origin-2', label: 'Second TaxCloud origin'},
+      ]}});
+    });
+    cy.findByRole('button', {name: 'Verify Settings'}).click();
+    cy.wait('@verifyV3');
+    cy.get('#sst-origin-options').should('be.visible');
+    cy.get('#woocommerce_wootax_default_origin_addresses').should(($origins) => {
+      expect($origins.val()).to.deep.equal([]);
+      expect($origins.find('option')).to.have.length(2);
+    });
+
+    cy.get(version).select('v1', {force: true});
+    cy.get(apiKey).should('not.be.visible');
+    cy.get('#woocommerce_wootax_default_origin_addresses option[value="new-origin-1"]').should('not.exist');
   });
 
   describe('when block cart/checkout is enabled', () => {

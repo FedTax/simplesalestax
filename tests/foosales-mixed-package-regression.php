@@ -35,7 +35,9 @@ function get_transient() { return false; }
 function wp_json_encode( $value ) { return json_encode( $value ); }
 function wc_get_product( $id ) { global $products; return $products[ $id ] ?? false; }
 
+require_once __DIR__ . '/fixtures/credential-settings.php';
 class SST_Settings {
+	use SST_Test_Credential_Settings;
 	public static function get( $key, $default = null ) { global $settings; return $settings[ $key ] ?? $default; }
 }
 class SST_Logger {

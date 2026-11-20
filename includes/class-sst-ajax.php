@@ -108,56 +108,69 @@ class SST_Ajax {
 	}
 
 	/**
-	 * Verify the user's TaxCloud API Login ID and API Key.
+	 * Verify the version and credentials selected in WooCommerce settings.
 	 *
 	 * @since 5.0
 	 */
 	public static function verify_taxcloud() {
-		$taxcloud_id  = '';
-		$taxcloud_key = '';
-
-		// Verify nonce.
-		check_ajax_referer( 'sst_verify_taxcloud_nonce' );
-
-		if ( isset( $_POST['wootax_tc_id'] ) ) {
-			$taxcloud_id = sanitize_text_field( wp_unslash( $_POST['wootax_tc_id'] ) ); // phpcs:ignore WordPress.CSRF.NonceVerification
-		}
-		if ( isset( $_POST['wootax_tc_key'] ) ) {
-			$taxcloud_key = sanitize_text_field( wp_unslash( $_POST['wootax_tc_key'] ) ); // phpcs:ignore WordPress.CSRF.NonceVerification
+		if ( ! check_ajax_referer( 'sst_verify_taxcloud_nonce', '_wpnonce', false ) || ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( __( 'You cannot verify TaxCloud settings.', 'simple-sales-tax' ), 403 );
 		}
 
-		if ( empty( $taxcloud_id ) || empty( $taxcloud_key ) ) {
-			wp_send_json_error();
-		} else {
-			try {
-				if ( 'v3' === sst_get_api_version() ) {
-					$utilities = new \TaxCloud_V3\Utilities();
-					$ping      = $utilities->ping( $taxcloud_id, $taxcloud_key, $taxcloud_key );
+		$version     = $_POST['wootax_api_version'] ?? sst_get_api_version(); // phpcs:ignore WordPress.Security.NonceVerification
+		$connection  = $_POST['wootax_tc_key'] ?? ''; // phpcs:ignore WordPress.Security.NonceVerification
+		$entered     = $_POST['wootax_tc_v3_api_key'] ?? ''; // phpcs:ignore WordPress.Security.NonceVerification
+		$taxcloud_id = $_POST['wootax_tc_id'] ?? SST_Settings::get( 'tc_id' ); // phpcs:ignore WordPress.Security.NonceVerification
+		if ( ! in_array( $version, array( 'v1', 'v3' ), true ) || ! is_string( $connection ) || ! is_string( $entered ) || ! is_string( $taxcloud_id ) ) {
+			wp_send_json_error( __( 'Enter valid TaxCloud credentials.', 'simple-sales-tax' ) );
+		}
 
-					if ( is_wp_error( $ping ) ) {
-						throw new Exception( $ping->get_error_message() );
-					}
-				} else {
-					TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
-				}
-
-				// Ping successful, update data mover settings
-				SST_TaxCloud_V3_API::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
-
-				$connection_id = SST_Settings::get( 'tc_integration_id' );
-				if ( empty( $connection_id ) ) {
-					$connection_id = SST_Settings::get( 'tc_connection_id' );
-				}
-
-				wp_send_json_success(
-					array(
-						'connection_id'  => $connection_id,
-						'integration_id' => $connection_id,
-					)
-				);
-			} catch ( Exception $ex ) {
-				wp_send_json_error( $ex->getMessage() );
+		if ( 'v3' === $version && ( '' !== trim( $entered ) || SST_Settings::get( 'tc_v3_api_key' )
+			|| ( 'v3' !== sst_get_api_version() && is_callable( apply_filters( 'sst_v3_origin_provider', null ) ) )
+		) ) {
+			$credentials = SST_TaxCloud_V3_API::resolve_v3_credentials( $connection, $entered );
+			if ( is_wp_error( $credentials ) ) {
+				wp_send_json_error( $credentials->get_error_message() );
 			}
+			$setup = SST_TaxCloud_V3_API::get_v3_setup( $credentials['connection_id'], $credentials['api_key'] );
+			if ( is_wp_error( $setup ) ) {
+				wp_send_json_error( $setup->get_error_message() );
+			}
+
+			$origins = array();
+			foreach ( $setup['origins'] as $origin ) {
+				$origins[] = array( 'id' => (string) $origin->getID(), 'label' => SST_Addresses::format( $origin ) );
+			}
+			wp_send_json_success( array( 'origins' => $origins ) );
+		}
+
+		$taxcloud_id  = sanitize_text_field( wp_unslash( $taxcloud_id ) );
+		$taxcloud_key = sanitize_text_field( wp_unslash( $connection ) );
+		if ( empty( $taxcloud_id ) || empty( $taxcloud_key ) ) {
+			wp_send_json_error( 'v3' === $version
+				? __( 'Enter a Connection ID and an API Key from Developer > API in TaxCloud.', 'simple-sales-tax' )
+				: __( 'Enter your TaxCloud API Login ID and API Key.', 'simple-sales-tax' ) );
+		}
+
+		try {
+			if ( 'v3' === $version ) {
+				$utilities = new \TaxCloud_V3\Utilities( $taxcloud_key, '' );
+				$ping      = $utilities->ping( $taxcloud_id, $taxcloud_key );
+				if ( is_wp_error( $ping ) ) {
+					wp_send_json_error( $ping->get_error_message() );
+				}
+			} else {
+				TaxCloud()->Ping( new TaxCloud\Request\Ping( $taxcloud_id, $taxcloud_key ) );
+			}
+
+			$connection_id = '';
+			if ( $version === sst_get_api_version() && $taxcloud_id === SST_Settings::get( 'tc_id' ) && $taxcloud_key === SST_Settings::get( 'tc_key' ) ) {
+				SST_TaxCloud_V3_API::update_data_mover_settings( $taxcloud_id, $taxcloud_key );
+				$connection_id = SST_Settings::get( 'tc_integration_id' ) ?: SST_Settings::get( 'tc_connection_id' );
+			}
+			wp_send_json_success( array( 'connection_id' => $connection_id, 'integration_id' => $connection_id ) );
+		} catch ( Exception $ex ) {
+			wp_send_json_error( $ex->getMessage() );
 		}
 	}
 
@@ -569,11 +582,13 @@ class SST_Ajax {
 	 * @since 8.3.5
 	 */
 	public static function update_data_mover() {
-		// Verify nonce.
-		check_ajax_referer( 'sst-update-data-mover-nonce' );
-
-		// Update data mover settings
-		SST_TaxCloud_V3_API::update_data_mover_settings();
+		if ( ! check_ajax_referer( 'sst-update-data-mover-nonce', '_wpnonce', false ) || ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( __( 'You cannot refresh TaxCloud settings.', 'simple-sales-tax' ), 403 );
+		}
+		$result = SST_TaxCloud_V3_API::update_data_mover_settings();
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+		}
 
 		// Get data mover settings
 		$data_mover       = SST_Settings::get( 'data_mover', false );

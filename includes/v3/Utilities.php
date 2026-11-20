@@ -1,8 +1,6 @@
 <?php
 namespace TaxCloud_V3;
 
-use SST_Settings;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -15,15 +13,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since   8.4.9
  */
 class Utilities extends RequestBase {
-
-	/**
-	 * Initialize the class.
-	 *
-	 * @since 8.4.9
-	 */
-	public function __construct() {
-		$this->connection_id = SST_Settings::get( 'tc_key' );
-	}
 
 	/**
 	 * Get API URL for TaxCloud v3 tax utility endpoints.
@@ -48,9 +37,9 @@ class Utilities extends RequestBase {
 	 * @since 8.4.17
 	 */
 	public function ping( $api_login_id = null, $api_key = null, $connection_id = null ) {
-		$token = $this->get_auth_token( $api_login_id, $api_key );
-		if ( \is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers( $api_login_id, $api_key );
+		if ( \is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		if ( null === $connection_id || '' === (string) $connection_id ) {
@@ -63,11 +52,34 @@ class Utilities extends RequestBase {
 
 		$url = $this->get_api_base_url() . '/tax/connections/' . rawurlencode( (string) $connection_id ) . '/ping';
 		$response = \wp_remote_get( $url, array(
-			'headers' => $this->get_request_headers( $token ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_ping_error', 'TaxCloud authentication failed: ' );
+	}
+
+	/**
+	 * Read a setup resource from the configured TaxCloud host.
+	 */
+	public function get_setup_resource( $path ) {
+		if ( ! preg_match( '#^/(mgmt|tax)/#', $path ) ) {
+			return new \WP_Error( 'sst_v3_setup_error', 'Invalid TaxCloud setup resource.' );
+		}
+
+		$headers = $this->get_request_headers();
+		if ( \is_wp_error( $headers ) ) {
+			return $headers;
+		}
+
+		$response = \wp_remote_get( $this->get_api_base_url() . $path, array(
+			'headers'     => $headers,
+			'redirection' => 0,
+			'timeout'     => 30,
+		) );
+
+		return $this->parse_json_response( $response, 'sst_v3_setup_error', '' );
 	}
 
 	/**
@@ -85,15 +97,16 @@ class Utilities extends RequestBase {
 			return $payload;
 		}
 
-		$token = $this->get_auth_token();
-		if ( \is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers();
+		if ( \is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$response = \wp_remote_post( $this->get_api_url( '/verify-address' ), array(
-			'headers' => $this->get_request_headers( $token ),
-			'body'    => \wp_json_encode( $payload ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'body'        => \wp_json_encode( $payload ),
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_verify_address_error', 'Failed to verify address: ' );
@@ -115,9 +128,9 @@ class Utilities extends RequestBase {
 			return new \WP_Error( 'sst_v3_tic_search_invalid_request', 'A TIC search query is required.' );
 		}
 
-		$token = $this->get_auth_token();
-		if ( \is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers();
+		if ( \is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$payload = array(
@@ -130,9 +143,10 @@ class Utilities extends RequestBase {
 		}
 
 		$response = \wp_remote_post( $this->get_api_url( '/tic/search' ), array(
-			'headers' => $this->get_request_headers( $token ),
-			'body'    => \wp_json_encode( $payload ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'body'        => \wp_json_encode( $payload ),
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_tic_search_error', 'TaxCloud API error: ' );

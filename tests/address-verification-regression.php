@@ -92,7 +92,11 @@ namespace {
 		public function get_error_code() { return key( $this->errors ); }
 		public function get_error_data() { return $this->data; }
 	}
-	class SST_Settings { public static function get( $key, $default = null ) { return $GLOBALS['settings'][ $key ] ?? $default; } }
+	require_once __DIR__ . '/fixtures/credential-settings.php';
+	class SST_Settings {
+		use SST_Test_Credential_Settings;
+		public static function get( $key, $default = null ) { return $GLOBALS['settings'][ $key ] ?? $default; }
+	}
 	class SST_Logger { public static function add() {} public static function order_log() {} }
 	class SST_Rate_Limit {
 		public static $limited = false;

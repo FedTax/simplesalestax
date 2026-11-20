@@ -50,7 +50,9 @@ function sst_unslash( $value ) {
 }
 function maybe_unserialize( $value ) { return is_string( $value ) && preg_match( '/^[aOs]:/', $value ) ? unserialize( $value ) : $value; }
 
+require_once __DIR__ . '/fixtures/credential-settings.php';
 class SST_Settings {
+	use SST_Test_Credential_Settings;
 	public static function get( $key, $default = null ) { return $default; }
 }
 class SST_Logger {

@@ -17,6 +17,10 @@ use Automattic\WooCommerce\Utilities\RestApiUtil;
  */
 class SST_Integration extends WC_Integration {
 
+	private $credential_settings = array();
+	private $credentials_save_failed = false;
+	private $saved_native_v3 = false;
+
 	/**
 	 * Constructor. Initialize the integration.
 	 *
@@ -64,6 +68,111 @@ class SST_Integration extends WC_Integration {
 	}
 
 	/**
+	 * The saved API key is only used server-side, including during Verify Settings.
+	 */
+	public function get_option( $key, $empty_value = null ) {
+		return 'tc_v3_api_key' === $key ? '' : parent::get_option( $key, $empty_value );
+	}
+
+	public function generate_v3_api_key_html( $key, $data ) {
+		$data['custom_attributes'] = array( 'autocomplete' => 'new-password' );
+		return $this->generate_password_html( $key, $data );
+	}
+
+	/**
+	 * Validate pending credentials and prepare the entire native V3 settings update.
+	 */
+	public function process_admin_options() {
+		$this->credentials_save_failed = false;
+		$this->saved_native_v3         = false;
+		SST_Settings::load_settings();
+		$post        = $this->get_post_data();
+		$version     = $post[ $this->get_field_key( 'api_version' ) ] ?? sst_get_api_version();
+		$connection  = $post[ $this->get_field_key( 'tc_key' ) ] ?? '';
+		$entered_key = $post[ $this->get_field_key( 'tc_v3_api_key' ) ] ?? '';
+		$saved_key   = SST_Settings::get( 'tc_v3_api_key' );
+		$saved_id    = SST_Settings::get( 'tc_key' );
+		$saved_login = SST_Settings::get( 'tc_id' );
+
+		if ( ! in_array( $version, array( 'v1', 'v3' ), true ) ) {
+			return $this->reject_credentials( __( 'Select a supported TaxCloud API version.', 'simple-sales-tax' ) );
+		}
+
+		$this->credential_settings = array( 'tc_v3_api_key' => $saved_key );
+		if ( 'v1' === $version ) {
+			if ( '' !== (string) $saved_key && ( ! is_string( $connection ) || trim( wp_unslash( $connection ) ) !== $saved_id ) ) {
+				return $this->reject_credentials( __( 'Keep the same TaxCloud connection when switching API versions.', 'simple-sales-tax' ) );
+			}
+			if ( '' !== (string) $saved_key && 'v3' === sst_get_api_version() && empty( $post[ $this->get_field_key( 'tc_id' ) ] ) ) {
+				return $this->reject_credentials( __( 'Enter your TaxCloud API ID before switching to V1.', 'simple-sales-tax' ) );
+			}
+		} else {
+			$this->credential_settings['tc_id'] = $saved_login;
+			$has_native_key = ! is_string( $entered_key ) || '' !== trim( $entered_key ) || '' !== (string) $saved_key;
+			if ( $has_native_key ) {
+				$prepared = $this->prepare_native_v3_settings( $connection, $entered_key, $post );
+				if ( is_wp_error( $prepared ) ) {
+					return $this->reject_credentials( $prepared->get_error_message() );
+				}
+				$this->credential_settings = $prepared + $this->credential_settings;
+				$this->saved_native_v3 = true;
+			} elseif ( empty( $saved_login ) || empty( $connection )
+				|| ( 'v3' !== sst_get_api_version() && is_callable( apply_filters( 'sst_v3_origin_provider', null ) ) )
+			) {
+				return $this->reject_credentials( __( 'Enter an API Key from Developer > API in TaxCloud.', 'simple-sales-tax' ) );
+			}
+		}
+
+		$saved = parent::process_admin_options();
+		$this->credential_settings = array();
+		SST_Settings::load_settings();
+		if ( $this->saved_native_v3 ) {
+			SST_TaxCloud_V3_API::schedule_settings_refresh();
+		}
+		return $saved;
+	}
+
+	private function reject_credentials( $message ) {
+		$this->credentials_save_failed = true;
+		WC_Admin_Settings::add_error( $message );
+		return false;
+	}
+
+	private function prepare_native_v3_settings( $connection, $entered_key, $post ) {
+		$credentials = SST_TaxCloud_V3_API::resolve_v3_credentials( $connection, $entered_key );
+		if ( is_wp_error( $credentials ) ) {
+			return $credentials;
+		}
+
+		$selected = $post[ $this->get_field_key( 'default_origin_addresses' ) ] ?? SST_Settings::get( 'default_origin_addresses' );
+		$selected = wp_unslash( (array) $selected );
+		$origins   = SST_Addresses::get_origin_addresses();
+		$mode      = SST_Settings::get( 'data_mover', false );
+		if ( ! SST_Settings::uses_v3_api_key() || $credentials['api_key'] !== SST_Settings::get( 'tc_v3_api_key' )
+			|| empty( $origins ) || array_diff( array_filter( $selected, 'is_scalar' ), array_keys( $origins ) )
+			|| ! empty( $post['sst_verified_v3_origins'] )
+		) {
+			$setup = SST_TaxCloud_V3_API::get_v3_setup( $credentials['connection_id'], $credentials['api_key'] );
+			if ( is_wp_error( $setup ) ) {
+				return $setup;
+			}
+			$origins = $setup['origins'];
+			$mode    = $setup['data_mover'];
+		}
+
+		$origins = SST_TaxCloud_V3_API::select_v3_origins( $origins, $selected );
+		if ( is_wp_error( $origins ) ) {
+			return $origins;
+		}
+
+		return $origins + array(
+			'data_mover'    => $mode,
+			'tc_key'        => $credentials['connection_id'],
+			'tc_v3_api_key' => $credentials['api_key'],
+		);
+	}
+
+	/**
 	 * Preserve settings while their fields are disabled in Data Import mode or when exemptions are disabled.
 	 *
 	 * @param array $settings Sanitized settings.
@@ -71,6 +180,7 @@ class SST_Integration extends WC_Integration {
 	 * @return array
 	 */
 	public function preserve_data_import_disabled_settings( $settings ) {
+		$settings         = array_replace( $settings, $this->credential_settings );
 		$current_settings = get_option( 'woocommerce_wootax_settings', array() );
 
 		// Preserve exemption sub-settings if exemptions are disabled
@@ -198,8 +308,6 @@ class SST_Integration extends WC_Integration {
 	public function generate_origin_address_select_html( $key, $data ) {
 		$field            = "{$this->plugin_id}{$this->id}_{$key}";
 		$origin_addresses = SST_Addresses::get_origin_addresses();
-		$api_id           = SST_Settings::get( 'tc_id' );
-		$api_key          = SST_Settings::get( 'tc_key' );
 
 		ob_start();
 		?>
@@ -214,7 +322,7 @@ class SST_Integration extends WC_Integration {
 					<legend class="screen-reader-text">
 						<span><?php echo wp_kses_post( $data['title'] ); ?></span>
 					</legend>
-					<?php if ( ! empty( $origin_addresses ) ): ?>
+					<div id="sst-origin-options" <?php if ( empty( $origin_addresses ) ) echo 'hidden'; ?>>
 						<select id="<?php echo esc_attr( $field ); ?>" name="<?php echo esc_attr( $field ); ?>[]"
 							    class="wc-enhanced-select origin-address-select" multiple="multiple"
 							    data-placeholder="<?php esc_attr_e( 'Select origin addresses', 'simple-sales-tax' ); ?>">
@@ -229,8 +337,9 @@ class SST_Integration extends WC_Integration {
 							}
 							?>
 						</select>
-					<?php elseif ( empty( $api_id ) || empty( $api_key ) ): ?>
-						<div class="notice notice-info inline sst-settings-notice">
+					</div>
+					<?php if ( empty( $origin_addresses ) && ! SST_Settings::has_api_credentials() ): ?>
+						<div class="notice notice-info inline sst-settings-notice sst-origin-notice">
 							<p>
 								<?php
 								echo wp_kses_post(
@@ -242,8 +351,8 @@ class SST_Integration extends WC_Integration {
 								?>
 							</p>
 						</div>
-					<?php else: ?>
-						<div class="notice notice-warning inline sst-settings-notice">
+					<?php elseif ( empty( $origin_addresses ) ): ?>
+						<div class="notice notice-warning inline sst-settings-notice sst-origin-notice">
 							<p>
 								<?php
 								$locations_url = 'https://app.taxcloud.com/go/locations';
@@ -280,6 +389,10 @@ class SST_Integration extends WC_Integration {
 	 * @throws Exception
 	 */
 	public function validate_default_origin_addresses_field( $key, $value ) {
+		if ( isset( $this->credential_settings[ $key ] ) ) {
+			return $this->credential_settings[ $key ];
+		}
+
 		$addresses = SST_Addresses::get_origin_addresses();
 
 		// You need addresses to have default addresses.
@@ -386,13 +499,13 @@ class SST_Integration extends WC_Integration {
 		);
 
 		foreach ( SST_Settings::get_form_fields() as $key => $field ) {
-			if ( ! in_array( $field['type'], $excluded_field_types, true ) ) {
+			if ( 'tc_v3_api_key' !== $key && ! in_array( $field['type'], $excluded_field_types, true ) ) {
 				$settings[ $key ] = SST_Settings::get( $key );
 			}
 		}
 
 		$addresses = array();
-		foreach ( SST_Settings::get( 'addresses' ) as $address ) {
+		foreach ( (array) SST_Settings::get( 'addresses', array() ) as $address ) {
 			$addresses[] = json_decode( wp_unslash( $address ), true );
 		}
 
@@ -427,13 +540,17 @@ class SST_Integration extends WC_Integration {
 	 * existing SST installations.
 	 */
 	public function refresh_origin_address_list() {
+		if ( $this->credentials_save_failed || $this->saved_native_v3 ) {
+			return;
+		}
+
 		$should_refresh_addresses = (
 			version_compare( get_option( 'wootax_version' ), '6.2', '>=' )
 			&& ! SST_Settings::get( 'address_mismatch', false )
 		);
 
 		if ( ! $should_refresh_addresses ) {
-			return $result;
+			return;
 		}
 
 		// Reload settings so new API key is used.
@@ -480,8 +597,7 @@ class SST_Integration extends WC_Integration {
 	 */
 	public function generate_integration_mode_html( $key, $data ) {
 		$field            = "{$this->plugin_id}{$this->id}_{$key}";
-		$api_id           = SST_Settings::get( 'tc_id' );
-		$api_key          = SST_Settings::get( 'tc_key' );
+		$has_credentials  = SST_Settings::has_api_credentials();
 		$data_mover       = SST_Settings::get( 'data_mover', false );
 
 		$integration_mode = $data_mover == false ? __( 'Real Time', 'simple-sales-tax' ) : __( 'Data Import', 'simple-sales-tax' );
@@ -493,7 +609,7 @@ class SST_Integration extends WC_Integration {
 			<th scope="row" class="titledesc">
 				<label for="<?php echo esc_attr( $field ); ?>">
 					<?php echo wp_kses_post( $data['title'] ); ?>
-					<?php if ( ! empty( $api_id ) && ! empty( $api_key ) ): ?>
+					<?php if ( $has_credentials ): ?>
 						<?php echo wp_kses_post( $this->get_tooltip_html( $data ) ); ?>
 					<?php endif; ?>
 				</label>
@@ -503,7 +619,7 @@ class SST_Integration extends WC_Integration {
 					<legend class="screen-reader-text">
 						<span><?php echo wp_kses_post( $data['title'] ); ?></span>
 					</legend>
-					<?php if ( ! empty( $api_id ) && ! empty( $api_key ) ): ?>
+					<?php if ( $has_credentials ): ?>
 						<div class="d-flex">
 							<input type="text"
 								id="<?php echo esc_attr( $field ); ?>"
@@ -558,7 +674,9 @@ class SST_Integration extends WC_Integration {
 	 * Updates the data mover settings.
 	 */
 	public function update_data_mover_settings() {
-		SST_TaxCloud_V3_API::update_data_mover_settings();
+		if ( ! $this->credentials_save_failed && ! $this->saved_native_v3 ) {
+			SST_TaxCloud_V3_API::update_data_mover_settings();
+		}
 	}
 
 }

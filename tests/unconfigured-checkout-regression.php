@@ -96,7 +96,9 @@ class WP_REST_Request {
 	public function get_param( $key ) { return $this->params[ $key ] ?? null; }
 }
 
+require_once __DIR__ . '/fixtures/credential-settings.php';
 class SST_Settings {
+	use SST_Test_Credential_Settings;
 	public static function get( $key, $default = null ) {
 		global $test_settings;
 		return array_key_exists( $key, $test_settings ) ? $test_settings[ $key ] : $default;

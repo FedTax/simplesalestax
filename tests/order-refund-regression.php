@@ -13,7 +13,9 @@ function maybe_unserialize( $value ) { return 'a:' === substr( $value, 0, 2 ) ? 
 function sst_integration_mode() { return 'realtime'; }
 function is_wp_error() { return false; }
 
+require_once __DIR__ . '/fixtures/credential-settings.php';
 class SST_Settings {
+	use SST_Test_Credential_Settings;
 	public static function get( $key, $default = null ) {
 		return in_array( $key, array( 'tc_id', 'tc_key' ), true ) ? 'test' : $default;
 	}

@@ -2,6 +2,23 @@
 
 Open **WooCommerce → Settings → Integration → TaxCloud for WooCommerce**.
 
+## TaxCloud API credentials
+
+**API Version** defaults to **V1 (Legacy)**. For V1, enter the TaxCloud API ID
+and API Key shown on the connection. For V3, enter the **Connection ID** shown
+on the WooCommerce connection and an **API Key** from **Developer > API**.
+When upgrading an existing store, keep its Connection ID. WooCommerce already
+stores that value in the V1 API Key field.
+
+Click **Verify Settings** to check the credentials and load available shipping
+origins. Select the origins you ship from, then click **Save changes**. A blank
+V3 API Key field keeps the previously saved key. Existing V3 stores can continue
+using their V1 credentials until they save a V3 API key.
+
+Native V3 activation requires TaxCloud to return both the integration mode and
+shipping origins. If verification fails, WooCommerce keeps the previous
+connection settings.
+
 ## WooCommerce Product Bundles
 
 TaxCloud uses the prices WooCommerce records on the bundle and its components.

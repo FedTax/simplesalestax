@@ -42,6 +42,7 @@ class SST_Settings {
 	private static $defaults = array(
 		'tc_id'                          => '',
 		'tc_key'                         => '',
+		'tc_v3_api_key'                  => '',
 		'integration_mode'               => '',
 		'default_origin_addresses'       => array(),
 		'show_exempt'                    => 'false',
@@ -74,6 +75,14 @@ class SST_Settings {
 	 */
 	public static function load_settings() {
 		self::$settings = get_option( self::$options_key, array() );
+	}
+
+	public static function uses_v3_api_key() {
+		return 'v3' === self::get( 'api_version' ) && '' !== (string) self::get( 'tc_v3_api_key' );
+	}
+
+	public static function has_api_credentials() {
+		return ! empty( self::get( 'tc_key' ) ) && ( self::uses_v3_api_key() || ! empty( self::get( 'tc_id' ) ) );
 	}
 
 	/**
@@ -186,9 +195,23 @@ class SST_Settings {
 				'title'       => __( 'TaxCloud Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
 				'description' => __(
-					'You must enter a valid TaxCloud API ID and API Key for TaxCloud for WooCommerce to work properly. Use the "Verify Settings" button to test your settings.',
+					'Enter the credentials for your selected API version. Use "Verify Settings" to test your connection.',
 					'simple-sales-tax'
 				),
+			),
+			'api_version'                 => array(
+				'title'       => __( 'API Version', 'simple-sales-tax' ),
+				'type'        => 'select',
+				'options'     => array(
+					'v1' => __( 'V1 (Legacy)', 'simple-sales-tax' ),
+					'v3' => __( 'V3', 'simple-sales-tax' ),
+				),
+				'default'     => 'v1',
+				'description' => __(
+					'Select the TaxCloud API version to use for this store.',
+					'simple-sales-tax'
+				),
+				'desc_tip'    => true,
 			),
 			'tc_id'                       => array(
 				'title'       => __( 'TaxCloud API ID', 'simple-sales-tax' ),
@@ -201,29 +224,24 @@ class SST_Settings {
 				'default'     => '',
 			),
 			'tc_key'                      => array(
-				'title'       => __( 'TaxCloud API Key', 'simple-sales-tax' ),
+				'title'       => '<span class="sst-v1-connection">' . esc_html__( 'TaxCloud API Key', 'simple-sales-tax' ) . '</span>'
+					. '<span class="sst-v3-connection" hidden>' . esc_html__( 'Connection ID', 'simple-sales-tax' ) . '</span>',
 				'type'        => 'text',
-				'description' => __(
+				'description' => '<span class="sst-v1-connection">' . esc_html__(
 					'Your TaxCloud API Key. This can be found in your TaxCloud account on the "Websites" page.',
 					'simple-sales-tax'
-				),
-				'desc_tip'    => true,
+				) . '</span><span class="sst-v3-connection" hidden>' . esc_html__(
+					'Copy the Connection ID from your WooCommerce connection in TaxCloud.',
+					'simple-sales-tax'
+				) . '</span>',
 				'default'     => '',
 			),
-			// 'tc_integration_id'            => array(
-			// 	'title'       => __( 'TaxCloud Connection ID', 'simple-sales-tax' ),
-			// 	'type'        => 'text',
-			// 	'description' => __(
-			// 		'TaxCloud Connection ID (URL ID). Automatically retrieved.',
-			// 		'simple-sales-tax'
-			// 	),
-			// 	'desc_tip'    => true,
-			// 	'default'     => '',
-			// 	'class'       => 'hidden',
-			// 	'custom_attributes' => array(
-			// 		'readonly' => 'readonly',
-			// 	),
-			// ),
+			'tc_v3_api_key'               => array(
+				'title'       => __( 'API Key', 'simple-sales-tax' ),
+				'type'        => 'v3_api_key',
+				'description' => __( 'Generate this key in TaxCloud under Developer > API. Leave the field blank to keep a key you already saved.', 'simple-sales-tax' ),
+				'default'     => '',
+			),
 			'verify_settings'             => array(
 				'title'       => __( 'Verify TaxCloud Settings', 'simple-sales-tax' ),
 				'label'       => __( 'Verify Settings', 'simple-sales-tax' ),
@@ -497,20 +515,6 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
-			'api_version'                 => array(
-				'title'       => __( 'API Version', 'simple-sales-tax' ),
-				'type'        => 'select',
-				'options'     => array(
-					'v1' => __( 'V1 (Legacy)', 'simple-sales-tax' ),
-					'v3' => __( 'V3', 'simple-sales-tax' ),
-				),
-				'default'     => 'v1',
-				'description' => __(
-					'Select the TaxCloud API version to use for tax lookups. V1 is the legacy API. V3 is the latest version with improved features. Only switch to V3 if advised by TaxCloud support.',
-					'simple-sales-tax'
-				),
-				'desc_tip'    => true,
-			),
 			'rate_limit_settings'         => array(
 				'title'       => __( 'Rate Limit Settings', 'simple-sales-tax' ),
 				'type'        => 'title',
@@ -718,8 +722,12 @@ class SST_Settings {
 	 * @param mixed  $value Option value.
 	 */
 	public static function set( $key, $value ) {
+		self::set_many( array( $key => $value ) );
+	}
+
+	public static function set_many( $values ) {
 		self::load_settings();
-		self::$settings[ $key ] = $value;
+		self::$settings = array_replace( self::$settings, $values );
 
 		update_option( self::$options_key, self::$settings );
 	}

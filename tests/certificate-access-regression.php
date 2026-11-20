@@ -93,7 +93,9 @@ namespace {
 		public function __construct( $id ) { ++Certificate_Access_Test::$customer_reads; }
 		public function __call( $method, $args ) { return ''; }
 	}
+	require_once __DIR__ . '/fixtures/credential-settings.php';
 	class SST_Settings {
+		use SST_Test_Credential_Settings;
 		public static function get( $key, $default = null ) {
 			$settings = array( 'api_version' => Certificate_Access_Test::$version, 'tc_id' => 'test', 'tc_key' => 'test', 'show_exempt' => 'true' );
 			return $settings[ $key ] ?? $default;

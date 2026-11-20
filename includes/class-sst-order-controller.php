@@ -106,8 +106,7 @@ class SST_Order_Controller {
 		// Disable integration
 		if (
 			'yes' === SST_Settings::get( 'disable_integration' )
-			|| empty( SST_Settings::get( 'tc_id' ) )
-			|| empty( SST_Settings::get( 'tc_key' ) )
+			|| ! SST_Settings::has_api_credentials()
 		) {
 			SST_Logger::order_log( __( 'Integration disabled. Skipping order capture.', 'simple-sales-tax' ), $order->get_id() );
 			return false;
@@ -222,8 +221,7 @@ class SST_Order_Controller {
 		// Disable integration
 		if (
 			'yes' === SST_Settings::get( 'disable_integration' )
-			|| empty( SST_Settings::get( 'tc_id' ) )
-			|| empty( SST_Settings::get( 'tc_key' ) )
+			|| ! SST_Settings::has_api_credentials()
 		) {
 			SST_Logger::order_log( __( 'Integration disabled. Skipping order tax calculation.', 'simple-sales-tax' ), $order->get_id() );
 			return;

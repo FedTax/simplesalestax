@@ -398,6 +398,7 @@ class SST_Addresses {
 						}
 					} catch ( \TaxCloud\Exceptions\GetLocationsException $ex ) {
 						SST_Logger::error( 'GetLocations request failed. Error was: ' . $ex->getMessage() );
+						return self::get_origin_addresses();
 					}
 				}
 			}

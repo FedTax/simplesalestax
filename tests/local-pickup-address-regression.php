@@ -16,7 +16,9 @@ function add_filter() {}
 function add_action() {}
 function sst_storefront_active() { return false; }
 
+require_once __DIR__ . '/fixtures/credential-settings.php';
 class SST_Settings {
+	use SST_Test_Credential_Settings;
 	public static function get( $key, $default = null ) {
 		global $test_settings;
 		return $test_settings[ $key ] ?? $default;

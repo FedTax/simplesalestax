@@ -2,51 +2,122 @@
 (function (data) {
   jQuery(function ($) {
 
-    // Verify TaxCloud settings
-    jQuery('#verifySettings').on('click', function (e) {
+    var $apiVersion = $('#woocommerce_wootax_api_version');
+    var $loginId = $('#woocommerce_wootax_tc_id');
+    var $connection = $('#woocommerce_wootax_tc_key');
+    var $v3Key = $('#woocommerce_wootax_tc_v3_api_key');
+    var $origins = $('#woocommerce_wootax_default_origin_addresses');
+    var $verifyResult = $('<p>', {role: 'status', hidden: true}).insertAfter('#verifySettings');
+    var $verifiedOrigins = $('<input>', {type: 'hidden', name: 'sst_verified_v3_origins', value: '1'});
+    var savedOriginOptions = null;
+
+    function updateCredentialFields() {
+      var isV3 = $apiVersion.val() === 'v3';
+      $loginId.prop('disabled', isV3).closest('tr').prop('hidden', isV3);
+      $v3Key.prop('disabled', !isV3).closest('tr').prop('hidden', !isV3);
+      $('.sst-v1-connection').prop('hidden', isV3);
+      $('.sst-v3-connection').prop('hidden', !isV3);
+    }
+
+    function resetOriginPreview() {
+      if (savedOriginOptions) {
+        $origins.empty().append(savedOriginOptions).trigger('change');
+        $('#sst-origin-options').prop('hidden', !$origins.children().length);
+        $('.sst-origin-notice').prop('hidden', false);
+        $verifiedOrigins.detach();
+        savedOriginOptions = null;
+      }
+    }
+
+    $apiVersion.on('change', updateCredentialFields);
+    $apiVersion.add($connection).add($loginId).add($v3Key).on('input change', function () {
+      resetOriginPreview();
+      $verifyResult.prop('hidden', true);
+    });
+    updateCredentialFields();
+
+    function showOriginPreview(origins) {
+      var selected = $origins.val() || [];
+      if (!savedOriginOptions) {
+        savedOriginOptions = $origins.children().clone();
+        savedOriginOptions.each(function () {
+          this.selected = selected.indexOf(this.value) !== -1;
+        });
+      }
+
+      $origins.empty();
+      origins.forEach(function (origin) {
+        var useOrigin = origins.length === 1 || selected.indexOf(origin.id) !== -1;
+        $origins.append(new Option(origin.label, origin.id, useOrigin, useOrigin));
+      });
+      $('#sst-origin-options').prop('hidden', false).append($verifiedOrigins);
+      $('.sst-origin-notice').prop('hidden', true);
+      $origins.trigger('change');
+    }
+
+    $('#verifySettings').on('click', function (e) {
       e.preventDefault();
 
-      var apiID = jQuery('#woocommerce_wootax_tc_id').val();
-      var apiKey = jQuery('#woocommerce_wootax_tc_key').val();
-      var nonce = jQuery(this).data('nonce');
+      var version = $apiVersion.val();
+      var loginId = $loginId.val();
+      var connection = $connection.val();
+      var v3Key = $v3Key.val();
+      var nonce = $(this).data('nonce');
 
-      if (!apiID || !apiKey) {
+      if (version === 'v1' && (!loginId || !connection)) {
         alert(data.strings.enter_id_and_key);
         return;
       }
 
-      // Disable button while verifying
-      var $btn = jQuery(this).prop('disabled', true).text(data.strings.verifying);
+      var $btn = $(this).prop('disabled', true).text(data.strings.verifying);
 
-      // Send AJAX request to verify credentials
-      jQuery.post(ajaxurl, {
+      var request = {
         action: 'sst_verify_taxcloud',
-        wootax_tc_id: apiID,
-        wootax_tc_key: apiKey,
+        wootax_api_version: version,
+        wootax_tc_key: connection,
         _wpnonce: nonce,
-      })
+      };
+      if (version === 'v3') {
+        request.wootax_tc_v3_api_key = v3Key;
+      } else {
+        request.wootax_tc_id = loginId;
+      }
+
+      function showFailure(message) {
+        resetOriginPreview();
+        if (version === 'v3') {
+          $verifyResult.text(message).prop('hidden', false);
+        } else {
+          alert(message);
+        }
+      }
+
+      $verifyResult.prop('hidden', true);
+      $.post(ajaxurl, request)
         .done(function (resp) {
-          if (resp.success) {
-            if (resp.data.connection_id) {
-              jQuery('#woocommerce_wootax_tc_connection_id').val(resp.data.connection_id);
-              jQuery('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + resp.data.connection_id + '#settings');
-            }
-            alert(data.strings.settings_valid);
+          if ($apiVersion.val() !== version || $connection.val() !== connection ||
+              $loginId.val() !== loginId || $v3Key.val() !== v3Key) {
+            return;
+          }
+          if (!resp.success) {
+            showFailure(data.strings.verify_failed + ' ' + resp.data);
+            return;
+          }
+          if (resp.data.connection_id) {
+            $('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + encodeURIComponent(resp.data.connection_id) + '#settings');
+          }
+          if (Array.isArray(resp.data.origins)) {
+            showOriginPreview(resp.data.origins);
+            $verifyResult.text(data.strings.settings_valid).prop('hidden', false);
           } else {
-            alert(data.strings.verify_failed + ' ' + resp.data + '.');
+            alert(data.strings.settings_valid);
           }
         })
-        .fail(function (xhr, status, error) {
-          // Handle network/server/timeouts
-          console.error('AJAX POST failed:', xhr, status, error);
-          let message = 'Request failed (' + status + ')';
-          if (xhr.status >= 400) {
-            message += ' - HTTP ' + xhr.status;
-          }
-          alert(data.strings.verify_failed + '\n\n' + message);
+        .fail(function (xhr) {
+          var error = xhr.responseJSON && xhr.responseJSON.data;
+          showFailure(error || data.strings.verify_failed);
         })
         .always(function () {
-          // Re-enable button after request
           $btn.prop('disabled', false).text(data.strings.verify_btn);
         });
     });
@@ -158,20 +229,18 @@
             var integrationMode = resp.data.integration_mode;
             jQuery('#woocommerce_wootax_integration_mode').val(integrationMode);
             if (resp.data.connection_id) {
-              jQuery('#woocommerce_wootax_tc_connection_id').val(resp.data.connection_id);
-              jQuery('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + resp.data.connection_id + '#settings');
+              jQuery('.tc-connection-link').attr('href', 'https://app.taxcloud.com/go/integrations/' + encodeURIComponent(resp.data.connection_id) + '#settings');
             }
             alert(data.strings.mode_refreshed + integrationMode);
           } else {
-            alert(data.strings.went_wrong);
+            alert(resp.data || data.strings.went_wrong);
           }
         })
-        .fail(function (xhr, status, error) {
-          console.error('AJAX POST failed:', xhr, status, error);
-          alert(data.strings.went_wrong);
+        .fail(function (xhr) {
+          var error = xhr.responseJSON && xhr.responseJSON.data;
+          alert(error || data.strings.went_wrong);
         })
         .always(function () {
-          // Re-enable button after request
           $btn.prop('disabled', false).removeClass('is-busy');
         });
     });

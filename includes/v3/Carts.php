@@ -1,7 +1,6 @@
 <?php
 namespace TaxCloud_V3;
 
-use SST_Settings;
 use TaxCloud_V3\Model\Address;
 use TaxCloud_V3\Model\CartItem;
 use TaxCloud_V3\Model\Currency;
@@ -19,15 +18,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since   8.4.1
  */
 class Carts extends RequestBase {
-
-	/**
-	 * Initialize the class.
-	 *
-	 * @since 8.4.1
-	 */
-	function __construct() {
-		$this->connection_id = SST_Settings::get( 'tc_key' );
-	}
 
 	/**
 	 * Get API URL for carts.
@@ -72,15 +62,16 @@ class Carts extends RequestBase {
 			return $payload;
 		}
 
-		$token = $this->get_auth_token();
-		if ( \is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers();
+		if ( \is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$response = \wp_remote_post( $this->get_api_url(), array(
-			'headers' => $this->get_request_headers( $token ),
-			'body'    => \wp_json_encode( $payload ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'body'        => \wp_json_encode( $payload ),
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_carts_error', 'Failed to calculate tax: ' );
@@ -106,9 +97,9 @@ class Carts extends RequestBase {
 			return new \WP_Error( 'sst_v3_carts_invalid_request', 'Optional cart order fields must be an array.' );
 		}
 
-		$token = $this->get_auth_token();
-		if ( \is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers();
+		if ( \is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$payload = array(
@@ -126,9 +117,10 @@ class Carts extends RequestBase {
 		}
 
 		$response = \wp_remote_post( $this->get_order_api_url(), array(
-			'headers' => $this->get_request_headers( $token ),
-			'body'    => \wp_json_encode( $payload ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'body'        => \wp_json_encode( $payload ),
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_carts_error', 'Failed to create order from cart: ' );
@@ -147,14 +139,15 @@ class Carts extends RequestBase {
 			return new \WP_Error( 'sst_v3_carts_error', 'A cart ID is required.' );
 		}
 
-		$token = $this->get_auth_token();
-		if ( \is_wp_error( $token ) ) {
-			return $token;
+		$headers = $this->get_request_headers();
+		if ( \is_wp_error( $headers ) ) {
+			return $headers;
 		}
 
 		$response = \wp_remote_get( $this->get_api_url( $cart_id ), array(
-			'headers' => $this->get_request_headers( $token ),
-			'timeout' => 30,
+			'headers'     => $headers,
+			'redirection' => 0,
+			'timeout'     => 30,
 		) );
 
 		return $this->parse_json_response( $response, 'sst_v3_carts_error', 'Failed to retrieve cart: ' );

@@ -111,7 +111,12 @@ module.exports = ({ task, records, login, getSite }) => describe('admin order ex
 
     cy.get('button.add-line-item').click();
     cy.get('button.add-order-item').click();
-    cy.get('.wc-backbone-modal .wc-product-search').last().next('.select2-container').click();
+    cy.get('#wc-backbone-modal-dialog .wc-product-search').first()
+      .should('have.class', 'select2-hidden-accessible').then(($search) => {
+        const $selection = $search.next('.select2-container').find('.select2-selection');
+        // Recent WooCommerce versions open the product search when the modal loads.
+        if ($selection.attr('aria-expanded') !== 'true') cy.wrap($selection).click();
+      });
     cy.get('.select2-container--open .select2-search__field').type(String(productId));
     cy.contains('.select2-results__option', `Cypress V3 ${Cypress.env('pluginV3Run')}`).click();
     cy.get('.wc-backbone-modal #btn-ok').click();

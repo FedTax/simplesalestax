@@ -61,6 +61,9 @@ namespace {
 		public static $during_upload;
 		public static $capture_allowed = true;
 		public static $denied_cap = '';
+		public static $origins;
+		public static $setup_mode = false;
+		public static $setup_failure;
 
 		public static function reset( $version = null ) {
 			self::$v1 = self::$v3 = self::$transients = array();
@@ -74,6 +77,9 @@ namespace {
 			self::$during_upload = null;
 			self::$capture_allowed = true;
 			self::$denied_cap = '';
+			self::$origins = null;
+			self::$setup_mode = false;
+			self::$setup_failure = null;
 			WC_Order::$persisted_meta = array();
 			WC_Order::$fees = 1;
 			WC_Order::$status = 'completed';
@@ -91,6 +97,17 @@ namespace {
 		public static function request( $method, $url, $args ) {
 			self::$v3[] = array( $method, $url, $args );
 			$path = parse_url( $url, PHP_URL_PATH );
+			if ( isset( $args['headers']['X-API-KEY'] ) ) {
+				if ( preg_match( '#^/mgmt/connections/[^/]+$#', $path ) ) {
+					return array(
+						'response' => array( 'code' => self::$setup_failure ?? 200 ),
+						'body' => json_encode( array( 'options' => array( 'data_mover' => array( 'flag' => self::$setup_mode ) ) ) ),
+					);
+				}
+				if ( '/ping' === substr( $path, -5 ) && 'rotated-bad-key' === $args['headers']['X-API-KEY'] ) {
+					return array( 'response' => array( 'code' => 401 ), 'body' => '{"detail":"Rejected rotated-bad-key"}' );
+				}
+			}
 			if ( self::$import && preg_match( '#/orders(?:/([^/]+))?$#', $path, $match ) ) {
 				$status = 200;
 				if ( 'GET' === $method ) {
@@ -144,12 +161,19 @@ namespace {
 	function add_action() {}
 	function do_action() {}
 	function add_filter() {}
-	function apply_filters( $hook, $value ) { return 'sst_should_capture_order' === $hook ? Routing_Http::$capture_allowed : $value; }
+	function apply_filters( $hook, $value ) {
+		if ( 'sst_should_capture_order' === $hook ) { return Routing_Http::$capture_allowed; }
+		if ( 'sst_v3_origin_provider' === $hook && is_array( Routing_Http::$origins ) ) {
+			return static function () { return Routing_Http::$origins; };
+		}
+		return $value;
+	}
 	function did_action() { return 0; }
 	function get_option( $key, $default = null ) { return 'woocommerce_wootax_settings' === $key ? Routing_Http::$options : $default; }
 	function update_option( $key, $value ) { Routing_Http::$options = $value; }
 	function get_transient( $key ) { return Routing_Http::$transients[ $key ] ?? false; }
 	function set_transient( $key, $value, $ttl = 0 ) { Routing_Http::$transients[ $key ] = $value; }
+	function wp_next_scheduled() { return true; }
 	function get_current_user_id() { return 42; }
 	function get_user_by( $field, $id ) { return new WP_User( $id ); }
 	function wp_get_current_user() { return new WP_User( 42 ); }
@@ -286,7 +310,7 @@ namespace {
 	// Optional snapshot mode compares the same legacy requests against an exported
 	// develop tree without checking out or running that branch on the store.
 	$plugin_root = getenv( 'SST_ROUTING_PLUGIN_ROOT' ) ?: dirname( __DIR__ );
-	foreach ( array( 'class-sst-settings.php', 'sst-functions.php', 'class-sst-certificates.php',
+	foreach ( array( 'class-sst-settings.php', 'sst-functions.php', 'class-sst-taxcloud-v3-api.php', 'class-sst-certificates.php',
 		'class-sst-origin-address.php', 'class-sst-addresses.php', 'class-sst-tic.php',
 		'abstracts/class-sst-abstract-cart.php', 'class-sst-order.php', 'class-sst-order-controller.php', 'class-sst-ajax.php' ) as $file ) {
 		require $plugin_root . '/includes/' . $file;
@@ -402,6 +426,53 @@ namespace {
 		SST_Settings::load_settings();
 		expect_same( $value, sst_get_api_version(), 'Saved selection survives settings reload' );
 	}
+
+	// Native setup reads live contracts without changing the saved profile.
+	Routing_Http::reset( 'v1' );
+	$connection_id = '11111111-1111-4111-8111-111111111111';
+	SST_Settings::set_many( array( 'tc_id' => '', 'tc_key' => '', 'addresses' => array() ) );
+	$before_setup = Routing_Http::$options;
+	$credentials = SST_TaxCloud_V3_API::resolve_v3_credentials( $connection_id, 'developer-key' );
+	$unavailable = SST_TaxCloud_V3_API::get_v3_setup( $credentials['connection_id'], $credentials['api_key'] );
+	expect_same( 'sst_v3_origin_unavailable', $unavailable->get_error_code(), 'Unconfirmed origin contract gates native activation' );
+	expect_same( $before_setup, Routing_Http::$options, 'Read-only setup leaves the original store unchanged' );
+	expect_same( array( '/tax/connections/' . $connection_id . '/ping', '/mgmt/connections/' . $connection_id ), array_map( static function ( $request ) {
+		return parse_url( $request[1], PHP_URL_PATH );
+	}, Routing_Http::$v3 ), 'Native credentials verify Ping then integration mode' );
+	foreach ( Routing_Http::$v3 as $request ) {
+		expect_same( 'developer-key', $request[2]['headers']['X-API-KEY'], 'Both setup requests use the form key' );
+		expect_same( false, isset( $request[2]['headers']['Authorization'] ), 'Native setup skips bearer authentication' );
+	}
+
+	$origin = new SST_Origin_Address( 'origin-1', false, '1 Main St', '', 'Raleigh', 'NC', '27601' );
+	Routing_Http::$origins = array( $origin );
+	$setup = SST_TaxCloud_V3_API::get_v3_setup( $connection_id, 'developer-key' );
+	expect_same( false, $setup['data_mover'], 'Real Time comes from TaxCloud' );
+	$addresses = SST_TaxCloud_V3_API::select_v3_origins( $setup['origins'], array() );
+	expect_same( array( 'origin-1' ), $addresses['default_origin_addresses'], 'A sole origin is selected automatically' );
+	Routing_Http::$origins[] = new SST_Origin_Address( 'origin-2', false, '2 Main St', '', 'Raleigh', 'NC', '27601' );
+	$setup = SST_TaxCloud_V3_API::get_v3_setup( $connection_id, 'developer-key' );
+	expect_same( 'sst_v3_origin_required', SST_TaxCloud_V3_API::select_v3_origins( $setup['origins'], array() )->get_error_code(), 'Multiple origins require a choice' );
+	expect_same( array( 'origin-1' ), SST_TaxCloud_V3_API::select_v3_origins( $setup['origins'], array( 'origin-1', 'removed' ) )['default_origin_addresses'], 'Previously selected valid origins are retained' );
+	SST_Settings::set_many( $addresses + array( 'api_version' => 'v3', 'tc_key' => $connection_id, 'tc_v3_api_key' => 'developer-key' ) );
+	expect_same( true, SST_Settings::has_api_credentials(), 'V3-only store is ready without a login ID' );
+	expect_same( 'developer-key', SST_TaxCloud_V3_API::resolve_v3_credentials( $connection_id, '' )['api_key'], 'Blank key preserves the saved key' );
+	expect_same( 'sst_v3_connection_id', SST_TaxCloud_V3_API::resolve_v3_credentials( '22222222-2222-4222-8222-222222222222', 'new-key' )->get_error_code(), 'Rebinding an existing connection is blocked' );
+	$rejected = SST_TaxCloud_V3_API::get_v3_setup( $connection_id, 'rotated-bad-key' );
+	expect_same( 'TaxCloud authentication failed: Rejected [redacted]', $rejected->get_error_message(), 'Rejected replacement keys are redacted' );
+	expect_same( 'developer-key', SST_Settings::get( 'tc_v3_api_key' ), 'Rejected replacement does not clobber the old key' );
+	Routing_Http::$setup_mode = true;
+	expect_same( true, SST_TaxCloud_V3_API::update_data_mover_settings(), 'Native refresh syncs mode and origins using saved credentials' );
+	expect_same( true, SST_Settings::get( 'data_mover' ), 'Data Import comes from TaxCloud' );
+	$before_refresh = Routing_Http::$options;
+	Routing_Http::$setup_failure = 403;
+	expect_same( 'sst_v3_integration_mode', SST_TaxCloud_V3_API::update_data_mover_settings()->get_error_code(), 'Mode refresh reports denied access' );
+	expect_same( $before_refresh, Routing_Http::$options, 'Failed refresh preserves both the mode and origins' );
+	SST_Settings::set( 'api_version', 'v1' );
+	expect_same( false, SST_Settings::has_api_credentials(), 'V1 still requires a V1 login ID' );
+	SST_Settings::set( 'tc_id', 'legacy-id' );
+	expect_same( true, SST_Settings::has_api_credentials(), 'Switching to V1 retains its credential checks' );
+	expect_same( 'developer-key', SST_Settings::get( 'tc_v3_api_key' ), 'Switching versions preserves the saved V3 key' );
 
 	// Saved origins may contain an empty ZIP+4. V3 rejects a trailing hyphen.
 	foreach ( array( 'v1', 'v3' ) as $version ) {
@@ -643,7 +714,14 @@ namespace {
 			$posts = array_filter( Routing_Http::$v3, function( $request ) { return 'POST' === $request[0]; } );
 			expect_same( array(), $posts, 'Changed uploaded order sends no POST' );
 		}
+		if ( 'lost' === $fault ) {
+			Routing_Http::$v3 = array();
+			SST_Settings::set( 'tc_v3_api_key', 'new-key-for-the-same-connection' );
+		}
 		expect_same( true, $order->capture_data_import_manually(), 'Unchanged order can retry ' . $fault );
+		if ( 'lost' === $fault ) {
+			expect_same( 'new-key-for-the-same-connection', Routing_Http::$v3[0][2]['headers']['X-API-KEY'], 'An interrupted upload can be reconciled with a key for the same connection' );
+		}
 		expect_same( 'captured', $order->get_taxcloud_status(), 'Only a complete upload marks the order captured' );
 		$posts = array_values( array_filter( Routing_Http::$v3, function( $request ) { return 'POST' === $request[0]; } ) );
 		expect_same( in_array( $fault, array( 'lookup', 'partial' ), true ) ? 1 : 0, count( $posts ), 'Retry only posts the package missing from TaxCloud' );

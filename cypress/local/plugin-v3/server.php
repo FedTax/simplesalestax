@@ -55,6 +55,7 @@ function sst_e2e_credentials( $context ) {
     return array(
       'apiLoginIDRealtime' => 'cypress-fixture-realtime-login', 'apiKeyRealtime' => 'cypress-fixture-realtime-connection',
       'apiLoginIDDataImport' => 'cypress-fixture-import-login', 'apiKeyDataImport' => 'cypress-fixture-import-connection',
+      'nativeKeyRealtime' => 'cypress-native-realtime', 'nativeKeyDataImport' => 'cypress-native-import',
     );
   }
   $file = '/tmp/sst-cypress-' . $context['run'] . '/credentials.json';
@@ -96,9 +97,15 @@ add_filter( 'option_woocommerce_wootax_settings', function( $settings ) {
   $suffix = ! empty( $context['dataMover'] ) ? 'DataImport' : 'Realtime';
   $settings['tc_id'] = $credentials[ 'apiLoginID' . $suffix ];
   $settings['tc_key'] = $credentials[ 'apiKey' . $suffix ];
+  $settings['tc_v3_api_key'] = '';
+  if ( ! empty( $context['nativeV3'] ) ) {
+    $settings['tc_id'] = '';
+    $settings['tc_v3_api_key'] = $credentials[ 'nativeKey' . $suffix ];
+  }
   if ( ! empty( $context['unconfigured'] ) ) {
     $settings['tc_id'] = '';
     $settings['tc_key'] = '';
+    $settings['tc_v3_api_key'] = '';
     $settings['addresses'] = array();
     $settings['default_origin_addresses'] = array();
   }
@@ -217,6 +224,10 @@ function sst_e2e_record( $url, $args, $response ) {
   $matched = null;
   if ( preg_match( '#/connections/([^/]+)#', $path, $connection ) ) {
     $matched = rawurldecode( $connection[1] ) === $credentials[ 'apiKey' . $suffix ];
+  }
+  if ( ! empty( $context['nativeV3'] ) ) {
+    $matched = false !== $matched && ! isset( $args['headers']['Authorization'] )
+      && ( $args['headers']['X-API-KEY'] ?? '' ) === $credentials[ 'nativeKey' . $suffix ];
   }
   $path = preg_replace( '#/connections/[^/]+#', '/connections/:connection', $path );
   $body = json_decode( $args['body'] ?? '', true );

@@ -34,6 +34,20 @@ abstract class RequestBase {
 	 */
 	protected $connection_id;
 
+	private $api_key;
+
+	/**
+	 * An explicit key, including an empty string for legacy auth, overrides the saved key.
+	 */
+	public function __construct( $connection_id = null, $api_key = null ) {
+		$this->connection_id = (string) ( $connection_id ?? SST_Settings::get( 'tc_key' ) );
+		$this->api_key       = (string) ( $api_key ?? SST_Settings::get( 'tc_v3_api_key' ) );
+	}
+
+	public function get_connection_id() {
+		return $this->connection_id;
+	}
+
 	/**
 	 * API Base URLs.
 	 */
@@ -90,16 +104,26 @@ abstract class RequestBase {
 	/**
 	 * Build common headers for an authenticated Sales Tax API request.
 	 *
-	 * @param string $token Bearer token.
+	 * @param string|null $api_login_id Explicit legacy API Login ID.
+	 * @param string|null $api_key Explicit legacy API key.
 	 *
-	 * @return array Request headers.
+	 * @return array|\WP_Error Request headers.
 	 * @since 8.4.17
 	 */
-	protected function get_request_headers( $token ) {
-		$headers = array(
-			'Authorization' => 'Bearer ' . $token,
-			'Content-Type'  => 'application/json',
-		);
+	protected function get_request_headers( $api_login_id = null, $api_key = null ) {
+		$headers = array( 'Content-Type' => 'application/json' );
+		if ( '' !== $this->api_key && null === $api_login_id && null === $api_key ) {
+			if ( '' === $this->connection_id ) {
+				return new \WP_Error( 'sst_v3_auth_error', 'A TaxCloud connection ID is required.' );
+			}
+			$headers['X-API-KEY'] = $this->api_key;
+		} else {
+			$token = $this->get_auth_token( $api_login_id, $api_key );
+			if ( \is_wp_error( $token ) ) {
+				return $token;
+			}
+			$headers['Authorization'] = 'Bearer ' . $token;
+		}
 
 		if ( function_exists( 'sst_get_user_agent' ) ) {
 			$headers['User-Agent'] = sst_get_user_agent();
@@ -120,7 +144,7 @@ abstract class RequestBase {
 	 */
 	protected function parse_json_response( $response, $error_code, $error_prefix ) {
 		if ( \is_wp_error( $response ) ) {
-			return $response;
+			return $this->sanitize_transport_error( $response );
 		}
 
 		$status = \wp_remote_retrieve_response_code( $response );
@@ -148,6 +172,19 @@ abstract class RequestBase {
 	 * @since 8.4.17
 	 */
 	protected function get_error_message( $body ) {
+		$message = $this->extract_error_message( $body );
+		return '' === $this->api_key ? $message : str_replace( $this->api_key, '[redacted]', $message );
+	}
+
+	protected function sanitize_transport_error( $error ) {
+		if ( '' === $this->api_key ) {
+			return $error;
+		}
+
+		return new \WP_Error( $error->get_error_code(), str_replace( $this->api_key, '[redacted]', $error->get_error_message() ) );
+	}
+
+	private function extract_error_message( $body ) {
 		$data = \json_decode( $body, true );
 
 		if ( is_array( $data ) ) {
@@ -211,7 +248,9 @@ abstract class RequestBase {
 			return new \WP_Error( 'sst_v3_auth_error', 'No access token received from TaxCloud v3 API.' );
 		}
 
-		if ( ! empty( $data['connection_id'] ) && strlen( $data['connection_id'] ) > 10 ) {
+		if ( ! empty( $data['connection_id'] ) && strlen( $data['connection_id'] ) > 10
+			&& $api_login_id === SST_Settings::get( 'tc_id' ) && $api_key === SST_Settings::get( 'tc_key' )
+		) {
 			SST_Settings::set( 'tc_integration_id', $data['connection_id'] ); // Set integration id which returns from taxcloud
 		}
 

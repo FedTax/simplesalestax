@@ -13,7 +13,9 @@ function maybe_unserialize( $value ) { return 'a:' === substr( $value, 0, 2 ) ? 
 function sst_integration_mode() { return 'realtime'; }
 function wp_json_encode( $value ) { return json_encode( $value ); }
 
+require_once __DIR__ . '/fixtures/credential-settings.php';
 class SST_Settings {
+	use SST_Test_Credential_Settings;
 	public static $capture = 'yes';
 	public static function get( $key, $default = null ) {
 		if ( 'capture_orders_in_taxcloud' === $key ) {
