@@ -69,6 +69,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 
 		add_action( 'woocommerce_checkout_create_order_shipping_item', array( $this, 'add_shipping_meta' ), 10, 3 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'save_cart_item_key' ), 10, 2 );
+		add_action( 'woocommerce_checkout_create_order_fee_item', array( $this, 'save_cart_fee_key' ), 10, 2 );
 
 		parent::__construct();
 
@@ -84,6 +85,18 @@ class SST_Checkout extends SST_Abstract_Cart {
 	public function save_cart_item_key( $item, $cart_item_key ) {
 		if ( $this->is_integration_active() ) {
 			$item->add_meta_data( '_sst_cart_item_key', $cart_item_key, true );
+		}
+	}
+
+	/**
+	 * Retain the cart fee ID for Data Import, including fees with custom IDs.
+	 *
+	 * @param WC_Order_Item_Fee $item    New order fee.
+	 * @param string            $fee_key Original WooCommerce cart fee key.
+	 */
+	public function save_cart_fee_key( $item, $fee_key ) {
+		if ( 'data_mover' === sst_integration_mode() && $this->is_integration_active() ) {
+			$item->add_meta_data( '_sst_cart_fee_key', (string) $fee_key, true );
 		}
 	}
 
@@ -1100,8 +1113,9 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$order->set_certificate_id( $certificate_id );
 		$order->set_packages( $packages );
 
-		// Fix tax totals for orders created via store API
-		if ( 'store-api' === $order->get_created_via() ) {
+		// Rebuild Store API lines only when TaxCloud calculates taxes. In Data
+		// Import, the order may already have taxes that are absent from the cart rates.
+		if ( 'data_mover' !== sst_integration_mode() && 'store-api' === $order->get_created_via() ) {
 			$order->remove_order_items( 'line_item' );
 			$order->remove_order_items( 'shipping' );
 			$order->remove_order_items( 'fee' );
@@ -1175,6 +1189,11 @@ class SST_Checkout extends SST_Abstract_Cart {
 	 */
 	public function add_shipping_meta( $item, $package_key, $package ) {
 		if ( ! $this->is_integration_active() ) {
+			return;
+		}
+
+		if ( 'data_mover' === sst_integration_mode() ) {
+			$item->add_meta_data( '_sst_shipping_package_key', (string) $package_key, true );
 			return;
 		}
 
