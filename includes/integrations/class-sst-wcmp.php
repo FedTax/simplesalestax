@@ -118,7 +118,7 @@ class SST_WCMP extends SST_Marketplace_Integration {
 
 		if ( isset( $_REQUEST['wootax_tic'][ $variation_id ] ) ) {
 			$select_args['value'] = sanitize_text_field(
-				$_REQUEST['wootax_tic'][ $variation_id ]
+				wp_unslash( $_REQUEST['wootax_tic'][ $variation_id ] )
 			);
 		}
 
@@ -151,7 +151,7 @@ class SST_WCMP extends SST_Marketplace_Integration {
 
 		if ( isset( $_REQUEST['wootax_tic'][ $product_id ] ) ) {
 			$select_args['value'] = sanitize_text_field(
-				$_REQUEST['wootax_tic'][ $product_id ]
+				wp_unslash( $_REQUEST['wootax_tic'][ $product_id ] )
 			);
 		}
 
@@ -230,7 +230,8 @@ class SST_WCMP extends SST_Marketplace_Integration {
 			);
 		} catch ( Exception $ex ) {
 			// Log the error with debug context.
-			SST_Logger::add( sprintf( __( 'Failed to get origin address for seller %d: %s. Falling back to default store origin.', 'simple-sales-tax' ), $seller_id, $ex->getMessage() ), array(
+			/* translators: 1: seller ID, 2: error message. */
+			SST_Logger::add( sprintf( __( 'Failed to get origin address for seller %1$d: %2$s. Falling back to default store origin.', 'simple-sales-tax' ), $seller_id, $ex->getMessage() ), array(
 				'source' => 'wcmp',
 				'seller_address' => $address,
 				'seller_id' => $seller_id

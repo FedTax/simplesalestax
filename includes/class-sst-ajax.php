@@ -62,8 +62,9 @@ class SST_Ajax {
 
 	/** Handle a manual Data Import capture from the order editor. */
 	public static function capture_order() {
-		$id = $_POST['order_id'] ?? '';
-		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) || ! is_string( $id )
+		$id             = isset( $_POST['order_id'] ) && is_string( $_POST['order_id'] ) ? wp_unslash( $_POST['order_id'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
+		if ( 'POST' !== $request_method
 			|| ! ctype_digit( $id ) || (string) (int) $id !== $id || '0' === $id
 		) {
 			wp_send_json_error( array( 'message' => __( 'Invalid order ID.', 'simple-sales-tax' ) ), 400 );
@@ -187,7 +188,7 @@ class SST_Ajax {
 			return;
 		}
 
-		$certificate_id = wp_unslash( $_POST['certificate_id'] ?? '' );
+		$certificate_id = wp_unslash( $_POST['certificate_id'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		if ( ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
 			wp_send_json_error( __( 'Invalid exemption certificate ID.', 'simple-sales-tax' ) );
 			return;
@@ -401,7 +402,7 @@ class SST_Ajax {
 		$update_certificate = isset( $_POST['exemption_certificate'] ) && $can_manage_certificates;
 
 		if ( $update_certificate ) {
-			$certificate_id = wp_unslash( $_POST['exemption_certificate'] );
+			$certificate_id = wp_unslash( $_POST['exemption_certificate'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			if ( '' === $certificate_id || 'none' === $certificate_id ) {
 				$certificate_id = '';
 			} elseif ( SST_SINGLE_PURCHASE_CERT_ID !== $certificate_id && ! SST_Certificates::is_valid_certificate_id( $certificate_id ) ) {
@@ -479,7 +480,7 @@ class SST_Ajax {
 	 */
 	public static function dismiss_taxcloud_notice() {
 		check_ajax_referer( 'dismiss_taxcloud_notice', 'nonce' );
-		$id = sanitize_text_field( wp_unslash( $_POST['notice_id'] ) );
+		$id = isset( $_POST['notice_id'] ) ? sanitize_text_field( wp_unslash( $_POST['notice_id'] ) ) : '';
 		$dismissed_notices = SST_Settings::get( 'dismissed_notices', [] );
 		if ( ! in_array( $id, $dismissed_notices, true ) ) {
 			$dismissed_notices[] = $id;
@@ -510,7 +511,7 @@ class SST_Ajax {
 		check_ajax_referer( 'sst-debug-order-nonce' );
 
 		// Get the order ID.
-		$order_id = (int) sanitize_text_field( wp_unslash( $_POST['order_id'] ) );
+		$order_id = isset( $_POST['order_id'] ) ? (int) sanitize_text_field( wp_unslash( $_POST['order_id'] ) ) : 0;
 
 		// Order object.
 		$order = wc_get_order( $order_id );

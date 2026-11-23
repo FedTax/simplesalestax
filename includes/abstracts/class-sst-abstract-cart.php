@@ -722,14 +722,14 @@ abstract class SST_Abstract_Cart {
 		// A package lookup submits one cart. Never accept an empty, unrelated,
 		// or partial successful response as a zero-tax quote.
 		if ( ! isset( $response['items'] ) || ! is_array( $response['items'] ) || 1 !== count( $response['items'] ) ) {
-			throw new UnexpectedValueException( $invalid_response );
+			throw new UnexpectedValueException( $invalid_response ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		$cart = reset( $response['items'] );
 		if ( ! is_array( $cart ) || ( $cart['cartId'] ?? null ) !== $expected_cart['cartId']
 			|| ! isset( $cart['lineItems'] ) || ! is_array( $cart['lineItems'] )
 			|| count( $cart['lineItems'] ) !== count( $expected_cart['lineItems'] ) ) {
-			throw new UnexpectedValueException( $invalid_response );
+			throw new UnexpectedValueException( $invalid_response ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		$expected_indices = array_fill_keys( array_column( $expected_cart['lineItems'], 'index' ), true );
@@ -740,7 +740,7 @@ abstract class SST_Abstract_Cart {
 			if ( ! ( is_int( $index ) || ( is_string( $index ) && ctype_digit( $index ) ) )
 				|| ! isset( $expected_indices[ $index ] ) || array_key_exists( $index, $tax_amounts )
 				|| ! is_numeric( $amount ) || ! is_finite( (float) $amount ) ) {
-				throw new UnexpectedValueException( $invalid_response );
+				throw new UnexpectedValueException( $invalid_response ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 			$tax_amounts[ $index ] = $amount;
 		}

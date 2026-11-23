@@ -326,6 +326,7 @@ class SST_Certificates {
 		$formatted      = array(
 			'CertificateID'              => $certificate_id,
 			'CertificateLabel'           => $short_id
+				/* translators: %s: first characters of the certificate ID. */
 				? sprintf( __( 'ID %s…', 'simple-sales-tax' ), $short_id )
 				: __( 'ID unavailable', 'simple-sales-tax' ),
 			'PurchaserName'              => $purchaser_name ?: __( 'Purchaser not specified', 'simple-sales-tax' ),
@@ -988,7 +989,7 @@ class SST_Certificates {
 			$response = $v3_exemptions->delete_certificate( $certificate_id );
 
 			if ( is_wp_error( $response ) ) {
-				throw new \Exception( $response->get_error_message() );
+				throw new \Exception( $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 		} else {
 			$request = new \TaxCloud\Request\DeleteExemptCertificate(

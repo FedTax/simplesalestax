@@ -597,6 +597,7 @@ function sst_render_certificate_table( $user_id = 0, $options = array() ) {
 			'refresh_failed'       => __( 'Failed to refresh certificates', 'simple-sales-tax' ),
 			'fetch_failed'         => __( 'Failed to load exemption certificates', 'simple-sales-tax' ),
 			'loading'              => __( 'Loading exemption certificates...', 'simple-sales-tax' ),
+			/* translators: 1: number of visible certificates, 2: total number of certificates. */
 			'showing_certificates' => __( 'Showing %1$d of %2$d certificates', 'simple-sales-tax' ),
 			'delete_certificate'   => __(
 				'Are you sure you want to delete this certificate? This action is irreversible.',

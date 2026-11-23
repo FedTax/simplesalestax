@@ -5,7 +5,12 @@
   "scripts": {
     "build": "npm run build:blocks && npm run build:makepot && grunt",
     "build:makepot": "npx @wp-blocks/make-pot . ./languages --slug simple-sales-tax --domain plugin --exclude .git,build,cypress,docker,node_modules,vendor,*.config.js",
-    "archive": "cross-var wp dist-archive . releases/simple-sales-tax-$npm_package_version.zip --plugin-dirname=simple-sales-tax --format=zip",
+    "archive": "cross-var wp dist-archive . releases/simple-sales-tax-$npm_package_version.zip --plugin-dirname=simple-sales-tax --format=zip --create-target-dir --force",
+    "qit": "npm run archive && npm run qit:security && npm run qit:validation && npm run qit:plugin-check",
+    "qit:security": "cross-var qit run:security 18734005530463 --zip=releases/simple-sales-tax-$npm_package_version.zip",
+    "qit:validation": "cross-var qit run:validation 18734005530463 --zip=releases/simple-sales-tax-$npm_package_version.zip",
+    "qit:plugin-check": "cross-var qit run:plugin-check 18734005530463 --zip=releases/simple-sales-tax-$npm_package_version.zip",
+    "qit:local": "php ../plugin-check/vendor/bin/phpcs -n -p --standard=../plugin-check/phpcs-rulesets/plugin-review.xml --ignore=includes/vendor,node_modules,tests,cypress,releases,docker,scripts . && php ../plugin-check/vendor/bin/phpcs -n -p --standard=WordPress,PluginCheck --sniffs=WordPress.Security.EscapeOutput,WordPress.WP.I18n,PluginCheck.CodeAnalysis.EnqueuedResourceOffloading,PluginCheck.CodeAnalysis.Offloading,WordPress.Security.ValidatedSanitizedInput,WordPress.Security.SafeRedirect --runtime-set text_domain simple-sales-tax --ignore=includes/vendor,node_modules,tests,cypress,releases,docker,scripts .",
     "cypress:open": "cypress open --e2e",
     "cypress:run": "cypress run",
     "test:e2e": "node cypress/run.js plugin",
