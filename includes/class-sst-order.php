@@ -55,14 +55,18 @@ class SST_Order extends SST_Abstract_Cart {
 	 */
 	protected $order = null;
 
+	/** @var bool Replace copied rates when a renewal item receives a TaxCloud quote. */
+	private $replace_copied_taxes;
+
 	/**
 	 * Constructor.
 	 *
-	 * @param mixed $order Order ID or WC_Order instance.
+	 * @param mixed $order                Order ID or WC_Order instance.
+	 * @param bool  $replace_copied_taxes Whether TaxCloud quotes replace copied renewal rates.
 	 *
 	 * @since 5.0
 	 */
-	public function __construct( $order ) {
+	public function __construct( $order, $replace_copied_taxes = false ) {
 		if ( is_numeric( $order ) ) {
 			$this->order = wc_get_order( $order );
 		} else {
@@ -70,6 +74,8 @@ class SST_Order extends SST_Abstract_Cart {
 				$this->order = $order;
 			}
 		}
+
+		$this->replace_copied_taxes = $replace_copied_taxes;
 
 		parent::__construct();
 	}
@@ -87,6 +93,11 @@ class SST_Order extends SST_Abstract_Cart {
 		}
 
 		$result = parent::calculate_taxes();
+		if ( ! $result && $this->replace_copied_taxes && $this->is_integration_active() ) {
+			// An earlier package may have been quoted before a later package failed.
+			$this->update_taxes();
+		}
+
 		$certificate_id = $this->get_certificate_id();
 
 		if ( ! $result || ! $certificate_id ) {
@@ -433,7 +444,8 @@ class SST_Order extends SST_Abstract_Cart {
 		);
 
 		foreach ( $item_ids as $item_id ) {
-			$this->set_product_tax( $item_id, 0 );
+			// Keep other rates until TaxCloud returns a quote for the item.
+			$this->set_order_item_tax( $item_id, 0, false );
 		}
 
 		$this->update_taxes();
@@ -457,8 +469,19 @@ class SST_Order extends SST_Abstract_Cart {
 	 * @since 5.0
 	 */
 	protected function set_product_tax( $id, $tax ) {
+		$this->set_order_item_tax( $id, $tax, $this->replace_copied_taxes );
+	}
+
+	/**
+	 * Save an item's TaxCloud tax, optionally replacing the copied tax rates.
+	 *
+	 * @param mixed $id            Item ID.
+	 * @param float $tax           TaxCloud tax amount.
+	 * @param bool  $replace_rates Whether to replace the existing rates.
+	 */
+	private function set_order_item_tax( $id, $tax, $replace_rates ) {
 		$item     = $this->order->get_item( $id, false );
-		$tax_data = $item->get_taxes( 'edit' );
+		$tax_data = $replace_rates ? array() : $item->get_taxes( 'edit' );
 
 		if ( ! is_array( $tax_data ) ) {
 			$tax_data = array(
