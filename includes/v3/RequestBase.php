@@ -127,15 +127,26 @@ abstract class RequestBase {
 		$body   = \wp_remote_retrieve_body( $response );
 
 		if ( $status < 200 || $status >= 300 ) {
-			return new \WP_Error( $error_code, $error_prefix . $this->get_error_message( $body ), array( 'status' => $status ) );
+			return new \WP_Error( $error_code, $error_prefix . $this->get_error_message( $body ), self::http_error_data( $response ) );
 		}
 
 		$data = \json_decode( $body, true );
 
 		if ( ! is_array( $data ) || JSON_ERROR_NONE !== json_last_error() ) {
-			return new \WP_Error( $error_code, $error_prefix . 'TaxCloud returned an invalid JSON response.' );
+			return new \WP_Error( $error_code, $error_prefix . 'TaxCloud returned an invalid JSON response.', array( 'retryable' => true ) );
 		}
 
+		return $data;
+	}
+
+	/** Include Retry-After in seconds for either HTTP header format. */
+	private static function http_error_data( $response ) {
+		$data = array( 'status' => (int) \wp_remote_retrieve_response_code( $response ) );
+		$retry = $response['headers']['retry-after'] ?? $response['headers']['Retry-After'] ?? '';
+		$retry = is_array( $retry ) ? (string) reset( $retry ) : (string) $retry;
+		if ( '' !== $retry ) {
+			$data['retry_after'] = ctype_digit( $retry ) ? (int) $retry : max( 0, (int) strtotime( $retry ) - time() );
+		}
 		return $data;
 	}
 
@@ -204,7 +215,7 @@ abstract class RequestBase {
 		$data = \json_decode( $body, true );
 
 		if ( $code >= 400 ) {
-			return new \WP_Error( 'sst_v3_auth_error', 'Failed to authenticate with TaxCloud v3 API: ' . ( isset( $data['message'] ) ? $data['message'] : $body ) );
+			return new \WP_Error( 'sst_v3_auth_error', 'Failed to authenticate with TaxCloud v3 API: ' . ( isset( $data['message'] ) ? $data['message'] : $body ), self::http_error_data( $response ) );
 		}
 
 		if ( empty( $data['access_token'] ) ) {

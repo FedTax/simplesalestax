@@ -88,6 +88,9 @@
           if (typeof result.status === 'string') {
             $panel.find('.sst-taxcloud-status').text(result.status);
           }
+          if (result.outcome === 'captured') {
+            $panel.find('.sst-capture-queue').remove();
+          }
           if (result.eligible === false) {
             captureAllowed = false;
             $panel.find('.sst-manual-capture').remove();
@@ -182,6 +185,7 @@
       '#woocommerce_wootax_disable_virtual_split',
       '#woocommerce_wootax_capture_orders_in_taxcloud',
       '#woocommerce_wootax_capture_trigger',
+      '#woocommerce_wootax_background_data_import_capture',
       '#woocommerce_wootax_tax_based_on',
       '#woocommerce_wootax_enable_taxcloud_rate_limit',
       '#woocommerce_wootax_taxcloud_rate_limit_requests',
@@ -190,6 +194,10 @@
       '#woocommerce_wootax_taxcloud_rate_limit_skip_admin',
       '#woocommerce_wootax_show_rate_limit_notice',
     ];
+
+    $('#woocommerce_wootax_capture_orders_in_taxcloud').on('change', function () {
+      $('#woocommerce_wootax_background_data_import_capture').prop('disabled', !this.checked);
+    }).triggerHandler('change');
 
     function toggleIntegrationDependentSettings() {
       var integrationDisabled = jQuery('#woocommerce_wootax_disable_integration').val() === 'yes';

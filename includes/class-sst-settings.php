@@ -56,6 +56,8 @@ class SST_Settings {
 		'require_verified_shipping_address' => 'no',
 		'disable_virtual_split'          => '',
 		'capture_orders_in_taxcloud'     => 'yes',
+		'background_data_import_capture' => 'no',
+		'background_capture_generation'  => '',
 		'tax_based_on'                   => 'item-price',
 		'api_version'                    => 'v1',
 		'enable_taxcloud_rate_limit'     => 'no',
@@ -468,6 +470,14 @@ class SST_Settings {
 				),
 				'desc_tip'    => true,
 			),
+			'background_data_import_capture' => array(
+				'title'       => __( 'Capture Data Import orders in the background', 'simple-sales-tax' ),
+				'type'        => 'checkbox',
+				'default'     => 'no',
+				'description' => __( 'Queue automatic capture after the order request finishes. View progress and retry failures on the order page.', 'simple-sales-tax' ),
+				'disabled'    => 'yes' !== self::get( 'capture_orders_in_taxcloud' ),
+			),
+
 			'capture_trigger'             => array(
 				'title'       => __( 'TaxCloud Order Capture Trigger', 'simple-sales-tax' ),
 				'type'        => 'select',
@@ -619,6 +629,10 @@ class SST_Settings {
 				'desc_tip'    => true,
 			),
 		);
+
+		if ( ! self::is_data_mover_mode() ) {
+			unset( $fields['background_data_import_capture'] );
+		}
 
 		return apply_filters( 'sst_settings_form_fields', $fields, self::get_settings() );
 	}

@@ -73,6 +73,10 @@ class SST_Integration extends WC_Integration {
 	public function preserve_data_import_disabled_settings( $settings ) {
 		$current_settings = get_option( 'woocommerce_wootax_settings', array() );
 
+		if ( empty( $settings['data_mover'] ) || 'yes' !== ( $settings['capture_orders_in_taxcloud'] ?? 'no' ) ) {
+			$settings['background_data_import_capture'] = $current_settings['background_data_import_capture'] ?? 'no';
+		}
+
 		// Preserve exemption sub-settings if exemptions are disabled
 		$show_exempt = $settings['show_exempt'] ?? ( $current_settings['show_exempt'] ?? 'false' );
 		if ( 'false' === $show_exempt ) {

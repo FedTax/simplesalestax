@@ -527,6 +527,7 @@ function sst_render_tax_meta_box( $order ) {
 			'order_id'                => $order->get_id(),
 			'can_manage_certificates' => $can_manage,
 			'capture_candidate'       => $capture_candidate,
+			'capture_queue'           => $order->get_meta( 'deferred_capture' ),
 			'capture_enabled'         => $capture_candidate && $order->can_capture_data_import_order(),
 		)
 	);

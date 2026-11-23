@@ -17,6 +17,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 		?>
 	</h3>
 	<span class="sst-taxcloud-status"><?php echo esc_html( $args['status'] ); ?></span>
+	<?php if ( ! empty( $args['capture_queue']['status'] ) && 'captured' !== $args['capture_queue']['status'] ) : ?>
+		<?php $queue = $args['capture_queue']; ?>
+		<div class="sst-capture-queue">
+			<p><strong><?php esc_html_e( 'Background capture', 'simple-sales-tax' ); ?></strong>
+				<?php echo esc_html( SST_Deferred_Capture::label( $queue ) ); ?></p>
+			<?php if ( ! empty( $queue['error'] ) ) : ?>
+				<p><?php echo esc_html( $queue['error'] ); ?></p>
+			<?php endif; ?>
+			<?php if ( 'retry' === $queue['status'] ) : ?>
+				<p><?php
+					/* translators: %s: scheduled retry in the store time zone. */
+					echo esc_html( sprintf( __( 'Next retry: %s', 'simple-sales-tax' ), wp_date( 'Y-m-d H:i T', $queue['due'] ) ) );
+				?></p>
+			<?php endif; ?>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=wc-status&tab=action-scheduler&s=sst_capture_data_import_order' ) ); ?>"><?php esc_html_e( 'View scheduled actions', 'simple-sales-tax' ); ?></a>
+		</div>
+	<?php endif; ?>
 	<?php if ( ! empty( $args['capture_candidate'] ) ) : ?>
 		<p class="sst-manual-capture">
 			<button type="button" class="button sst-capture-order"

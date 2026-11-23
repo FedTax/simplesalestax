@@ -4,6 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
+require_once __DIR__ . '/class-sst-deferred-capture.php';
+
 /**
  * Order Controller.
  *
@@ -23,6 +25,12 @@ class SST_Order_Controller {
 	public function __construct() {
 		add_action( 'woocommerce_order_status_completed', array( $this, 'capture_order' ), 10, 2 );
 		add_action( 'woocommerce_order_status_processing', array( $this, 'capture_processing_order' ), 10, 2 );
+		add_filter( 'pre_update_option_woocommerce_wootax_settings', array( 'SST_Deferred_Capture', 'settings_updated' ), 20, 2 );
+		add_action( 'shutdown', array( 'SST_Deferred_Capture', 'flush' ), 20 );
+		add_action( SST_Deferred_Capture::HOOK, array( 'SST_Deferred_Capture', 'run' ), 10, 2 );
+		add_action( 'action_scheduler_failed_execution', array( 'SST_Deferred_Capture', 'failed_action' ) );
+		add_action( 'action_scheduler_failed_action', array( 'SST_Deferred_Capture', 'failed_action' ) );
+		add_action( 'action_scheduler_unexpected_shutdown', array( 'SST_Deferred_Capture', 'failed_action' ) );
 		add_action( 'woocommerce_refund_created', array( $this, 'refund_order' ), 10, 2 );
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hide_order_item_meta' ) );
 		add_filter( 'woocommerce_order_item_get_taxes', array( $this, 'fix_shipping_tax_issue' ), 10, 2 );
@@ -118,6 +126,9 @@ class SST_Order_Controller {
 		// Logging
 		SST_Logger::order_log( $log_message, $order->get_id() );
 
+		if ( SST_Deferred_Capture::state( $order ) || SST_Deferred_Capture::enabled() ) {
+			return SST_Deferred_Capture::queue( $order );
+		}
 		return $sst_order->do_capture();
 	}
 
@@ -141,6 +152,17 @@ class SST_Order_Controller {
 		SST_Logger::order_log( __( 'refund_created triggered', 'simple-sales-tax' ), $order->get_id() );
 
 		try {
+			if ( $refund && $order->get_meta( 'deferred_capture' ) ) {
+				try {
+					if ( SST_Deferred_Capture::hold_refund( $args['order_id'], $refund_id ) ) {
+						return false;
+					}
+				} catch ( Exception $ex ) {
+					/* translators: %d: WooCommerce refund ID. */
+					$order->add_order_note( sprintf( __( 'TaxCloud could not verify background capture for refund %d. Reconcile the sale and refund in TaxCloud.', 'simple-sales-tax' ), $refund_id ) );
+					return false;
+				}
+			}
 			$result = $order->do_refund( $refund );
 
 			// Avoid Deleting the refund - WooApi errors if the refund is deleted

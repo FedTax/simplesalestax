@@ -7,6 +7,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 use \TaxCloud\ExemptionCertificate;
 use \TaxCloud\ExemptionCertificateBase;
 
+require_once __DIR__ . '/class-sst-deferred-capture.php';
+
 /**
  * Order.
  *
@@ -784,7 +786,7 @@ class SST_Order extends SST_Abstract_Cart {
 			return true;
 		}
 
-		if ( '' !== $this->get_meta( 'data_import_upload' ) ) {
+		if ( '' !== $this->get_meta( 'data_import_upload' ) || SST_Deferred_Capture::state( $order ) ) {
 			// An interrupted Data Import upload may already exist at TaxCloud.
 			return false;
 		}
@@ -1478,6 +1480,13 @@ class SST_Order extends SST_Abstract_Cart {
 			return false;
 		}
 
+		if ( ! $allow_realtime_packages ) {
+			$state = SST_Deferred_Capture::state( $this->order );
+			if ( $state && ( ! empty( $state['refunds'] ) || $state['connection'] !== hash( 'sha256', (string) SST_Settings::get( 'tc_key' ) ) ) ) {
+				return false;
+			}
+		}
+
 		return $allow_realtime_packages || ! $this->has_realtime_packages();
 	}
 
@@ -1511,16 +1520,21 @@ class SST_Order extends SST_Abstract_Cart {
 		return $this->capture_data_import( true );
 	}
 
+	/** Execute a queued attempt through the same upload lock as manual capture. */
+	public function capture_data_import_in_background( $attempt ) {
+		return $this->capture_data_import( false, $attempt );
+	}
+
 	/**
 	 * Serialize Data Import uploads across manual and automatic requests.
 	 *
 	 * @param bool $manual Whether to bypass the automatic capture setting.
 	 * @return true|WP_Error
 	 */
-	private function capture_data_import( $manual ) {
+	private function capture_data_import( $manual, $attempt = null ) {
 		global $wpdb;
 
-		if ( ! $manual && 'no' === SST_Settings::get( 'capture_orders_in_taxcloud' ) ) {
+		if ( null === $attempt && ! $manual && 'no' === SST_Settings::get( 'capture_orders_in_taxcloud' ) ) {
 			return new WP_Error( 'sst_capture_unavailable', __( 'Automatic TaxCloud capture is turned off.', 'simple-sales-tax' ) );
 		}
 
@@ -1535,6 +1549,31 @@ class SST_Order extends SST_Abstract_Cart {
 			$this->order = new WC_Order( $order_id );
 			$this->order->read_meta_data( true );
 
+			$state = SST_Deferred_Capture::state( $this->order );
+			if ( null !== $attempt ) {
+				if ( ! in_array( $state['status'] ?? '', array( 'queued', 'retry' ), true ) || $state['attempt'] !== $attempt ) {
+					return true; // Stale callback.
+				}
+				if ( ( $state['generation'] ?? '' ) !== SST_Settings::get( 'background_capture_generation' )
+					|| 'data_mover' !== sst_integration_mode() || 'yes' !== SST_Settings::get( 'capture_orders_in_taxcloud' )
+					|| 'yes' === SST_Settings::get( 'disable_integration' ) ) {
+					return new WP_Error( 'sst_capture_stopped', __( 'Background capture stopped because Data Import or automatic capture was disabled.', 'simple-sales-tax' ) );
+				}
+			}
+			if ( $state ) {
+				foreach ( $this->order->get_refunds() as $refund ) {
+					SST_Deferred_Capture::hold_refund( $order_id, $refund->get_id() );
+					return new WP_Error( 'sst_capture_refund', __( 'Reconcile the sale and refund in TaxCloud.', 'simple-sales-tax' ) );
+				}
+				if ( ! empty( $state['refunds'] ) || $state['connection'] !== hash( 'sha256', (string) SST_Settings::get( 'tc_key' ) ) ) {
+					return new WP_Error( 'sst_capture_changed', __( 'Review the sale in the original TaxCloud connection before continuing.', 'simple-sales-tax' ) );
+				}
+				if ( 'captured' === $this->get_taxcloud_status() ) {
+					SST_Deferred_Capture::captured( $order_id );
+					return true;
+				}
+			}
+
 			if ( ! $this->is_data_import_capture_candidate( ! $manual ) ) {
 				return new WP_Error( 'sst_capture_unavailable', __( 'This order is no longer eligible for Data Import capture.', 'simple-sales-tax' ) );
 			}
@@ -1545,7 +1584,11 @@ class SST_Order extends SST_Abstract_Cart {
 				return new WP_Error( 'sst_capture_unavailable', __( 'TaxCloud capture was skipped by a store customization.', 'simple-sales-tax' ) );
 			}
 
-			return $this->upload_data_import_order();
+			$result = $this->upload_data_import_order( $state['date'] ?? null );
+			if ( true === $result && $state ) {
+				SST_Deferred_Capture::captured( $order_id );
+			}
+			return $result;
 		} catch ( Exception $ex ) {
 			return new WP_Error( 'sst_capture_failed', __( 'TaxCloud capture could not finish. Check the order and try again.', 'simple-sales-tax' ) );
 		} finally {
@@ -1575,11 +1618,14 @@ class SST_Order extends SST_Abstract_Cart {
 	 * Detect changes to order data that feeds the upload. Ignore notes and
 	 * metadata written by capture itself.
 	 */
-	private function data_import_order_fingerprint() {
+	private function data_import_order_fingerprint( $capture_date ) {
 		$data = array_intersect_key(
 			$this->order->get_data(),
 			array_flip( array( 'customer_id', 'billing', 'shipping', 'currency', 'date_created', 'date_completed', 'total', 'total_tax' ) )
 		);
+		if ( null !== $capture_date ) {
+			$data['date_completed'] = $capture_date;
+		}
 		foreach ( $this->order->get_items( array( 'line_item', 'shipping', 'fee' ) ) as $item ) {
 			$item_data = $item->get_data();
 			unset( $item_data['meta_data'] );
@@ -1593,9 +1639,9 @@ class SST_Order extends SST_Abstract_Cart {
 	 *
 	 * @return array|WP_Error
 	 */
-	private function prepare_data_import_upload( $api ) {
+	private function prepare_data_import_upload( $api, $capture_date ) {
 		$invalid = new WP_Error( 'sst_capture_packages', __( 'The order has incomplete TaxCloud upload data. Check its products, shipping, and addresses.', 'simple-sales-tax' ) );
-		$packages = $this->has_realtime_packages() ? array() : $this->get_packages();
+		$packages = null !== $capture_date || $this->has_realtime_packages() ? array() : $this->get_packages();
 		if ( ! $packages ) {
 			$packages = $this->build_data_import_packages();
 		}
@@ -1644,7 +1690,7 @@ class SST_Order extends SST_Abstract_Cart {
 				'customerId'        => 'customer-' . $package['customer_id'],
 				'currencyCode'      => $this->order->get_currency(),
 				'transactionDate'   => gmdate( 'c', $created ? $created->getTimestamp() : $now ),
-				'completedDate'     => gmdate( 'c', $complete ? $complete->getTimestamp() : $now ),
+				'completedDate'     => gmdate( 'c', $capture_date ?? ( $complete ? $complete->getTimestamp() : $now ) ),
 				'origin'            => $package['origin'],
 				'destination'       => $package['destination'],
 				'deliveredBySeller' => ! empty( $package['delivered_by_seller'] ),
@@ -1666,13 +1712,14 @@ class SST_Order extends SST_Abstract_Cart {
 	 *
 	 * @return true|WP_Error
 	 */
-	private function upload_data_import_order() {
+	private function upload_data_import_order( $capture_date ) {
 		$api         = new TaxCloud_V3\Orders();
 		$connection  = (string) SST_Settings::get( 'tc_key' );
 		$identity    = hash( 'sha256', $connection );
-		$fingerprint = $this->data_import_order_fingerprint();
 		$saved       = $this->get_meta( 'data_import_upload' );
 		$upload      = json_decode( $saved, true );
+
+		$fingerprint = $this->data_import_order_fingerprint( '' === $saved ? $capture_date : ( $upload['capture_date'] ?? null ) );
 
 		if ( '' !== $saved ) {
 			if ( ! is_array( $upload['packages'] ?? null ) || empty( $upload['payloads'] ) || ! is_array( $upload['confirmed'] ?? null )
@@ -1688,12 +1735,13 @@ class SST_Order extends SST_Abstract_Cart {
 			}
 		}
 		if ( '' === $saved ) {
-			$upload = $this->prepare_data_import_upload( $api );
+			$upload = $this->prepare_data_import_upload( $api, $capture_date );
 			if ( is_wp_error( $upload ) ) {
 				return $upload;
 			}
 			$upload['connection']  = $identity;
-			$upload['fingerprint'] = $fingerprint;
+			$upload['capture_date'] = $capture_date;
+			$upload['fingerprint'] = $this->data_import_order_fingerprint( $capture_date );
 		}
 
 		foreach ( $upload['payloads'] as $id => $payload ) {
@@ -1701,10 +1749,14 @@ class SST_Order extends SST_Abstract_Cart {
 				continue;
 			}
 			$remote = $api->get_order( (string) $id );
+			$found_existing = ! is_wp_error( $remote );
+			if ( $found_existing && null !== $capture_date && '' === $saved ) {
+				return new WP_Error( 'sst_capture_mismatch', __( 'This order ID already exists in TaxCloud without a saved upload attempt. Review the existing sale before continuing.', 'simple-sales-tax' ) );
+			}
 			if ( is_wp_error( $remote ) ) {
 				$data = $remote->get_error_data();
-				if ( 404 !== (int) ( $data['status'] ?? 0 ) ) {
-					return new WP_Error( 'sst_capture_lookup', __( 'TaxCloud could not verify whether this order already exists. Try again.', 'simple-sales-tax' ) );
+				if ( 'sst_v3_orders_error' !== $remote->get_error_code() || 404 !== (int) ( $data['status'] ?? 0 ) ) {
+					return $this->upload_error( $remote, 'sst_capture_lookup', __( 'TaxCloud could not verify whether this order already exists.', 'simple-sales-tax' ) );
 				}
 
 				if ( '' === $saved ) {
@@ -1718,21 +1770,29 @@ class SST_Order extends SST_Abstract_Cart {
 					$this->order->save_meta_data();
 				}
 
+				if ( null !== $capture_date && $this->deferred_refund_hold() ) {
+					return new WP_Error( 'sst_capture_refund', __( 'Reconcile the sale and refund in TaxCloud.', 'simple-sales-tax' ) );
+				}
+
 				$remote = $api->create_order( $payload );
 				if ( is_wp_error( $remote ) ) {
 					$data = $remote->get_error_data();
 					SST_Logger::order_log( 'TaxCloud Data Import upload failed.', $this->order->get_id(), array( 'status' => (int) ( $data['status'] ?? 0 ) ) );
-					return new WP_Error( 'sst_capture_failed', __( 'TaxCloud did not confirm capture. Check the order and try again.', 'simple-sales-tax' ) );
+					return $this->upload_error( $remote, 'sst_capture_failed', __( 'TaxCloud did not confirm capture.', 'simple-sales-tax' ) );
 				}
 			}
 
-			if ( ! $this->matches_data_import_upload( $remote, $payload, $connection ) ) {
+			if ( ! $this->matches_data_import_upload( $remote, $payload, $connection, $found_existing && null !== $capture_date ) ) {
 				return new WP_Error( 'sst_capture_mismatch', __( 'TaxCloud returned an order that could not be matched to this upload. Review the order in TaxCloud before retrying.', 'simple-sales-tax' ) );
 			}
 			$upload['confirmed'][ $id ] = true;
 			$saved = wp_json_encode( $upload );
 			$this->update_meta( 'data_import_upload', $saved );
 			$this->order->save_meta_data();
+		}
+
+		if ( null !== $capture_date && $this->deferred_refund_hold() ) {
+			return new WP_Error( 'sst_capture_refund', __( 'Reconcile the sale and refund in TaxCloud.', 'simple-sales-tax' ) );
 		}
 
 		$this->set_packages( $upload['packages'] );
@@ -1744,6 +1804,27 @@ class SST_Order extends SST_Abstract_Cart {
 		$this->order->delete_meta_data( self::$prefix . 'data_import_upload' );
 		$this->order->save_meta_data();
 		return true;
+	}
+
+	/** A refund hook can put the intent on hold while another request is uploading packages. */
+	private function deferred_refund_hold() {
+		$this->order->read_meta_data( true );
+		$state = SST_Deferred_Capture::state( $this->order );
+		return ! empty( $state['refunds'] );
+	}
+
+	/** Retain transport details without exposing TaxCloud response bodies in merchant-facing notes. */
+	private function upload_error( $error, $code, $message ) {
+		$data = (array) $error->get_error_data();
+		$status = (int) ( $data['status'] ?? 0 );
+		$data['retryable'] = ! empty( $data['retryable'] ) || 'http_request_failed' === $error->get_error_code() || 408 === $status || 429 === $status || ( $status >= 500 && $status < 600 );
+		if ( $status ) {
+			$message .= sprintf( ' (HTTP %d)', $status );
+		}
+		if ( 401 === $status || 403 === $status ) {
+			$message .= ' ' . __( 'Verify the TaxCloud connection credentials.', 'simple-sales-tax' );
+		}
+		return new WP_Error( $code, $message, $data );
 	}
 
 	/**
@@ -1763,8 +1844,8 @@ class SST_Order extends SST_Abstract_Cart {
 				return $changed;
 			}
 			$data = $remote->get_error_data();
-			if ( 404 !== (int) ( $data['status'] ?? 0 ) ) {
-				return new WP_Error( 'sst_capture_lookup', __( 'TaxCloud could not verify whether this order already exists. Try again.', 'simple-sales-tax' ) );
+			if ( 'sst_v3_orders_error' !== $remote->get_error_code() || 404 !== (int) ( $data['status'] ?? 0 ) ) {
+				return $this->upload_error( $remote, 'sst_capture_lookup', __( 'TaxCloud could not verify whether this order already exists.', 'simple-sales-tax' ) );
 			}
 		}
 
@@ -1779,7 +1860,7 @@ class SST_Order extends SST_Abstract_Cart {
 	/**
 	 * Check the remote identity and line quantities. TaxCloud may recalculate tax.
 	 */
-	private function matches_data_import_upload( $remote, $payload, $connection ) {
+	private function matches_data_import_upload( $remote, $payload, $connection, $verify_saved_payload = false ) {
 		if ( ( $remote['connectionId'] ?? null ) !== $connection
 			|| ( $remote['orderId'] ?? null ) !== $payload['orderId']
 			|| ( $remote['customerId'] ?? null ) !== $payload['customerId']
@@ -1789,19 +1870,42 @@ class SST_Order extends SST_Abstract_Cart {
 			return false;
 		}
 
-		$lines = static function ( $items ) {
+		if ( $verify_saved_payload ) {
+			foreach ( array( 'origin', 'destination' ) as $address ) {
+				foreach ( array( 'line1', 'line2', 'city', 'state' ) as $field ) {
+					if ( 0 !== strcasecmp( trim( $remote[ $address ][ $field ] ?? '' ), trim( $payload[ $address ][ $field ] ?? '' ) ) ) {
+						return false;
+					}
+				}
+				if ( substr( $remote[ $address ]['zip'] ?? '', 0, 5 ) !== substr( $payload[ $address ]['zip'], 0, 5 ) ) {
+					return false;
+				}
+			}
+		}
+
+		$lines = static function ( $items ) use ( $verify_saved_payload ) {
 			$result = array();
 			foreach ( $items as $item ) {
 				if ( ! isset( $item['index'], $item['itemId'], $item['quantity'] ) || ! is_numeric( $item['quantity'] ) ) {
 					return null;
 				}
-				$result[] = array( (int) $item['index'], (string) $item['itemId'], (float) $item['quantity'] );
+				$line = array( (int) $item['index'], (string) $item['itemId'], (float) $item['quantity'] );
+				if ( $verify_saved_payload ) {
+					$price = $item['originalPrice'] ?? $item['price'] ?? null;
+					if ( ! is_numeric( $price ) ) {
+						return null;
+					}
+					$line[] = (float) $price;
+					$line[] = (int) ( $item['tic'] ?? 0 );
+				}
+				$result[] = $line;
 			}
 			sort( $result );
 			return $result;
 		};
 
-		return $lines( $remote['lineItems'] ) === $lines( $payload['lineItems'] );
+		$actual = $lines( $remote['lineItems'] );
+		return null !== $actual && $actual === $lines( $payload['lineItems'] );
 	}
 
 	/**

@@ -2,6 +2,14 @@
 
 Open **WooCommerce → Settings → Integration → TaxCloud for WooCommerce**.
 
+## Background capture for Data Import
+
+In Data Import mode, enable **Capture Orders in TaxCloud**, then select **Capture Data Import orders in the background**. Background capture is off by default. The selected Processing or Completed trigger queues the saved order for Action Scheduler. Selecting Both queues the first eligible transition once.
+
+Open the order’s **TaxCloud Status** panel to see the queue state, last error, and next retry. A job more than 15 minutes past due shows **Overdue**. Check **WooCommerce → Status → Scheduled Actions** for job history. **Capture in TaxCloud** can finish an eligible order immediately, including when WP-Cron is stalled. A refund before confirmation requires reconciliation in TaxCloud.
+
+Disabling background capture lets queued orders finish. Disabling automatic capture or the integration, or switching away from Data Import, stops outstanding uploads. A changed connection requires review.
+
 ## WooCommerce Product Bundles
 
 TaxCloud uses the prices WooCommerce records on the bundle and its components.

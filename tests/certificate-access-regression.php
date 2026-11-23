@@ -119,6 +119,7 @@ namespace {
 		public function get_customer_id() { return $this->customer_id; }
 		public function get_id() { return 123; }
 		public function get_taxcloud_status() { return 'pending'; }
+		public function get_meta( $key ) { return ''; }
 		public function get_certificate_id() { return OWNED_CERTIFICATE_ID; }
 		public function get_single_purchase_certificate() {
 			++$this->detail_reads;
