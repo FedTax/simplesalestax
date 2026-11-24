@@ -393,4 +393,20 @@ expect_same( 1, $checkout->reset_taxes_calls, 'Configured checkout resets taxes 
 expect_same( 1, $checkout->do_lookup_calls, 'Configured checkout performs TaxCloud lookup' );
 expect_same( array(), $test_notices, 'Configured checkout with valid origin adds no error notices' );
 
-echo "Unconfigured checkout QIT regression checks passed.\n";
+// DEV-10722: A third-party tax provider has already populated the Store API order.
+$test_settings['data_mover'] = true;
+$packages = array( array( 'cart_items' => array( array( 'type' => 'shipping' ) ) ) );
+$test_woocommerce->session->set( 'sst_packages', $packages );
+$import_order = new class extends WC_Order {
+	public function save_meta_data() {}
+	public function remove_order_items( $type ) {
+		throw new RuntimeException( "Data Import must preserve existing order items. Tried to remove $type." );
+	}
+};
+
+$checkout->handle_checkout( $import_order, new WP_REST_Request() );
+expect_same( 0, $import_order->calculate_totals_calls, 'Data Import preserves the Store API order total' );
+expect_same( $packages, maybe_unserialize( $import_order->get_meta( '_wootax_packages' ) ), 'Data Import still saves packages for capture' );
+expect_same( 1, $import_order->saves, 'Data Import persists the capture metadata' );
+
+echo "Unconfigured checkout QIT and Data Import regression checks passed.\n";

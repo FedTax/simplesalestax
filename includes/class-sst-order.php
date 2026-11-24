@@ -1589,6 +1589,123 @@ class SST_Order extends SST_Abstract_Cart {
 	}
 
 	/**
+	 * Apply the saved WooCommerce taxes to the capture packages. The checkout
+	 * package may have been built before the store's tax provider ran.
+	 *
+	 * @param array           $packages Data Import packages.
+	 * @param WC_Order_Item[] $items    Saved order items keyed by ID.
+	 * @return array|WP_Error Packages with refreshed tax, or an ambiguous match.
+	 */
+	private function refresh_data_import_tax( $packages, $items ) {
+		$invalid         = new WP_Error( 'sst_capture_tax', __( 'TaxCloud could not match the saved order taxes to its upload lines. Review the order items and shipping taxes before capturing.', 'simple-sales-tax' ) );
+		$amounts         = array();
+		$shipping        = array();
+		$references      = array();
+		$linked_products = $this->get_captured_line_ids( $packages );
+		foreach ( $items as $id => $item ) {
+			$amounts[ $id ] = (float) $item->get_total_tax();
+			$type           = $item->get_type();
+			if ( 'shipping' === $type ) {
+				$shipping[ $id ] = $amounts[ $id ];
+				$key = $item->get_meta( '_sst_shipping_package_key', true );
+			} elseif ( 'fee' === $type ) {
+				$key = $item->get_meta( '_sst_cart_fee_key', true );
+			} else {
+				continue;
+			}
+			if ( '' !== $key ) {
+				$references[ $type ][ $key ] = $id;
+			}
+		}
+
+		// Some providers save only the shipping summary on classic checkout.
+		$shipping_tax = (float) $this->order->get_shipping_tax();
+		if ( round( array_sum( $shipping ), 2 ) !== round( $shipping_tax, 2 ) ) {
+			if ( 1 === count( $shipping ) ) {
+				$amounts[ key( $shipping ) ] = $shipping_tax;
+			} elseif ( ! $shipping ) {
+				return $invalid;
+			} else {
+				foreach ( $shipping as $id => $amount ) {
+					if ( 0.0 === $amount && empty( $items[ $id ]->get_taxes()['total'] ) ) {
+						return $invalid;
+					}
+				}
+			}
+		}
+
+		$remaining = $items;
+		$matches   = array();
+		$unmatched = array();
+		foreach ( $packages as $key => $package ) {
+			foreach ( $package['cart_items'] ?? array() as $index => $line ) {
+				$type      = $line['type'] ?? '';
+				$reference = $line['cart_id'] ?? '';
+				$id        = 'line_item' === $type
+					? ( $linked_products[ $key ][ $index ] ?? null )
+					: ( $references[ $type ][ $reference ] ?? $reference );
+				if ( isset( $remaining[ $id ] ) && $type === $remaining[ $id ]->get_type() ) {
+					$matches[ $key ][ $index ] = $id;
+					unset( $remaining[ $id ] );
+				} else {
+					$unmatched[] = array( $key, $index );
+				}
+			}
+		}
+
+		// Older packages can lack a stable key. Use the line's identity and
+		// total where possible. An interchangeable match must have the same tax.
+		foreach ( $unmatched as list( $key, $index ) ) {
+			$line       = $packages[ $key ]['cart_items'][ $index ];
+			$type       = $line['type'] ?? '';
+			$method     = $packages[ $key ]['shipping_method'] ?? '';
+			$candidates = array_filter( $remaining, static function ( $item ) use ( $type ) {
+				return $type === $item->get_type();
+			} );
+			$identified = array_filter( $candidates, function ( $item ) use ( $type, $line, $method ) {
+				if ( 'line_item' === $type ) {
+					return (string) ( $item->get_variation_id() ?: $item->get_product_id() ) === (string) ( $line['itemId'] ?? '' );
+				}
+				if ( 'fee' === $type ) {
+					return sanitize_title( $item->get_name() ) === ( $line['itemId'] ?? '' );
+				}
+				return $this->process_method_id( $item->get_method_id() ) === $this->process_method_id( $method );
+			} );
+			if ( $identified || 'line_item' === $type ) {
+				$candidates = $identified;
+			}
+			$taxes = array_intersect_key( $amounts, $candidates );
+			if ( count( array_unique( $taxes ) ) > 1 ) {
+				$line_total = round( (float) $line['price'] * (float) $line['quantity'], 2 );
+				$candidates = array_filter( $candidates, static function ( $item ) use ( $line_total ) {
+					return $line_total === round( (float) $item->get_total(), 2 );
+				} );
+				$taxes = array_intersect_key( $amounts, $candidates );
+			}
+			if ( 1 !== count( array_unique( $taxes ) ) ) {
+				return $invalid;
+			}
+			$id = key( $taxes );
+			$matches[ $key ][ $index ] = $id;
+			unset( $remaining[ $id ] );
+		}
+
+		foreach ( $matches as $key => $lines ) {
+			foreach ( $lines as $index => $id ) {
+				$line        = &$packages[ $key ]['cart_items'][ $index ];
+				$tax         = $amounts[ $id ];
+				$taxable     = (float) $line['price'] * (float) $line['quantity'];
+				$line['tax'] = array(
+					'amount' => round( $tax, 2 ),
+					'rate'   => $taxable > 0 ? $tax / $taxable : 0.0,
+				);
+				unset( $line );
+			}
+		}
+		return $packages;
+	}
+
+	/**
 	 * Prepare and validate the entire upload before creating any remote orders.
 	 *
 	 * @return array|WP_Error
@@ -1605,14 +1722,20 @@ class SST_Order extends SST_Abstract_Cart {
 
 		// Count product occurrences rather than comparing WooCommerce item IDs
 		// to cart keys. Check shipping and fees too, so a dropped package fails.
+		$items = $this->order->get_items( array( 'line_item', 'shipping', 'fee' ) );
 		$expected = array();
-		foreach ( $this->order->get_items( array( 'line_item', 'shipping', 'fee' ) ) as $item ) {
+		foreach ( $items as $item ) {
 			$type = $item->get_type();
 			if ( 'line_item' === $type && ! $item->get_product() ) {
 				return $invalid;
 			}
 			$key = 'line_item' === $type ? $type . ':' . ( $item->get_variation_id() ?: $item->get_product_id() ) : $type;
 			$expected[ $key ] = ( $expected[ $key ] ?? 0 ) + 1;
+		}
+
+		$packages = $this->refresh_data_import_tax( $packages, $items );
+		if ( is_wp_error( $packages ) ) {
+			return $packages;
 		}
 
 		$actual   = array();
