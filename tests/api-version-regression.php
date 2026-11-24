@@ -81,6 +81,8 @@ namespace {
 			WC_Order::$date_completed = null;
 			WC_Order::$city = 'Raleigh';
 			WC_Order::$fee_price = 5;
+			WC_Order::$capture_items = null;
+			WC_Order::$shipping_tax = 0;
 			Routing_Order::$package_builds = 0;
 			self::$options = array( 'tc_id' => 'test-login', 'tc_key' => 'test-connection', 'data_mover' => false );
 			if ( null !== $version ) { self::$options['api_version'] = $version; }
@@ -221,6 +223,8 @@ namespace {
 		public static $date_completed;
 		public static $city = 'Raleigh';
 		public static $fee_price = 5;
+		public static $capture_items;
+		public static $shipping_tax = 0;
 		public function __construct( $id = 42 ) {
 			if ( Routing_Http::$import ) { $this->meta = self::$persisted_meta; }
 		}
@@ -240,11 +244,18 @@ namespace {
 			return array( 'total' => self::$fee_price * self::$fees, 'date_completed' => self::$date_completed, 'billing' => array( 'city' => self::$city ) );
 		}
 		public function get_items( $types ) {
+			if ( null !== self::$capture_items ) {
+				return array_filter( self::$capture_items, function ( $item ) use ( $types ) {
+					return in_array( $item->get_type(), (array) $types, true );
+				} );
+			}
 			if ( 'line_item' === $types ) {
 				return array();
 			}
-			return array_map( function( $id ) { return new Routing_Fee_Item( $id ); }, range( 1, self::$fees ) );
+			$ids = range( 1, self::$fees );
+			return array_combine( $ids, array_map( function ( $id ) { return new Routing_Fee_Item( $id ); }, $ids ) );
 		}
+		public function get_shipping_tax() { return self::$shipping_tax; }
 		public function delete_meta_data( $key ) { unset( $this->meta[ $key ] ); }
 		public function get_meta( $key ) { return $this->meta[ $key ] ?? ''; }
 		public function update_meta_data( $key, $value ) { $this->meta[ $key ] = $value; }
@@ -262,6 +273,32 @@ namespace {
 		public function get_id() { return $this->id; }
 		public function get_type() { return 'fee'; }
 		public function get_data() { return array( 'total' => WC_Order::$fee_price, 'total_tax' => 0.5 ); }
+		public function get_name() { return 'handling'; }
+		public function get_total_tax() { return 0.5; }
+		public function get_meta() { return ''; }
+	}
+	class Routing_Capture_Item {
+		private $id;
+		private $type;
+		private $tax;
+		private $meta;
+		public function __construct( $id, $type, $tax, $meta = array() ) {
+			$this->id = $id;
+			$this->type = $type;
+			$this->tax = $tax;
+			$this->meta = $meta;
+		}
+		public function get_id() { return $this->id; }
+		public function get_type() { return $this->type; }
+		public function get_product() { return new Routing_Product(); }
+		public function get_product_id() { return 7; }
+		public function get_variation_id() { return 0; }
+		public function get_method_id() { return 'flat_rate'; }
+		public function get_total() { return 9.95; }
+		public function get_total_tax() { return $this->tax; }
+		public function get_taxes() { return array( 'total' => $this->tax ? array( 1 => $this->tax ) : array() ); }
+		public function get_data() { return array( 'total_tax' => $this->tax ); }
+		public function get_meta( $key ) { return $this->meta[ $key ] ?? ''; }
 	}
 	class Routing_Refund {
 		public function get_id() { return 100; }
@@ -602,6 +639,70 @@ namespace {
 		Routing_Http::$body = array();
 		expect_same( true, $order->do_refund( new Routing_Fee_Refund() ), 'Existing Data Import refund succeeds in both settings' );
 		assert_route( 'v3', '', '/tax/connections/test-connection/orders/refunds/42_0', 'Existing Data Import refunds remain V3' );
+	}
+
+	// A late tax provider can leave zero tax in checkout packages. Older
+	// classic orders can record shipping tax only in the order summary.
+	foreach ( array( 0.0, 0.88 ) as $shipping_line_tax ) {
+		Routing_Http::reset( 'v3' );
+		SST_Settings::set( 'data_mover', true );
+		Routing_Http::$import = true;
+		WC_Order::$shipping_tax = 0.88;
+		WC_Order::$capture_items = array(
+			11 => new Routing_Capture_Item( 11, 'line_item', 1.33, array( '_sst_cart_item_key' => 'product-key' ) ),
+			12 => new Routing_Capture_Item( 12, 'shipping', $shipping_line_tax ),
+			13 => new Routing_Fee_Item( 13 ),
+		);
+		$checkout_package = $package;
+		$checkout_package['shipping_method'] = 'flat_rate';
+		$checkout_package['cart_items'] = array(
+			array( 'type' => 'line_item', 'cart_id' => 'product-key', 'index' => 0, 'itemId' => '7', 'price' => 14.95, 'quantity' => 1, 'tax' => array( 'amount' => 0, 'rate' => 0 ) ),
+			array( 'type' => 'shipping', 'cart_id' => '0', 'index' => 1, 'itemId' => 'SHIPPING', 'price' => 9.95, 'quantity' => 1, 'tax' => array( 'amount' => 0, 'rate' => 0 ) ),
+			array_replace( $package['cart_items'][0], array( 'index' => 2, 'tax' => array( 'amount' => 0, 'rate' => 0 ) ) ),
+		);
+		$order = new Routing_Order( new WC_Order() );
+		$order->set_packages( array( $checkout_package ) );
+		$order->save_meta_data();
+		expect_same( true, $order->do_capture(), 'Data Import captures checkout packages with stale tax' );
+		$lines = Routing_Http::$remote['42_0']['lineItems'];
+		expect_same( array( 1.33, 0.88, 0.5 ), array_column( array_column( $lines, 'tax' ), 'amount' ), 'Capture sends saved product, shipping, and fee tax' );
+		expect_same( array( 0, 1, 2 ), array_column( $lines, 'index' ), 'Tax refresh preserves capture line indexes' );
+	}
+
+	foreach ( array( false, true ) as $shipping_summary_only ) {
+		Routing_Http::reset( 'v3' );
+		SST_Settings::set( 'data_mover', true );
+		Routing_Http::$import = true;
+		WC_Order::$shipping_tax = 1.03;
+		// The same product and method appear in two packages. Order item
+		// insertion order differs from the saved cart package order.
+		WC_Order::$capture_items = array(
+			21 => new Routing_Capture_Item( 21, 'line_item', 2.00, array( '_sst_cart_item_key' => 'other-product-key' ) ),
+			22 => new Routing_Capture_Item( 22, 'shipping', $shipping_summary_only ? 0 : 0.15, array( '_sst_shipping_package_key' => '1' ) ),
+			11 => new Routing_Capture_Item( 11, 'line_item', 1.33, array( '_sst_cart_item_key' => 'product-key' ) ),
+			12 => new Routing_Capture_Item( 12, 'shipping', $shipping_summary_only ? 0 : 0.88, array( '_sst_shipping_package_key' => '0' ) ),
+		);
+		$first = $checkout_package;
+		unset( $first['cart_items'][2] );
+		$second = $first;
+		$second['cart_items'][0]['cart_id'] = 'other-product-key';
+		$second['cart_items'][1]['cart_id'] = '1';
+		$second['origin']['city'] = 'Durham';
+
+		$order = new Routing_Order( new WC_Order() );
+		$order->set_packages( array( $first, $second ) );
+		$order->save_meta_data();
+		if ( $shipping_summary_only ) {
+			expect_same( 'sst_capture_tax', $order->capture_data_import_manually()->get_error_code(), 'Aggregate shipping tax cannot identify the taxes for multiple shipments' );
+			expect_same( array(), Routing_Http::$v3, 'Ambiguous shipping tax sends no capture requests' );
+			continue;
+		}
+		expect_same( true, $order->capture_data_import_manually(), 'Data Import preserves taxes for distinct shipments of the same product' );
+		foreach ( array( array( 1.33, 0.88 ), array( 2, 0.15 ) ) as $index => $taxes ) {
+			$upload = Routing_Http::$remote[ '42_' . $index ];
+			expect_same( $taxes, array_column( array_column( $upload['lineItems'], 'tax' ), 'amount' ), 'Capture taxes are matched by cart and shipping package keys' );
+		}
+		expect_same( 'Durham', Routing_Http::$remote['42_1']['origin']['city'], 'Tax refresh keeps the second package origin' );
 	}
 
 	foreach ( array( 'lookup', 'lost', 'malformed', 'partial' ) as $fault ) {
