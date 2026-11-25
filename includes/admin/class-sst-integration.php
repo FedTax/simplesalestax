@@ -249,6 +249,7 @@ class SST_Integration extends WC_Integration {
 								$locations_url = 'https://app.taxcloud.com/go/locations';
 								echo wp_kses_post(
 									sprintf(
+										/* translators: %s: TaxCloud Locations page URL. */
 										__(
 											'Oops! It appears there are no addresses in your TaxCloud account. Please add at least one address on the <a href="%s" target="_blank" class="tc-locations-link">Locations</a> page in TaxCloud and then save your settings to refresh the address list.',
 											'simple-sales-tax'
@@ -300,7 +301,7 @@ class SST_Integration extends WC_Integration {
 	 * @since 7.0
 	 */
 	public function maybe_download_debug_report() {
-		if ( ! isset( $_GET['download_debug_report'] ) || ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( $_GET['nonce'], 'sst_debug_report' ) || ! current_user_can( 'manage_options' ) ) {
+		if ( ! isset( $_GET['download_debug_report'], $_GET['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['nonce'] ) ), 'sst_debug_report' ) || ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
@@ -510,7 +511,7 @@ class SST_Integration extends WC_Integration {
 								value="<?php echo esc_attr( $integration_mode ); ?>"
 								readonly="readonly"
 								disabled="disabled">
-								<button type="button" class="components-button is-secondary sst-update-data-mover" data-nonce="<?php echo wp_create_nonce( 'sst-update-data-mover-nonce' ); ?>">
+								<button type="button" class="components-button is-secondary sst-update-data-mover" data-nonce="<?php echo esc_attr( wp_create_nonce( 'sst-update-data-mover-nonce' ) ); ?>">
 									<span class="dashicons dashicons-update"></span>
 									<?php echo wp_kses_post( __( 'Refresh', 'simple-sales-tax' ) ); ?>
 								</button>

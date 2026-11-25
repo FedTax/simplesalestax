@@ -64,7 +64,8 @@ class SST_Rate_Limit {
 			}
 		}
 
-		return 'guest_' . md5( $_SERVER['REMOTE_ADDR'] );
+		$remote_addr = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+		return 'guest_' . md5( $remote_addr );
 	}
 
 	/**
@@ -182,12 +183,13 @@ class SST_Rate_Limit {
 	 */
 	public function log_limit_reached() {
 		$message = sprintf(
+			/* translators: %s: customer or session rate-limit identifier. */
 			__( 'TaxCloud lookup rate limit reached for customer/session. ID: %s.', 'simple-sales-tax' ),
 			$this->identifier,
 		);
 
 		SST_Logger::error( $message, array(
-			'uri' => isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : 'N/A',
+			'uri' => isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : 'N/A',
 		) );
 	}
 

@@ -1189,6 +1189,7 @@ class SST_Order extends SST_Abstract_Cart {
 					$response = $txc_refund->refund_order( $order_id, $refund_args );
 
 					if ( is_wp_error( $response ) ) {
+						/* translators: %s: TaxCloud package order ID. */
 						SST_Logger::order_log( sprintf( __( 'Failed to refund package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response->get_error_message() );
 						$message = sprintf(
 							/* translators: 1 - WooCommerce order ID, 2 - Error message from TaxCloud */
@@ -1200,6 +1201,7 @@ class SST_Order extends SST_Abstract_Cart {
 						$order->add_order_note( $message );
 						return false;
 					} elseif ( ! empty( $response ) ) {
+						/* translators: %s: TaxCloud package order ID. */
 						SST_Logger::order_log( sprintf( __( 'Refund request response for package %s in TaxCloud.', 'simple-sales-tax' ), $order_id ), $order->get_id(), $response );
 					}
 				} else {

@@ -178,7 +178,7 @@ class SST_Install {
 	 * Start update when a user clicks the "Update" button in the dashboard.
 	 */
 	public static function trigger_update() {
-		if ( ! empty( $_GET['do_sst_update'] ) && wp_verify_nonce( $_GET['nonce'], 'sst_update' ) && current_user_can( 'manage_options' ) ) {
+		if ( ! empty( $_GET['do_sst_update'] ) && isset( $_GET['nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['nonce'] ) ), 'sst_update' ) && current_user_can( 'manage_options' ) ) {
 			self::update();
 
 			// Update notice content.
@@ -193,7 +193,7 @@ class SST_Install {
 	public static function trigger_rate_removal() {
 		$keep_rates = ! empty( $_GET['sst_keep_rates'] ) ? sanitize_text_field( wp_unslash( $_GET['sst_keep_rates'] ) ) : ''; // phpcs:ignore WordPress.CSRF.NonceVerification
 
-		if ( ! empty( $keep_rates ) && wp_verify_nonce( $_GET['nonce'], 'sst_keep_rates' ) && current_user_can( 'manage_options' ) ) {
+		if ( ! empty( $keep_rates ) && isset( $_GET['nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['nonce'] ) ), 'sst_keep_rates' ) && current_user_can( 'manage_options' ) ) {
 			global $wpdb;
 			if ( 'no' === $keep_rates ) {
 				$wpdb->query(

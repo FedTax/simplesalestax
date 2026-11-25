@@ -15,6 +15,7 @@ $review_url = 'https://wordpress.org/support/plugin/simple-sales-tax/reviews/?ra
 <div id="sst-review-notice" class="notice notice-info sst-review-notice is-dismissible" data-nonce="<?php echo esc_attr( $nonce ); ?>">
 	<div class="sst-review-notice-wrapper">
 		<div class="sst-review-notice-icon-col">
+			<?php // phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent ?>
 			<img class="txc-notice-icon" srcset="https://ps.w.org/simple-sales-tax/assets/icon-128x128.png?rev=3326417, https://ps.w.org/simple-sales-tax/assets/icon-256x256.png?rev=3326417 2x" src="https://ps.w.org/simple-sales-tax/assets/icon-256x256.png?rev=3326417" alt="<?php esc_attr_e( 'TaxCloud for WooCommerce', 'simple-sales-tax' ); ?>">
 		</div>
 		<div class="sst-review-notice-content">

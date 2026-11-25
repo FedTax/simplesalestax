@@ -312,7 +312,7 @@ class SST_Order_Controller {
 			return;
 		}
 
-		$certificate_id = wp_unslash( $_POST['exempt_cert'] ?? '' );
+		$certificate_id = wp_unslash( $_POST['exempt_cert'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		if ( 'none' === $certificate_id ) {
 			$certificate_id = '';
 		}

@@ -1510,7 +1510,7 @@ msgstr ""
 #: includes/integrations/class-sst-wcfm.php:314
 #: includes/integrations/class-sst-dokan.php:262
 msgid ""
-"Failed to get origin address for seller %d: %s. Falling back to default "
+"Failed to get origin address for seller %1$d: %2$s. Falling back to default "
 "store origin."
 msgstr ""
 

@@ -669,7 +669,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$errors = new WP_Error();
 		$this->validate_shipping_address( $errors );
 		if ( $errors->has_errors() ) {
-			throw new RouteException( 'sst_shipping_address', $errors->get_error_message(), 400 );
+			throw new RouteException( 'sst_shipping_address', $errors->get_error_message(), 400 ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 	}
 
@@ -986,7 +986,7 @@ class SST_Checkout extends SST_Abstract_Cart {
 		$certificate = $data['certificate'] ?? [];
 
 		if ( ! is_array( $certificate ) || ! $certificate ) {
-			throw new Exception( __( 'Required exemption certificate fields are missing', 'simple-sales-tax' ) );
+			throw new Exception( __( 'Required exemption certificate fields are missing', 'simple-sales-tax' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		if ( $order->get_certificate_id() ) {
