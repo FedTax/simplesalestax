@@ -1,7 +1,7 @@
-=== TaxCloud for WooCommerce (formerly Simple Sales Tax) ===
+=== TaxCloud for WooCommerce ===
 Contributors: fedtaxceo
 Tags: taxcloud, woocommerce, tax, sales tax, sales tax filing
-Requires at least: 6.0
+Requires at least: 5.8
 Tested up to: 7.1.5
 Stable tag: 8.4.23
 Requires PHP: 7.4
