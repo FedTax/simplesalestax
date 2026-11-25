@@ -84,7 +84,7 @@ class SST_Subscriptions {
 	 * @since 5.0
 	 */
 	public function recalc_taxes_for_renewal( $renewal_order, $subscription ) {
-		$order = new SST_Order( $renewal_order );
+		$order = new SST_Order( $renewal_order, true );
 
 		/* Reset packages to force recalc */
 		$order->set_packages( array() );

@@ -127,7 +127,12 @@ abstract class SST_Abstract_Cart {
 				$cart_items = $package['cart_items'];
 
 				foreach ( $cart_items as $index => $item ) {
-					$tax_total = $tax_totals[ $index ];
+					$tax_total = is_array( $tax_totals ) ? ( $tax_totals[ $index ] ?? null ) : null;
+					// A missing or invalid amount is different from a valid zero-tax quote.
+					if ( ! is_numeric( $tax_total ) || ! is_finite( (float) $tax_total ) ) {
+						continue;
+					}
+
 					switch ( $item['type'] ) {
 						case 'shipping':
 							$this->set_shipping_tax(
